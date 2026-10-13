@@ -74,6 +74,10 @@ fuzz-zip seconds="600":
     cd crates/nn-files && cargo +nightly fuzz run extract_entries -- -max_total_time={{seconds}}
     cd crates/nn-files && cargo +nightly fuzz run extract_raw -- -max_total_time={{seconds}}
 
+# Fuzz the NBT reader and player-data mapping (needs nightly + cargo-fuzz)
+fuzz-nbt seconds="600":
+    cd crates/nn-players && cargo +nightly fuzz run nbt -- -max_total_time={{seconds}}
+
 # Proxy benchmarks: routing micro-benchmark plus latency, throughput, and idle-memory load tests
 bench-proxy:
     #!/usr/bin/env bash

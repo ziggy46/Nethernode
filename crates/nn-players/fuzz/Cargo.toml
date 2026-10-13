@@ -1,0 +1,23 @@
+[package]
+name = "nn-players-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+nn-players = { path = ".." }
+
+# Fuzzing builds with nightly + sanitizers; keep it out of the main workspace.
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "nbt"
+path = "fuzz_targets/nbt.rs"
+test = false
+doc = false
+bench = false
