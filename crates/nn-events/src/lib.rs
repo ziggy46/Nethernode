@@ -120,6 +120,12 @@ pub enum Event {
         /// What went wrong, suitable for display.
         message: String,
     },
+    /// A server's player lists or online players changed (bans, operators,
+    /// allowlist, or someone joined or left). `None` means every server.
+    PlayersChanged {
+        /// Server ID.
+        server_id: Option<String>,
+    },
     /// A background file job (extract, compress) made progress.
     FileJobProgress {
         /// Server whose files are involved.

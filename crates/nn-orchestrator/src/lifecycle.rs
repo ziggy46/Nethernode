@@ -141,6 +141,18 @@ pub struct Orchestrator {
     pub(crate) config: OrchestratorConfig,
     runtimes: Mutex<HashMap<String, Arc<Runtime>>>,
     create_lock: tokio::sync::Mutex<()>,
+    before_start: std::sync::OnceLock<Arc<dyn BeforeStart>>,
+}
+
+/// Work done just before a server's container starts, while the server is
+/// still stopped, so files written here are what it loads (bans that apply
+/// to every server, for example).
+pub trait BeforeStart: Send + Sync + 'static {
+    /// Runs before `server` starts. Failures are the hook's to report.
+    fn before_start<'a>(
+        &'a self,
+        server: &'a Server,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send + 'a>>;
 }
 
 const NAME_MAX: usize = 40;
@@ -168,6 +180,7 @@ impl Orchestrator {
             config,
             runtimes: Mutex::new(HashMap::new()),
             create_lock: tokio::sync::Mutex::new(()),
+            before_start: std::sync::OnceLock::new(),
         }))
     }
 
@@ -592,6 +605,26 @@ impl Orchestrator {
         .map_err(|e| OrchestratorError::Io(std::io::Error::other(e.to_string())))
     }
 
+    /// Sets the work to do before each start. Only the first call counts.
+    pub fn set_before_start(&self, hook: Arc<dyn BeforeStart>) {
+        let _ = self.before_start.set(hook);
+    }
+
+    /// Whether the server's container is running right now, asked of
+    /// Docker rather than the recorded status.
+    pub async fn container_running(&self, id: &str) -> Result<bool> {
+        let server = self.load(id).await?;
+        match self
+            .docker
+            .inspect_container(&spec::container_name(&server.slug), None)
+            .await
+        {
+            Ok(c) => Ok(c.state.and_then(|s| s.running).unwrap_or(false)),
+            Err(e) if is_not_found(&e) => Ok(false),
+            Err(e) => Err(e.into()),
+        }
+    }
+
     /// Where to reach a running server's management protocol: its address
     /// and secret. `None` until the server has started with one.
     pub async fn management(&self, id: &str) -> Result<Option<(std::net::SocketAddr, String)>> {
@@ -683,6 +716,9 @@ impl Orchestrator {
             let container = self.ensure_container(&server).await?;
             let server = self.load(id).await?;
             self.write_management_properties(&server).await?;
+            if let Some(hook) = self.before_start.get() {
+                hook.before_start(&server).await;
+            }
             {
                 let mut state = rt.state();
                 state.expected_exit = None;

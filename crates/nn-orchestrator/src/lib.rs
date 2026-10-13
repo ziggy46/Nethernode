@@ -17,6 +17,8 @@ pub mod spec;
 mod watcher;
 
 pub use error::{OrchestratorError, Result};
-pub use lifecycle::{CreateServer, HostInfo, Orchestrator, OrchestratorConfig, slugify};
+pub use lifecycle::{
+    BeforeStart, CreateServer, HostInfo, Orchestrator, OrchestratorConfig, slugify,
+};
 pub use runtime::{Players, StatSample};
 pub use watcher::{reconcile, spawn_background};
