@@ -2,7 +2,9 @@
 //! (1.21.9+) or RCON, Minecraft's own player lists on disk, and player data.
 
 pub mod commands;
+pub mod lists;
 pub mod mgmt;
+pub mod nbt;
 pub mod profile;
 pub mod rcon;
 
