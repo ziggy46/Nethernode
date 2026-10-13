@@ -37,6 +37,7 @@ mod files;
 mod files_http;
 mod middleware;
 mod observability;
+pub mod players;
 pub mod proxy_runtime;
 mod request_meta;
 mod rpc;
@@ -101,6 +102,8 @@ pub struct AppState {
     pub shutdown: tokio::sync::watch::Receiver<bool>,
     /// Docker orchestration, or why it's unavailable.
     pub servers: ServerManager,
+    /// Player management.
+    pub players: Arc<players::PlayerManager>,
 }
 
 /// Server lifecycle management, which needs Docker.
@@ -141,6 +144,7 @@ pub fn router(state: AppState) -> Router {
                 .layer(axum::middleware::from_fn(middleware::no_store)),
         )
         .route("/ws/servers/{id}/console", get(console::console))
+        .route("/api/players/{uuid}/head", get(players::heads::head))
         .nest(RPC_PREFIX, rpc_routes)
         .fallback(spa::serve)
         .layer(from_fn_with_state(

@@ -50,6 +50,7 @@ async fn harness() -> Harness {
         config: Arc::new(ApiConfig::default()),
         metrics: None,
         shutdown: shutdown_rx,
+        players: Default::default(),
         servers: Default::default(),
     });
     let owner = auth

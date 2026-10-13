@@ -1,0 +1,310 @@
+syntax = "proto3";
+
+package nethernode.v1;
+
+// Players: who plays where, and the actions to manage them. Each server is
+// reached the best available way, reported as `Capabilities`: Minecraft's
+// management protocol (1.21.9+), RCON (older and modded servers), or the
+// list files directly while the server is stopped (applied when it starts).
+// IP bans are enforced by NetherNode's proxy, since servers behind it only
+// see the proxy's address. Watch /api/events for `players_changed`.
+service PlayerService {
+  // Players on one server (with OP, allowlist, and ban status) or across all.
+  rpc ListPlayers(ListPlayersRequest) returns (ListPlayersResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // One player: history, notes, and status on a server.
+  rpc GetPlayer(GetPlayerRequest) returns (GetPlayerResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Saved inventory, position, and statistics (as of the server's last save).
+  rpc GetPlayerData(GetPlayerDataRequest) returns (GetPlayerDataResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Finds the account a username belongs to, for this server's mode.
+  rpc ResolvePlayer(ResolvePlayerRequest) returns (ResolvePlayerResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  rpc KickPlayer(KickPlayerRequest) returns (KickPlayerResponse);
+  // Bans on one server, or every server when `server_id` is unset.
+  rpc BanPlayer(BanPlayerRequest) returns (BanPlayerResponse);
+  rpc UnbanPlayer(UnbanPlayerRequest) returns (UnbanPlayerResponse);
+  // Grants operator at a level (1–4), or removes it with 0.
+  rpc SetOperator(SetOperatorRequest) returns (SetOperatorResponse);
+  rpc SetAllowlisted(SetAllowlistedRequest) returns (SetAllowlistedResponse);
+  rpc SetAllowlistEnabled(SetAllowlistEnabledRequest) returns (SetAllowlistEnabledResponse);
+  // Adds many usernames to the allowlist.
+  rpc ImportAllowlist(ImportAllowlistRequest) returns (ImportAllowlistResponse);
+  rpc SetGameMode(SetGameModeRequest) returns (SetGameModeResponse);
+  rpc TeleportPlayer(TeleportPlayerRequest) returns (TeleportPlayerResponse);
+  rpc GiveItem(GiveItemRequest) returns (GiveItemResponse);
+  rpc SetPlayerNotes(SetPlayerNotesRequest) returns (SetPlayerNotesResponse);
+}
+
+// A player to act on. The UUID is computed or looked up when absent.
+message PlayerRef {
+  string name = 1;
+  optional string uuid = 2;
+}
+
+// What can be done on a server right now.
+message Capabilities {
+  // "management", "rcon", "files", or "unavailable".
+  string backend = 1;
+  // Why actions are unavailable, when they are.
+  string unavailable_reason = 2;
+  bool kick = 3;
+  bool ban = 4;
+  bool op = 5;
+  // Operator levels can be chosen (otherwise the server's default applies).
+  bool op_levels = 6;
+  bool allowlist = 7;
+  bool game_mode = 8;
+  bool teleport = 9;
+  bool give = 10;
+  // The server checks accounts with Mojang (online mode).
+  bool online_mode = 11;
+}
+
+message PlayerBanInfo {
+  string reason = 1;
+  // Unix ms; unset for permanent.
+  optional int64 expires_ms = 2;
+  // Applies to every server.
+  bool global = 3;
+  // Also blocks this address at the proxy (shown masked to non-admins).
+  string ip = 4;
+  string source = 5;
+}
+
+message PlayerRow {
+  string uuid = 1;
+  string name = 2;
+  // Connected now (on this server, or on any).
+  bool online = 3;
+  // Servers the player is on now (global view).
+  repeated string online_server_ids = 4;
+  // Operator level, 0 if not an operator.
+  uint32 op_level = 5;
+  bool allowlisted = 6;
+  optional PlayerBanInfo ban = 7;
+  // Unix ms; 0 when NetherNode never saw them join.
+  int64 first_seen_ms = 8;
+  int64 last_seen_ms = 9;
+  int64 playtime_ms = 10;
+  // Masked unless the viewer is an administrator.
+  string last_ip = 11;
+  bool has_notes = 12;
+}
+
+message ListPlayersRequest {
+  optional string server_id = 1;
+}
+
+message ListPlayersResponse {
+  repeated PlayerRow players = 1;
+  // For one server.
+  Capabilities capabilities = 2;
+  bool allowlist_enabled = 3;
+}
+
+message GetPlayerRequest {
+  string uuid = 1;
+  optional string server_id = 2;
+}
+
+message PlayerSessionRecord {
+  string server_id = 1;
+  string server_name = 2;
+  int64 joined_ms = 3;
+  // Unset while online.
+  optional int64 left_ms = 4;
+  string ip = 5;
+}
+
+message GetPlayerResponse {
+  PlayerRow player = 1;
+  string notes = 2;
+  repeated PlayerSessionRecord sessions = 3;
+  Capabilities capabilities = 4;
+}
+
+message ItemStack {
+  int64 slot = 1;
+  string id = 2;
+  int64 count = 3;
+  string custom_name = 4;
+  repeated Enchantment enchantments = 5;
+  int64 damage = 6;
+}
+
+message Enchantment {
+  string id = 1;
+  int64 level = 2;
+}
+
+message StatEntry {
+  string category = 1;
+  string key = 2;
+  int64 value = 3;
+}
+
+message GetPlayerDataRequest {
+  string server_id = 1;
+  string uuid = 2;
+}
+
+message GetPlayerDataResponse {
+  // False when the server has no saved data for this player.
+  bool found = 1;
+  // When the server last saved it (unix ms).
+  int64 saved_ms = 2;
+  repeated double position = 3;
+  string dimension = 4;
+  double health = 5;
+  int64 food = 6;
+  int64 xp_level = 7;
+  double xp_progress = 8;
+  // 0 survival, 1 creative, 2 adventure, 3 spectator; -1 unknown.
+  int64 game_mode = 9;
+  int64 selected_slot = 10;
+  repeated ItemStack inventory = 11;
+  repeated ItemStack ender_chest = 12;
+  optional ItemStack head = 13;
+  optional ItemStack chest = 14;
+  optional ItemStack legs = 15;
+  optional ItemStack feet = 16;
+  optional ItemStack offhand = 17;
+  repeated StatEntry stats = 18;
+}
+
+message ResolvePlayerRequest {
+  string server_id = 1;
+  string name = 2;
+}
+
+message ResolvePlayerResponse {
+  string uuid = 1;
+  string name = 2;
+  // True when the UUID was derived for an offline-mode server.
+  bool offline = 3;
+}
+
+message KickPlayerRequest {
+  string server_id = 1;
+  PlayerRef player = 2;
+  string message = 3;
+}
+
+message KickPlayerResponse {}
+
+message BanPlayerRequest {
+  // Unset bans on every server.
+  optional string server_id = 1;
+  PlayerRef player = 2;
+  string reason = 3;
+  // Unset for permanent.
+  optional int64 duration_seconds = 4;
+  // Also block the player's last known IP address at the proxy.
+  bool ban_ip = 5;
+}
+
+message BanPlayerResponse {
+  // Servers the ban couldn't be applied to right now, with why.
+  repeated string warnings = 1;
+}
+
+message UnbanPlayerRequest {
+  optional string server_id = 1;
+  PlayerRef player = 2;
+}
+
+message UnbanPlayerResponse {
+  repeated string warnings = 1;
+}
+
+message SetOperatorRequest {
+  string server_id = 1;
+  PlayerRef player = 2;
+  // 1–4, or 0 to remove.
+  uint32 level = 3;
+}
+
+message SetOperatorResponse {}
+
+message SetAllowlistedRequest {
+  string server_id = 1;
+  PlayerRef player = 2;
+  bool allowed = 3;
+}
+
+message SetAllowlistedResponse {}
+
+message SetAllowlistEnabledRequest {
+  string server_id = 1;
+  bool enabled = 2;
+}
+
+message SetAllowlistEnabledResponse {}
+
+message ImportAllowlistRequest {
+  string server_id = 1;
+  repeated string names = 2;
+}
+
+message ImportAllowlistResponse {
+  repeated string added = 1;
+  // "name: why" for each name that couldn't be added.
+  repeated string failed = 2;
+}
+
+enum GameMode {
+  GAME_MODE_UNSPECIFIED = 0;
+  GAME_MODE_SURVIVAL = 1;
+  GAME_MODE_CREATIVE = 2;
+  GAME_MODE_ADVENTURE = 3;
+  GAME_MODE_SPECTATOR = 4;
+}
+
+message SetGameModeRequest {
+  string server_id = 1;
+  PlayerRef player = 2;
+  GameMode mode = 3;
+}
+
+message SetGameModeResponse {}
+
+message TeleportPlayerRequest {
+  string server_id = 1;
+  PlayerRef player = 2;
+  oneof destination {
+    string to_player = 3;
+    Coordinates to_coordinates = 4;
+  }
+}
+
+message Coordinates {
+  double x = 1;
+  double y = 2;
+  double z = 3;
+}
+
+message TeleportPlayerResponse {}
+
+message GiveItemRequest {
+  string server_id = 1;
+  PlayerRef player = 2;
+  // `minecraft:diamond`.
+  string item = 3;
+  uint32 count = 4;
+}
+
+message GiveItemResponse {}
+
+message SetPlayerNotesRequest {
+  string uuid = 1;
+  string notes = 2;
+}
+
+message SetPlayerNotesResponse {}

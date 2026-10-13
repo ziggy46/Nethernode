@@ -116,7 +116,9 @@ async fn serve(config: Config) -> Result<()> {
         metrics: Some(metrics),
         shutdown: shutdown_rx.clone(),
         servers,
+        players: Arc::new(nn_api::players::PlayerManager::new(hooks.ip_bans())),
     };
+    nn_api::players::tasks::spawn(state.clone());
     let app = nn_api::router(state);
 
     let listener = tokio::net::TcpListener::bind(config.http.bind)
