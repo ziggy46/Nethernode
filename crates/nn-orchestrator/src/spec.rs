@@ -38,6 +38,35 @@ pub const RESERVED_ENV: &[&str] = &[
     "GID",
 ];
 
+/// `server.properties` keys NetherNode controls, with why. The image
+/// rewrites most of them from the container's environment on every start,
+/// so editing them in the file doesn't stick (or, for the address and port,
+/// would cut NetherNode off from the server).
+pub const MANAGED_PROPERTIES: &[(&str, &str)] = &[
+    (
+        "motd",
+        "Set in Server settings; NetherNode applies it on every start.",
+    ),
+    (
+        "max-players",
+        "Set in Server settings; NetherNode applies it on every start.",
+    ),
+    (
+        "server-port",
+        "NetherNode connects to the server on this port inside its container.",
+    ),
+    (
+        "server-ip",
+        "The server must listen on every address inside its container.",
+    ),
+    (
+        "enable-rcon",
+        "NetherNode sends console commands over RCON.",
+    ),
+    ("rcon.port", "NetherNode sends console commands over RCON."),
+    ("rcon.password", "Generated and kept secret by NetherNode."),
+];
+
 /// Supported server software: (loader id, `TYPE`, version-pin env var).
 pub const LOADERS: &[(&str, &str, Option<&str>)] = &[
     ("vanilla", "VANILLA", None),
@@ -139,6 +168,7 @@ pub fn build(input: &SpecInput<'_>) -> ContainerSpec {
     env.insert("VERSION".into(), input.mc_version.trim().to_owned());
     env.insert("MEMORY".into(), format!("{}M", input.memory_mb));
     env.insert("ENABLE_RCON".into(), "true".into());
+    env.insert("SERVER_PORT".into(), "25565".into());
     env.insert("RCON_PASSWORD".into(), input.rcon_password.into());
     env.insert("USE_AIKAR_FLAGS".into(), input.use_aikar_flags.to_string());
     env.insert("MAX_PLAYERS".into(), input.max_players.to_string());

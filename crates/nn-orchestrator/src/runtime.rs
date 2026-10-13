@@ -128,6 +128,8 @@ pub struct Runtime {
     pub(crate) stats: Mutex<Ring<StatSample>>,
     /// Console output.
     pub logs: LogHub,
+    /// RCON connection for console commands, kept open between commands.
+    pub(crate) rcon: tokio::sync::Mutex<Option<nn_players::Rcon>>,
 }
 
 impl Runtime {
@@ -137,6 +139,7 @@ impl Runtime {
             state: Mutex::new(State::default()),
             stats: Mutex::new(Ring::new(STATS_HISTORY)),
             logs: LogHub::new(),
+            rcon: tokio::sync::Mutex::new(None),
         }
     }
 

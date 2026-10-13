@@ -790,6 +790,11 @@ impl Orchestrator {
     }
 
     async fn rcon_stop(&self, server: &Server) -> std::result::Result<(), String> {
+        let mut rcon = self.rcon_connect(server).await?;
+        rcon.send_only("stop").await.map_err(|e| e.to_string())
+    }
+
+    async fn rcon_connect(&self, server: &Server) -> std::result::Result<nn_players::Rcon, String> {
         let port = server
             .rcon_port
             .and_then(|p| u16::try_from(p).ok())
@@ -799,11 +804,56 @@ impl Orchestrator {
             .as_deref()
             .ok_or("no RCON password")?;
         let password = self.secrets.open(sealed).map_err(|e| e.to_string())?;
-        let mut rcon =
-            nn_players::Rcon::connect(("127.0.0.1", port), &password, Duration::from_secs(5))
-                .await
-                .map_err(|e| e.to_string())?;
-        rcon.send_only("stop").await.map_err(|e| e.to_string())
+        nn_players::Rcon::connect(("127.0.0.1", port), &password, Duration::from_secs(5))
+            .await
+            .map_err(|e| e.to_string())
+    }
+
+    /// Runs a console command over RCON and returns its output (often
+    /// empty; the server log shows the effect). One connection per server
+    /// stays open: Minecraft logs every RCON connect and disconnect, so
+    /// reconnecting per command would flood the console.
+    pub async fn command(&self, id: &str, command: &str) -> Result<String> {
+        let command = command.trim();
+        let command = command.strip_prefix('/').unwrap_or(command);
+        if command.is_empty() {
+            return Err(OrchestratorError::InvalidInput("type a command".into()));
+        }
+        let server = self.load(id).await?;
+        if server.status != "running" {
+            return Err(OrchestratorError::InvalidState(
+                "commands can be sent once the server is running".into(),
+            ));
+        }
+        let rt = self.runtime(id);
+        let mut conn = rt.rcon.lock().await;
+        // A kept connection may be stale (the server restarted); retry once
+        // on a fresh one.
+        for fresh in [conn.is_none(), true] {
+            if fresh || conn.is_none() {
+                *conn = Some(
+                    self.rcon_connect(&server)
+                        .await
+                        .map_err(OrchestratorError::Command)?,
+                );
+            }
+            let Some(rcon) = conn.as_mut() else { continue };
+            match rcon.command(command).await {
+                Ok(output) => return Ok(output),
+                Err(nn_players::RconError::CommandTooLong(_)) => {
+                    return Err(OrchestratorError::InvalidInput(
+                        "that command is too long for RCON".into(),
+                    ));
+                }
+                Err(e) => {
+                    *conn = None;
+                    if fresh {
+                        return Err(OrchestratorError::Command(e.to_string()));
+                    }
+                }
+            }
+        }
+        Err(OrchestratorError::Command("RCON isn't responding".into()))
     }
 
     /// Waits until the container isn't running. Returns `false` on timeout.

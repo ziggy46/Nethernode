@@ -10,6 +10,7 @@ pub mod java;
 mod lifecycle;
 mod monitor;
 pub mod ports;
+pub mod properties;
 pub mod ring;
 pub mod runtime;
 pub mod spec;

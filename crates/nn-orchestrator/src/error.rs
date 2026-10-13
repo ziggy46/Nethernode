@@ -24,6 +24,9 @@ pub enum OrchestratorError {
     /// The server's secrets couldn't be read.
     #[error(transparent)]
     Secret(#[from] nn_auth::secrets::SecretError),
+    /// A console command couldn't be delivered.
+    #[error("couldn't send the command: {0}")]
+    Command(String),
     /// Filesystem failure (data directories).
     #[error("filesystem: {0}")]
     Io(#[from] std::io::Error),
