@@ -123,8 +123,10 @@ async fn lift_expired(state: &AppState) {
     }
 }
 
-/// Applies bans that cover every server to a server's ban list before it
-/// starts, so servers created or offline when the ban was placed get it too.
+/// Brings a server's ban list up to date before it starts: applies bans that
+/// cover every server (so servers created or offline when the ban was placed
+/// get it too) and drops NetherNode's bans that were lifted while it couldn't
+/// remove them itself.
 struct GlobalBans {
     state: AppState,
 }
@@ -144,12 +146,15 @@ impl nn_orchestrator::BeforeStart for GlobalBans {
             else {
                 return;
             };
-            let global: Vec<_> = bans.into_iter().filter(|b| b.server_id.is_none()).collect();
-            if global.is_empty() {
-                return;
-            }
             let ctx = Ctx::open_stopped(&self.state, server.clone()).await;
-            for ban in global {
+            let active = bans
+                .iter()
+                .map(|b| (b.uuid.clone(), b.name.clone()))
+                .collect();
+            if let Err(e) = ctx.drop_lifted_bans(active).await {
+                tracing::warn!(server = %server.id, error = %e.message.as_deref().unwrap_or(""), "couldn't remove lifted bans");
+            }
+            for ban in bans.into_iter().filter(|b| b.server_id.is_none()) {
                 let uuid = if ctx.online_mode {
                     ban.uuid.as_deref()
                 } else {

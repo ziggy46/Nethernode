@@ -427,19 +427,61 @@ impl<'a> Ctx<'a> {
         }
     }
 
-    pub async fn pardon(&self, player: &Profile) -> Result<(), ConnectError> {
+    /// Lifts a ban. Returns a note when the server can't apply it until it
+    /// restarts.
+    pub async fn pardon(&self, player: &Profile) -> Result<Option<String>, ConnectError> {
         match &self.via {
-            Via::Mgmt(client) => client.pardon(player).await.map(drop).map_err(mgmt_error),
-            Via::Rcon => self.rcon(commands::pardon(&player.name)).await.map(drop),
+            Via::Mgmt(client) => {
+                let list = client.pardon(player).await.map_err(mgmt_error)?;
+                // An offline-mode server can't match a player it has never
+                // seen, so it can't remove them either; the entry is dropped
+                // before the next start (see `drop_lifted_bans`).
+                Ok(list
+                    .iter()
+                    .any(|b| b.player.uuid == player.uuid)
+                    .then(|| {
+                        format!(
+                            "{} stays on the server's own ban list until it restarts: in offline mode it can't match a player it has never seen.",
+                            player.name
+                        )
+                    }))
+            }
+            Via::Rcon => self
+                .rcon(commands::pardon(&player.name))
+                .await
+                .map(|_| None),
             Via::Files => {
                 let player = player.clone();
                 self.edit_list(lists::BANNED_PLAYERS, move |list: &mut Vec<BanEntry>| {
                     lists::pardon(list, &player);
                 })
                 .await
+                .map(|()| None)
             }
             Via::Unavailable(_) => Err(self.unavailable()),
         }
+    }
+
+    /// Removes bans NetherNode added that are no longer active (`active`
+    /// holds the UUIDs and names of the bans still in force). Only for a
+    /// stopped server.
+    pub async fn drop_lifted_bans(
+        &self,
+        active: Vec<(Option<String>, String)>,
+    ) -> Result<(), ConnectError> {
+        self.edit_list(lists::BANNED_PLAYERS, move |list: &mut Vec<BanEntry>| {
+            list.retain(|entry| {
+                entry.source != SOURCE
+                    || active.iter().any(|(uuid, name)| {
+                        name.eq_ignore_ascii_case(&entry.name)
+                            || uuid
+                                .as_deref()
+                                .and_then(normalize_uuid)
+                                .is_some_and(|u| Some(u) == normalize_uuid(&entry.uuid))
+                    })
+            });
+        })
+        .await
     }
 
     /// Grants operator at `level` (1–4), or removes it with 0.

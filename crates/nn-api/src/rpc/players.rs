@@ -238,7 +238,7 @@ impl PlayerRpc {
     }
 
     /// Applies `work` on one server, or on every server for global actions,
-    /// collecting per-server problems as warnings.
+    /// collecting per-server problems and notes as warnings.
     async fn each_server<F>(
         &self,
         server_id: Option<&str>,
@@ -250,14 +250,14 @@ impl PlayerRpc {
             &'c Ctx<'c>,
             &'c Profile,
         ) -> std::pin::Pin<
-            Box<dyn std::future::Future<Output = Result<(), ConnectError>> + Send + 'c>,
+            Box<dyn std::future::Future<Output = Result<Option<String>, ConnectError>> + Send + 'c>,
         >,
     {
         if let Some(id) = server_id {
             let ctx = Ctx::open(&self.state, id).await?;
             let profile = resolve_in(&ctx, player).await?;
-            work(&ctx, &profile).await?;
-            return Ok((profile, Vec::new()));
+            let note = work(&ctx, &profile).await?;
+            return Ok((profile, note.into_iter().collect()));
         }
         let servers = self
             .state
@@ -279,12 +279,14 @@ impl PlayerRpc {
             }
             match resolve_in(&ctx, player).await {
                 Ok(profile) => {
-                    if let Err(e) = work(&ctx, &profile).await {
-                        warnings.push(format!(
+                    match work(&ctx, &profile).await {
+                        Ok(None) => {}
+                        Ok(Some(note)) => warnings.push(format!("{}: {note}", server.name)),
+                        Err(e) => warnings.push(format!(
                             "{}: {}",
                             server.name,
                             e.message.unwrap_or_default()
-                        ));
+                        )),
                     }
                     if ctx.online_mode || first.is_none() {
                         first = Some(profile);
@@ -546,7 +548,11 @@ impl pb::PlayerService for PlayerRpc {
         let (profile, warnings) = self
             .each_server(request.server_id, &player, |ctx, profile| {
                 let why = why.clone();
-                Box::pin(async move { ctx.ban(profile, why.as_deref(), expires_at).await })
+                Box::pin(async move {
+                    ctx.ban(profile, why.as_deref(), expires_at)
+                        .await
+                        .map(|()| None)
+                })
             })
             .await?;
         let store = self.state.auth.store();
