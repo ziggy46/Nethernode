@@ -62,7 +62,11 @@ export function RouteDialog({
         listenerId: listenerId || undefined,
       }),
     onSuccess: async ({ route: saved }) => {
-      await queryClient.invalidateQueries({ queryKey: ["proxy", "routes"] });
+      // Server cards list the hostnames that reach each server.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["proxy", "routes"] }),
+        queryClient.invalidateQueries({ queryKey: ["servers"] }),
+      ]);
       toast.success(route ? `Route ${saved?.hostname} updated.` : `Route ${saved?.hostname} added.`);
       onOpenChange(false);
     },
