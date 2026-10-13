@@ -1,0 +1,72 @@
+@import "./tokens.css";
+
+@layer base {
+  html,
+  body {
+    background: var(--color-background);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Never remove focus outlines: 2px primary with offset (06 §2.3 rule 4). */
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--color-primary) 30%, transparent);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+
+  /* Thin, token-colored scrollbars (e.g. the sidebar on short screens). */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+
+  /* Outline icons at the reference's 1.7 stroke. */
+  svg.lucide {
+    stroke-width: 1.7;
+  }
+}
+
+/* Subtle enter motion; removed entirely under reduced motion. */
+@keyframes nn-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes nn-pop-in {
+  from {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+.nn-fade[data-state="open"] {
+  animation: nn-fade-in 160ms var(--ease-out);
+}
+.nn-pop[data-state="open"] {
+  animation: nn-pop-in 180ms var(--ease-out);
+}
+[data-slot="dropdown-menu-content"][data-state="open"] {
+  animation: nn-pop-in 140ms var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

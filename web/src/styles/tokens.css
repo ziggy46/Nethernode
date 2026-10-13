@@ -1,0 +1,193 @@
+/*
+ * NetherNode design tokens — the single source of truth for color, type,
+ * radius, and layout. Components use the semantic utilities these generate
+ * (bg-surface, text-text-muted, border-border-strong, …), never raw hex.
+ *
+ * Palette: 06-design-system.md plus the NetherNode UI reference package
+ * (surface-subtle, nav-active, meter, and button tints). Contrast is enforced
+ * by scripts/check-contrast.ts, which parses this file.
+ *
+ * Dark only in v1. A light theme can be added later by redefining these.
+ */
+@import "tailwindcss";
+
+@theme {
+  /* Surfaces */
+  --color-background: #100c18;
+  --color-sidebar: #171020;
+  --color-surface-subtle: #1b1425;
+  --color-surface: #20172c;
+  --color-surface-elevated: #2b2039;
+  --color-console: #120e19;
+  --color-field: #191221;
+
+  /* Lines. `border` is decorative only (1.4:1); interactive control outlines
+     use `border-strong` (≥ 3:1, WCAG 1.4.11). */
+  --color-border: #3d2e4d;
+  --color-border-strong: #7a6890;
+  --color-divider: color-mix(in oklab, #3d2e4d 78%, #100c18);
+
+  /* Brand */
+  --color-primary: #ff8a00;
+  --color-primary-hover: #ffa126;
+  --color-primary-pressed: color-mix(in oklab, #ff8a00 88%, #100c18);
+  --color-primary-foreground: #100c18;
+  --color-lava: #ffbe32;
+  --color-crimson: #c91832;
+
+  /* Text */
+  --color-text-primary: #f5f1f7;
+  --color-text-secondary: #b9aec3;
+  --color-text-muted: #94869f;
+
+  /* Status */
+  --color-success: #4ade80;
+  --color-warning: #fbbf24;
+  --color-danger: #ff647c;
+  --color-info: #b29aff;
+
+  /* Contextual tints from the UI reference */
+  --color-nav-active: #362225;
+  --color-nav-active-foreground: #ffae51;
+  --color-nav-hover: #24192f;
+  --color-button-quiet: #21172b;
+  --color-button-quiet-hover: #30223c;
+  --color-button-danger: #351c2b;
+  --color-button-danger-border: #653342;
+  --color-meter-track: #392944;
+  --color-meter-cpu: #ff8a00;
+  --color-meter-memory: #9878b5;
+  --color-meter-storage: #c56869;
+
+  /* Derived subtle backgrounds for badges and alerts */
+  --color-success-subtle: color-mix(in oklab, #4ade80 14%, #1b1425);
+  --color-warning-subtle: color-mix(in oklab, #fbbf24 14%, #1b1425);
+  --color-danger-subtle: color-mix(in oklab, #ff647c 14%, #1b1425);
+  --color-info-subtle: color-mix(in oklab, #b29aff 14%, #1b1425);
+  --color-primary-subtle: color-mix(in oklab, #ff8a00 14%, #1b1425);
+
+  --color-overlay: rgb(7 5 13 / 0.8);
+
+  /* Typography: system stacks, per the UI reference */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --text-eyebrow: 10px;
+  --text-eyebrow--letter-spacing: 1.8px;
+  --text-meta: 11px;
+  --text-label: 12px;
+  --text-nav: 13px;
+  --text-body: 14px;
+  --text-section: 15px;
+  --text-section--letter-spacing: -0.3px;
+  --text-title: 20px;
+  --text-title--letter-spacing: -0.5px;
+  --text-metric: 27px;
+  --text-metric--letter-spacing: -1px;
+  --text-page: 29px;
+  --text-page--line-height: 1.25;
+  --text-page--letter-spacing: -1px;
+
+  /* Geometry */
+  --radius-xs: 4px;
+  --radius-sm: 5px; /* badges */
+  --radius-md: 7px; /* buttons, inputs */
+  --radius-lg: 10px; /* cards */
+  --radius-xl: 14px; /* dialogs */
+
+  --shadow-overlay: 0 1px 2px rgb(0 0 0 / 0.4), 0 25px 90px -12px rgb(0 0 0 / 0.6);
+
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/*
+ * Breakpoints from the UI reference. Inclusive (max-width), unlike Tailwind's
+ * built-in max-[…] variants, so layouts flip at exactly the reference widths.
+ */
+@custom-variant below-xl (@media (max-width: 1180px));
+@custom-variant below-lg (@media (max-width: 1000px));
+@custom-variant below-md (@media (max-width: 750px));
+@custom-variant below-sm (@media (max-width: 480px));
+
+/* Layout values that change with viewport (from the UI reference). */
+:root {
+  color-scheme: dark;
+  --nn-sidebar-width: 232px;
+  --nn-topbar-height: 74px;
+  --nn-main-padding-x: 34px;
+  --nn-main-padding-y: 32px;
+  --nn-right-rail-width: 284px;
+  --nn-transition: 160ms;
+}
+@media (min-width: 1500px) {
+  :root {
+    --nn-main-padding-x: 42px;
+    --nn-right-rail-width: 305px;
+  }
+}
+@media (max-width: 1180px) {
+  :root {
+    --nn-sidebar-width: 205px;
+    --nn-main-padding-x: 25px;
+    --nn-main-padding-y: 25px;
+    --nn-right-rail-width: 245px;
+  }
+}
+@media (max-width: 750px) {
+  :root {
+    --nn-sidebar-width: 232px; /* off-canvas */
+    --nn-topbar-height: 60px;
+    --nn-main-padding-x: 18px;
+    --nn-main-padding-y: 24px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --nn-transition: 0ms;
+  }
+}
+
+/*
+ * shadcn/ui variable mapping, so generated components inherit the palette
+ * without edits.
+ */
+:root {
+  --background: var(--color-background);
+  --foreground: var(--color-text-primary);
+  --card: var(--color-surface);
+  --card-foreground: var(--color-text-primary);
+  --popover: var(--color-surface-elevated);
+  --popover-foreground: var(--color-text-primary);
+  --primary: var(--color-primary);
+  --primary-foreground: var(--color-primary-foreground);
+  --secondary: var(--color-surface-elevated);
+  --secondary-foreground: var(--color-text-primary);
+  --muted: var(--color-surface-elevated);
+  --muted-foreground: var(--color-text-muted);
+  --accent: var(--color-button-quiet-hover);
+  --accent-foreground: var(--color-text-primary);
+  --destructive: var(--color-danger);
+  --destructive-foreground: var(--color-primary-foreground);
+  --border: var(--color-border);
+  --input: var(--color-border-strong);
+  --ring: var(--color-primary);
+  --radius: var(--radius-lg);
+}
+
+@theme inline {
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}

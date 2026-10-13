@@ -1,0 +1,4 @@
+# buf ships a platform binary via optional dependencies; its postinstall
+# script is only an optimization and isn't needed.
+allowBuilds:
+  '@bufbuild/buf': false
