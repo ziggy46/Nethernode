@@ -105,12 +105,21 @@ impl DataConfig {
 pub struct DockerConfig {
     /// Docker Engine endpoint.
     pub socket: String,
+    /// First host port (127.0.0.1) handed to servers for game and RCON.
+    pub port_range_start: u16,
+    /// Last host port handed to servers.
+    pub port_range_end: u16,
+    /// Container memory beyond each server's Java heap, in percent.
+    pub memory_overhead_percent: u32,
 }
 
 impl Default for DockerConfig {
     fn default() -> Self {
         Self {
             socket: "unix:///var/run/docker.sock".into(),
+            port_range_start: 30000,
+            port_range_end: 30999,
+            memory_overhead_percent: 25,
         }
     }
 }

@@ -32,3 +32,4 @@ node_modules/
 /crates/*/fuzz/corpus/
 /crates/*/fuzz/artifacts/
 /crates/*/fuzz/coverage/
+/crates/*/.tmp*/

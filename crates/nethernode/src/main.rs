@@ -9,9 +9,10 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use nn_api::{ApiConfig, AppState, ProxyRuntime, StoreProxyHooks};
-use nn_auth::{Auth, AuthConfig};
+use nn_api::{ApiConfig, AppState, ProxyRuntime, ServerManager, StoreProxyHooks};
+use nn_auth::{Auth, AuthConfig, SecretBox};
 use nn_events::EventBus;
+use nn_orchestrator::{Orchestrator, OrchestratorConfig};
 use nn_proxy::{Limits, ListenerState, Proxy};
 use nn_store::Store;
 use rand::Rng;
@@ -95,7 +96,13 @@ async fn serve(config: Config) -> Result<()> {
     spawn_session_pruner(auth.clone());
 
     let events = EventBus::default();
-    let proxy = start_proxy(&config, &store, &events).await?;
+    let hooks = StoreProxyHooks::new(store.clone());
+    let proxy = start_proxy(&config, &store, &events, hooks.clone()).await?;
+    let servers = start_orchestrator(&config, &store, &events).await;
+    if let Some(orchestrator) = &servers.orchestrator {
+        hooks.set_orchestrator(orchestrator.clone());
+    }
+    spawn_proxy_reloader(proxy.clone(), &events);
 
     let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
     let state = AppState {
@@ -108,6 +115,7 @@ async fn serve(config: Config) -> Result<()> {
         }),
         metrics: Some(metrics),
         shutdown: shutdown_rx.clone(),
+        servers,
     };
     let app = nn_api::router(state);
 
@@ -155,6 +163,7 @@ async fn start_proxy(
     config: &Config,
     store: &Store,
     events: &EventBus,
+    hooks: Arc<StoreProxyHooks>,
 ) -> Result<Arc<ProxyRuntime>> {
     let stale = store.close_stale_player_sessions().await?;
     if stale > 0 {
@@ -175,11 +184,7 @@ async fn start_proxy(
         tracing::info!("Smart Proxy is disabled in the configuration");
     }
 
-    let proxy = Proxy::new(
-        StoreProxyHooks::new(store.clone()),
-        events.clone(),
-        Limits::default(),
-    );
+    let proxy = Proxy::new(hooks, events.clone(), Limits::default());
     let runtime = Arc::new(ProxyRuntime::new(
         proxy,
         store.clone(),
@@ -192,6 +197,73 @@ async fn start_proxy(
     }
     runtime.proxy().spawn_status_refresher();
     Ok(runtime)
+}
+
+/// Connects to Docker and starts the orchestrator. If Docker can't be
+/// reached, the panel still runs; server management reports why it's off.
+async fn start_orchestrator(config: &Config, store: &Store, events: &EventBus) -> ServerManager {
+    let unavailable = |reason: String| {
+        tracing::warn!(socket = %config.docker.socket, %reason, "Docker isn't available; server management is disabled");
+        ServerManager {
+            orchestrator: None,
+            unavailable_reason: Some(Arc::from(reason)),
+        }
+    };
+    let secrets = match SecretBox::load(&config.data.secret_key_path()) {
+        Ok(secrets) => Arc::new(secrets),
+        Err(e) => return unavailable(e.to_string()),
+    };
+    // Bind mounts need an absolute path.
+    let servers_dir = match fs::canonicalize(&config.data.dir) {
+        Ok(dir) => dir.join("servers"),
+        Err(e) => return unavailable(format!("data directory: {e}")),
+    };
+    let mut orch_config = OrchestratorConfig::new(servers_dir);
+    orch_config.port_range = config.docker.port_range_start..=config.docker.port_range_end;
+    orch_config.memory_overhead_percent = config.docker.memory_overhead_percent;
+    match Orchestrator::connect(
+        &config.docker.socket,
+        store.clone(),
+        events.clone(),
+        secrets,
+        orch_config,
+    )
+    .await
+    {
+        Ok(orchestrator) => {
+            nn_orchestrator::spawn_background(&orchestrator);
+            tracing::info!(socket = %config.docker.socket, "connected to Docker");
+            ServerManager {
+                orchestrator: Some(orchestrator),
+                unavailable_reason: None,
+            }
+        }
+        Err(e) => unavailable(e.to_string()),
+    }
+}
+
+/// Rebuilds proxy routes when servers change state, so the proxy always
+/// knows which servers are running, sleeping, or gone.
+fn spawn_proxy_reloader(proxy: Arc<ProxyRuntime>, events: &EventBus) {
+    let mut rx = events.subscribe();
+    tokio::spawn(async move {
+        loop {
+            match rx.recv().await {
+                Ok(nn_events::Event::ServerStatusChanged { .. }) => {}
+                Ok(_) => continue,
+                Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {}
+                Err(tokio::sync::broadcast::error::RecvError::Closed) => return,
+            }
+            // Coalesce bursts (e.g. reconciliation at startup).
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            while let Ok(_) | Err(tokio::sync::broadcast::error::TryRecvError::Lagged(_)) =
+                rx.try_recv()
+            {}
+            if let Err(error) = proxy.reload().await {
+                tracing::warn!(%error, "failed to reload proxy routes");
+            }
+        }
+    });
 }
 
 async fn migrate(config: Config) -> Result<()> {

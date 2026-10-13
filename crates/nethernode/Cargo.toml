@@ -16,6 +16,7 @@ nn-auth.workspace = true
 nn-events.workspace = true
 nn-store.workspace = true
 nn-proxy.workspace = true
+nn-orchestrator.workspace = true
 anyhow.workspace = true
 axum.workspace = true
 clap.workspace = true
