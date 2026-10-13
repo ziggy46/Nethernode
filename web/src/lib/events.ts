@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 
 import { type LiveStats, liveStatsKey, type PullProgress, pullKey } from "@/features/servers/queries";
+import { jobFinished, jobProgress } from "@/lib/jobs";
 
 /**
  * Bus event names sent by `/api/events`, mapped to the queries they make
@@ -30,13 +31,24 @@ type DataEvent =
     }
   | { type: "image_pull_progress"; server_id: string; percent: number | null; status: string }
   | { type: "server_operation_failed"; server_id: string; operation: string; message: string }
-  | { type: "server_status_changed"; server_id: string; status: string };
+  | { type: "server_status_changed"; server_id: string; status: string }
+  | { type: "file_job_progress"; server_id: string; job_id: string; kind: string; percent: number }
+  | {
+      type: "file_job_finished";
+      server_id: string;
+      job_id: string;
+      kind: string;
+      message: string;
+      failed: boolean;
+    };
 
 const DATA_EVENTS = [
   "server_stats",
   "image_pull_progress",
   "server_operation_failed",
   "server_status_changed",
+  "file_job_progress",
+  "file_job_finished",
 ];
 
 function applyData(client: QueryClient, event: DataEvent) {
@@ -64,6 +76,13 @@ function applyData(client: QueryClient, event: DataEvent) {
       toast.error(name ? `${name}: ${event.message}` : event.message, { duration: Number.POSITIVE_INFINITY });
       break;
     }
+    case "file_job_progress":
+      jobProgress(event.job_id, event.percent);
+      break;
+    case "file_job_finished":
+      jobFinished(event.job_id, { message: event.message, failed: event.failed });
+      void client.invalidateQueries({ queryKey: ["files", event.server_id] });
+      break;
     case "server_status_changed":
       if (event.status !== "starting" && event.status !== "running") {
         client.removeQueries({ queryKey: liveStatsKey(event.server_id) });

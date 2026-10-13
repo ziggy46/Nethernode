@@ -29,6 +29,7 @@ import { useNow } from "@/lib/use-now";
 import { cn } from "@/lib/utils";
 
 import { ConsolePanel } from "../console/console-panel";
+import { FilesPanel } from "../files/files-panel";
 import { ConfigurationTab } from "./configuration-tab";
 import { useDockerAvailable } from "./docker-notice";
 import { formatBytes, gb, loaderName, memoryLimitBytes, versionLabel } from "./format";
@@ -42,6 +43,9 @@ export function ServerPage({ id }: { id: string }) {
   const server = useQuery(serverQuery(id));
   const health = useQuery(healthQuery);
   const [tab, setTab] = useState("console");
+  // The Files tab stays mounted once visited, so unsaved edits survive
+  // switching tabs.
+  const [filesVisited, setFilesVisited] = useState(false);
   useDocumentTitle(server.data?.name ?? "Server");
 
   if (server.isPending) {
@@ -91,10 +95,17 @@ export function ServerPage({ id }: { id: string }) {
         <ServerStatusBadge status={s.status} />
       </div>
 
-      <Tabs.Root value={tab} onValueChange={setTab}>
+      <Tabs.Root
+        value={tab}
+        onValueChange={(value) => {
+          setTab(value);
+          if (value === "files") setFilesVisited(true);
+        }}
+      >
         <Tabs.List aria-label="Server sections" className="mb-[22px] flex gap-5 border-divider border-b">
           {[
             ["console", "Console"],
+            ["files", "Files"],
             ["configuration", "Configuration"],
             ["backups", "Backups"],
           ].map(([value, label]) => (
@@ -109,6 +120,9 @@ export function ServerPage({ id }: { id: string }) {
         </Tabs.List>
         <Tabs.Content value="console">
           <ConsoleTab server={s} />
+        </Tabs.Content>
+        <Tabs.Content value="files" forceMount className="data-[state=inactive]:hidden">
+          {filesVisited && <FilesPanel server={s} />}
         </Tabs.Content>
         <Tabs.Content value="configuration">
           <ConfigurationTab server={s} />
