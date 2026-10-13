@@ -1,0 +1,63 @@
+//! Callbacks from the proxy into the rest of NetherNode.
+
+use std::future::Future;
+use std::net::IpAddr;
+use std::pin::Pin;
+
+/// A boxed, sendable future.
+pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
+
+/// The result of asking for a sleeping server to start.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum WakeOutcome {
+    /// The start command was accepted.
+    Starting,
+    /// Starting servers isn't possible right now (e.g. no orchestrator).
+    Unavailable,
+    /// The start command failed.
+    Failed(String),
+}
+
+/// A player about to be spliced through to a backend.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlayerJoin {
+    /// Destination server.
+    pub server_id: String,
+    /// Username from Login Start.
+    pub username: String,
+    /// UUID from Login Start, hyphenated, if the protocol sends one.
+    pub uuid: Option<String>,
+    /// Client address.
+    pub ip: IpAddr,
+}
+
+/// What the proxy needs from the rest of the system. Implementations must
+/// be quick: calls happen on the connection path.
+pub trait ProxyHooks: Send + Sync + 'static {
+    /// Starts a sleeping server.
+    fn wake<'a>(&'a self, server_id: &'a str) -> BoxFuture<'a, WakeOutcome>;
+
+    /// Records a join. Returns a session ID passed back to [`ProxyHooks::player_left`].
+    fn player_joined<'a>(&'a self, join: &'a PlayerJoin) -> BoxFuture<'a, Option<String>>;
+
+    /// Records that a session ended.
+    fn player_left(&self, session_id: String) -> BoxFuture<'_, ()>;
+}
+
+/// Hooks that do nothing: servers can't be woken and nothing is recorded.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct NoopHooks;
+
+impl ProxyHooks for NoopHooks {
+    fn wake<'a>(&'a self, _server_id: &'a str) -> BoxFuture<'a, WakeOutcome> {
+        Box::pin(async { WakeOutcome::Unavailable })
+    }
+
+    fn player_joined<'a>(&'a self, _join: &'a PlayerJoin) -> BoxFuture<'a, Option<String>> {
+        Box::pin(async { None })
+    }
+
+    fn player_left(&self, _session_id: String) -> BoxFuture<'_, ()> {
+        Box::pin(async {})
+    }
+}

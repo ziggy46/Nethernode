@@ -11,3 +11,20 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+nn-events.workspace = true
+nn-mcproto.workspace = true
+arc-swap.workspace = true
+bytes.workspace = true
+metrics.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+
+[[bench]]
+name = "routing"
+harness = false
