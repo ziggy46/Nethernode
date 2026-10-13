@@ -111,6 +111,8 @@ pub struct DockerConfig {
     pub port_range_end: u16,
     /// Container memory beyond each server's Java heap, in percent.
     pub memory_overhead_percent: u32,
+    /// Container memory beyond each server's Java heap, at least, in MiB.
+    pub memory_overhead_min_mb: u32,
 }
 
 impl Default for DockerConfig {
@@ -120,6 +122,7 @@ impl Default for DockerConfig {
             port_range_start: 30000,
             port_range_end: 30999,
             memory_overhead_percent: 25,
+            memory_overhead_min_mb: 1024,
         }
     }
 }

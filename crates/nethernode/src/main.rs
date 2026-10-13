@@ -228,6 +228,7 @@ async fn start_orchestrator(config: &Config, store: &Store, events: &EventBus) -
     let mut orch_config = OrchestratorConfig::new(dir);
     orch_config.port_range = config.docker.port_range_start..=config.docker.port_range_end;
     orch_config.memory_overhead_percent = config.docker.memory_overhead_percent;
+    orch_config.memory_overhead_min_mb = config.docker.memory_overhead_min_mb;
     match Orchestrator::connect(
         &config.docker.socket,
         store.clone(),

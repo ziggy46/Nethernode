@@ -67,6 +67,16 @@ pub const MANAGED_PROPERTIES: &[(&str, &str)] = &[
     ("rcon.password", "Generated and kept secret by NetherNode."),
 ];
 
+/// Container memory limit in MiB for a Java heap of `heap_mb`: the heap plus
+/// `percent` of it, but at least `min_mb` more. Java needs a few hundred MB
+/// beyond the heap (class metadata, compiled code, network buffers), more
+/// with mods, and that doesn't shrink with small heaps: a 1 GB vanilla
+/// 1.21 server peaks around 1.35 GiB while starting. The limit is a cap, not
+/// a reservation, so headroom costs nothing unless it's used.
+pub fn memory_limit_mb(heap_mb: i64, percent: u32, min_mb: u32) -> i64 {
+    heap_mb + (heap_mb * i64::from(percent) / 100).max(i64::from(min_mb))
+}
+
 /// Supported server software: (loader id, `TYPE`, version-pin env var).
 pub const LOADERS: &[(&str, &str, Option<&str>)] = &[
     ("vanilla", "VANILLA", None),
@@ -97,6 +107,8 @@ pub struct SpecInput<'a> {
     pub memory_mb: i64,
     /// Extra container memory over the heap, in percent.
     pub memory_overhead_percent: u32,
+    /// Smallest extra container memory over the heap, in MiB.
+    pub memory_overhead_min_mb: u32,
     /// CPU limit in cores.
     pub cpu_limit: Option<f64>,
     /// Host port for the game, bound to 127.0.0.1.
@@ -193,8 +205,12 @@ pub fn build(input: &SpecInput<'_>) -> ContainerSpec {
         (CONTAINER_GAME_PORT.to_owned(), localhost(input.game_port)),
         (CONTAINER_RCON_PORT.to_owned(), localhost(input.rcon_port)),
     ]);
-    let memory_bytes =
-        input.memory_mb * 1024 * 1024 * (100 + i64::from(input.memory_overhead_percent)) / 100;
+    let memory_bytes = memory_limit_mb(
+        input.memory_mb,
+        input.memory_overhead_percent,
+        input.memory_overhead_min_mb,
+    ) * 1024
+        * 1024;
     let data_dir = input.servers_dir.join(input.slug);
 
     let host_config = HostConfig {
@@ -274,6 +290,7 @@ mod tests {
             mc_version: "1.20.1",
             memory_mb: 4096,
             memory_overhead_percent: 25,
+            memory_overhead_min_mb: 1024,
             cpu_limit: Some(2.0),
             game_port: 30000,
             rcon_port: 30001,
@@ -341,6 +358,19 @@ mod tests {
         let labels = spec.body.labels.as_ref().unwrap();
         assert_eq!(labels[LABEL_SERVER_ID], "01SERVER");
         assert_eq!(labels[LABEL_SPEC_HASH], spec.hash);
+    }
+
+    #[test]
+    fn memory_limit_has_a_floor() {
+        assert_eq!(memory_limit_mb(1024, 25, 1024), 2048);
+        assert_eq!(memory_limit_mb(2048, 25, 1024), 3072);
+        assert_eq!(memory_limit_mb(4096, 25, 1024), 5120);
+        assert_eq!(
+            memory_limit_mb(8192, 25, 1024),
+            10240,
+            "big heaps keep the percentage"
+        );
+        assert_eq!(memory_limit_mb(1024, 25, 0), 1280);
     }
 
     #[test]

@@ -228,7 +228,7 @@ async fn on_die(orch: &Arc<Orchestrator>, server_id: &str, exit_code: i64, out_o
 
     orch.set_status(server_id, "crashed").await;
     let reason = if out_of_memory {
-        "ran out of memory".to_owned()
+        "ran out of memory (raise its memory in Configuration if this keeps happening)".to_owned()
     } else {
         format!("exited with code {exit_code}")
     };

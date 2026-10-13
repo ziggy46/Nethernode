@@ -46,6 +46,8 @@ pub struct OrchestratorConfig {
     pub port_range: RangeInclusive<u16>,
     /// Container memory beyond the Java heap, in percent.
     pub memory_overhead_percent: u32,
+    /// Container memory beyond the Java heap, at least, in MiB.
+    pub memory_overhead_min_mb: u32,
     /// How long a graceful stop may take before Docker stops the container.
     pub stop_timeout: Duration,
     /// Minutes with no players before a sleep-enabled server sleeps, when
@@ -64,6 +66,7 @@ impl OrchestratorConfig {
             servers_dir,
             port_range: 30000..=30999,
             memory_overhead_percent: 25,
+            memory_overhead_min_mb: 1024,
             stop_timeout: Duration::from_secs(60),
             default_idle_minutes: 10,
             player_poll: Duration::from_secs(15),
@@ -472,6 +475,7 @@ impl Orchestrator {
             mc_version: &server.mc_version,
             memory_mb: server.memory_mb,
             memory_overhead_percent: self.config.memory_overhead_percent,
+            memory_overhead_min_mb: self.config.memory_overhead_min_mb,
             cpu_limit: server.cpu_limit,
             game_port: u16::try_from(server.internal_port).unwrap_or(0),
             rcon_port: server
