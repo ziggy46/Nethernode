@@ -18,6 +18,8 @@ dev:
     set -euo pipefail
     trap 'kill 0' EXIT
     export NETHERNODE_HTTP__BIND="${NETHERNODE_HTTP__BIND:-127.0.0.1:8080}"
+    # Keep the dev proxy off the LAN unless asked otherwise.
+    export NETHERNODE_PROXY__DEFAULT_LISTENER="${NETHERNODE_PROXY__DEFAULT_LISTENER:-127.0.0.1:25565}"
     cargo watch -q -w crates -w proto -x 'run -p nethernode -- serve' &
     pnpm --dir web dev &
     wait
