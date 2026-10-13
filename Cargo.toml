@@ -1,0 +1,84 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT"
+publish = false
+
+[workspace.dependencies]
+# Internal crates
+nn-api = { path = "crates/nn-api" }
+nn-auth = { path = "crates/nn-auth" }
+nn-events = { path = "crates/nn-events" }
+nn-files = { path = "crates/nn-files" }
+nn-mcproto = { path = "crates/nn-mcproto" }
+nn-orchestrator = { path = "crates/nn-orchestrator" }
+nn-players = { path = "crates/nn-players" }
+nn-proxy = { path = "crates/nn-proxy" }
+nn-store = { path = "crates/nn-store" }
+nn-uploads = { path = "crates/nn-uploads" }
+
+# Runtime / HTTP
+tokio = { version = "1.53", features = ["full"] }
+axum = { version = "0.8", features = ["macros"] }
+axum-extra = { version = "0.12", features = ["cookie"] }
+tower = { version = "0.5", features = ["util"] }
+tower-http = { version = "0.7", features = ["compression-gzip", "compression-br", "trace", "set-header"] }
+http = "1.5"
+
+# RPC
+connectrpc = { version = "0.9", features = ["axum"] }
+connectrpc-build = "0.9"
+buffa = { version = "0.9", features = ["json"] }
+buffa-types = { version = "0.9", features = ["json"] }
+
+# Storage
+sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "sqlite-bundled", "macros", "migrate"] }
+
+# Auth / crypto
+argon2 = "0.6"
+rand = "0.10"
+sha2 = "0.11"
+subtle = "2.6"
+base64 = "0.23"
+hex = "0.4"
+
+# Config / CLI
+clap = { version = "4.6", features = ["derive", "env"] }
+figment = { version = "0.10", features = ["toml", "env"] }
+
+# Utilities
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ulid = "3"
+arc-swap = "1.9"
+rust-embed = { version = "8.13", features = ["mime-guess"] }
+mime_guess = "2"
+
+# Errors / observability
+thiserror = "2"
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+metrics = "0.24"
+metrics-exporter-prometheus = { version = "0.18", default-features = false }
+
+# Testing
+tempfile = "3"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+panic = "abort"
