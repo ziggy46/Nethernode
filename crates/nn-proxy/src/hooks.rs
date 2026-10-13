@@ -31,6 +31,20 @@ pub struct PlayerJoin {
     pub ip: IpAddr,
 }
 
+/// A login about to be routed, for [`ProxyHooks::admit`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Admission {
+    /// Destination server.
+    pub server_id: String,
+    /// Client address. Servers behind the proxy only ever see the proxy's
+    /// address, so IP bans are enforced here.
+    pub ip: IpAddr,
+    /// Username from Login Start, if it parsed.
+    pub username: Option<String>,
+    /// UUID from Login Start, if the protocol sends one.
+    pub uuid: Option<String>,
+}
+
 /// What the proxy needs from the rest of the system. Implementations must
 /// be quick: calls happen on the connection path.
 pub trait ProxyHooks: Send + Sync + 'static {
@@ -42,6 +56,12 @@ pub trait ProxyHooks: Send + Sync + 'static {
 
     /// Records that a session ended.
     fn player_left(&self, session_id: String) -> BoxFuture<'_, ()>;
+
+    /// Whether to let a login through. `Some(message)` disconnects the
+    /// player with that message, before any server is contacted or woken.
+    fn admit<'a>(&'a self, _login: &'a Admission) -> BoxFuture<'a, Option<String>> {
+        Box::pin(async { None })
+    }
 }
 
 /// Hooks that do nothing: servers can't be woken and nothing is recorded.

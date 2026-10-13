@@ -10,8 +10,9 @@ use nn_mcproto::login::login_disconnect;
 use nn_mcproto::status::{decode_ping, decode_status_response, encode_ping, encode_status_request};
 use nn_mcproto::{Handshake, LoginStart, NextState, StatusResponse, legacy, parse_frame};
 use nn_proxy::{
-    BackendSpec, BoxFuture, Limits, ListenerSpec, ListenerState, PlayerJoin, Proxy, ProxyConfig,
-    ProxyHooks, RouteSpec, SLEEPING_SUFFIX, ServerState, UNKNOWN_HOST_MESSAGE, WakeOutcome,
+    Admission, BackendSpec, BoxFuture, Limits, ListenerSpec, ListenerState, PlayerJoin, Proxy,
+    ProxyConfig, ProxyHooks, RouteSpec, SLEEPING_SUFFIX, ServerState, UNKNOWN_HOST_MESSAGE,
+    WakeOutcome,
 };
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
@@ -26,6 +27,8 @@ const BACKEND_HELLO: &[u8] = b"BACKEND";
 
 #[derive(Default)]
 struct RecordingHooks {
+    /// Usernames to refuse at login.
+    refuse: Mutex<Vec<String>>,
     wakes: Mutex<Vec<String>>,
     joins: Mutex<Vec<PlayerJoin>>,
     lefts: Mutex<Vec<String>>,
@@ -45,6 +48,14 @@ impl ProxyHooks for RecordingHooks {
     fn player_left(&self, session_id: String) -> BoxFuture<'_, ()> {
         self.lefts.lock().unwrap().push(session_id);
         Box::pin(async {})
+    }
+
+    fn admit<'a>(&'a self, login: &'a Admission) -> BoxFuture<'a, Option<String>> {
+        let refused = login
+            .username
+            .as_ref()
+            .is_some_and(|u| self.refuse.lock().unwrap().contains(u));
+        Box::pin(async move { refused.then(|| "You are banned from this server.".to_owned()) })
     }
 }
 
@@ -483,6 +494,37 @@ async fn login_to_a_sleeping_server_wakes_it_and_disconnects() {
     assert!(reason.contains("waking up"), "{reason}");
     assert_eq!(*h.hooks.wakes.lock().unwrap(), ["smp"]);
     assert!(rx.try_recv().is_err(), "nothing forwarded");
+}
+
+#[tokio::test]
+async fn refused_logins_never_reach_or_wake_the_server() {
+    for state in [ServerState::Running, ServerState::Sleeping] {
+        let (addr, mut rx) = fake_backend().await;
+        let h = start(
+            vec![route("smp.example.com", Some("smp"))],
+            vec![backend("smp", addr, state)],
+            Limits::default(),
+            false,
+        )
+        .await;
+        h.hooks.refuse.lock().unwrap().push("Griefer".into());
+        let mut client = connect(h.addr).await;
+        let mut sent = handshake("smp.example.com", NextState::Login);
+        sent.extend(login_start("Griefer"));
+        client.write_all(&sent).await.unwrap();
+        let reason = disconnect_reason(&read_frame(&mut client).await);
+        assert!(reason.contains("banned"), "{reason}");
+        assert!(
+            h.hooks.wakes.lock().unwrap().is_empty(),
+            "{state:?}: not woken"
+        );
+        assert!(
+            h.hooks.joins.lock().unwrap().is_empty(),
+            "{state:?}: no session"
+        );
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        assert!(rx.try_recv().is_err(), "{state:?}: nothing forwarded");
+    }
 }
 
 #[tokio::test]

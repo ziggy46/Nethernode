@@ -34,7 +34,7 @@ pub mod status_cache;
 
 pub use config::{BackendSpec, Limits, ListenerSpec, ProxyConfig, RouteSpec, ServerState};
 pub use conn::{SLEEPING_SUFFIX, UNKNOWN_HOST_MESSAGE};
-pub use hooks::{BoxFuture, NoopHooks, PlayerJoin, ProxyHooks, WakeOutcome};
+pub use hooks::{Admission, BoxFuture, NoopHooks, PlayerJoin, ProxyHooks, WakeOutcome};
 pub use registry::ConnectionInfo;
 pub use routes::{Resolution, RouteTable};
 

@@ -31,7 +31,7 @@ use tokio::net::TcpStream;
 use tokio::time::timeout;
 
 use crate::config::{ListenerSpec, ServerState};
-use crate::hooks::{PlayerJoin, WakeOutcome};
+use crate::hooks::{Admission, PlayerJoin, WakeOutcome};
 use crate::io::{FrameBuffer, ReadError};
 use crate::registry::ConnectionInfo;
 use crate::routes::Resolution;
@@ -329,6 +329,19 @@ async fn login(
         return Summary::new("unknown_host");
     };
     let spec = &res.backend.spec;
+    let admission = Admission {
+        server_id: spec.server_id.clone(),
+        ip: peer.ip(),
+        username: login_start.as_ref().map(|ls| ls.username.clone()),
+        uuid: login_start
+            .as_ref()
+            .and_then(|ls| ls.uuid)
+            .map(|u| u.hyphenated().to_string()),
+    };
+    if let Some(message) = shared.hooks.admit(&admission).await {
+        disconnect(client, &message).await;
+        return Summary::routed(Some(&res), "refused");
+    }
     let name = &spec.name;
     let (outcome, message) = match spec.state {
         ServerState::Running => {
