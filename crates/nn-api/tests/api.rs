@@ -33,6 +33,7 @@ async fn app() -> Router {
         config: Arc::new(ApiConfig::default()),
         metrics: None,
         shutdown: tokio::sync::watch::channel(false).1,
+        servers: Default::default(),
     })
 }
 

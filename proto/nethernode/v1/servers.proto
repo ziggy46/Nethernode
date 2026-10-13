@@ -2,11 +2,40 @@ syntax = "proto3";
 
 package nethernode.v1;
 
-// Minecraft servers. Read-only for now; lifecycle (create, start, stop)
-// arrives with the orchestrator.
+// Minecraft servers: create, configure, start, stop, and delete them.
+// Lifecycle calls return as soon as the operation is underway; watch
+// /api/events (`server_status_changed`, `image_pull_progress`,
+// `server_operation_failed`) for progress and results.
 service ServerService {
   // Lists all servers.
   rpc ListServers(ListServersRequest) returns (ListServersResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Gets one server.
+  rpc GetServer(GetServerRequest) returns (GetServerResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Creates a server. Installation (image download, container creation)
+  // continues in the background with status INSTALLING.
+  rpc CreateServer(CreateServerRequest) returns (CreateServerResponse);
+  // Changes settings. Some changes only apply after a restart.
+  rpc UpdateServer(UpdateServerRequest) returns (UpdateServerResponse);
+  // Deletes a server, optionally including its world and files.
+  rpc DeleteServer(DeleteServerRequest) returns (DeleteServerResponse);
+
+  rpc StartServer(StartServerRequest) returns (StartServerResponse);
+  // Saves the world and stops gracefully (up to 60 s, then forced).
+  rpc StopServer(StopServerRequest) returns (StopServerResponse);
+  rpc RestartServer(RestartServerRequest) returns (RestartServerResponse);
+  // Stops immediately without saving.
+  rpc KillServer(KillServerRequest) returns (KillServerResponse);
+
+  // Up to an hour of per-second resource samples.
+  rpc GetServerStats(GetServerStatsRequest) returns (GetServerStatsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Facts about the Docker host servers run on.
+  rpc GetHostInfo(GetHostInfoRequest) returns (GetHostInfoResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 }
@@ -23,23 +52,172 @@ enum ServerStatus {
   SERVER_STATUS_CRASHED = 7;
 }
 
+// Card artwork. Presentation only; never affects the world.
+enum CardTheme {
+  CARD_THEME_UNSPECIFIED = 0;
+  CARD_THEME_NETHER = 1;
+  CARD_THEME_OVERWORLD = 2;
+  CARD_THEME_END = 3;
+  CARD_THEME_SKY = 4;
+}
+
 // A managed Minecraft server.
 message Server {
   string id = 1;
   string name = 2;
   string slug = 3;
   ServerStatus status = 4;
+  // e.g. "1.21.4", or "LATEST".
   string mc_version = 5;
-  // Server software or mod loader, e.g. "paper", "forge".
+  // Server software: vanilla, paper, purpur, fabric, forge, neoforge, quilt.
   string loader = 6;
   // Port the server listens on at 127.0.0.1, behind the proxy.
   uint32 internal_port = 7;
   // Sleeps when empty and wakes when a player connects.
   bool sleep_when_empty = 8;
+  ServerSettings settings = 9;
+  // Unix ms.
+  int64 created_at_ms = 10;
+  // Unix ms; when the server last became RUNNING.
+  optional int64 last_started_at_ms = 11;
+  // From the last status ping, while running.
+  optional uint32 players_online = 12;
+  optional uint32 players_max = 13;
+  // Exact hostnames routed to this server, for display.
+  repeated string hostnames = 14;
+  // Settings changed since the container was created; restart to apply.
+  bool restart_required = 15;
+}
+
+// Settings an admin can change after creation.
+message ServerSettings {
+  string name = 1;
+  string mc_version = 2;
+  string loader = 3;
+  // Loader or build pin; empty for the default.
+  string loader_version = 4;
+  // Container image; empty to pick the default for the Java version.
+  string image = 5;
+  // Java major version override.
+  optional uint32 java_version = 6;
+  // Java heap in MiB.
+  uint32 memory_mb = 7;
+  // CPU limit in cores.
+  optional double cpu_limit = 8;
+  bool auto_start = 9;
+  bool sleep_when_empty = 10;
+  // Minutes with no players before sleeping (default 10).
+  optional uint32 idle_minutes = 11;
+  bool restart_on_crash = 12;
+  bool use_aikar_flags = 13;
+  string motd = 14;
+  uint32 max_players = 15;
+  CardTheme card_theme = 16;
 }
 
 message ListServersRequest {}
 
 message ListServersResponse {
   repeated Server servers = 1;
+}
+
+message GetServerRequest {
+  string id = 1;
+}
+
+message GetServerResponse {
+  Server server = 1;
+}
+
+message CreateServerRequest {
+  string name = 1;
+  string loader = 2;
+  string mc_version = 3;
+  string loader_version = 4;
+  uint32 memory_mb = 5;
+  CardTheme card_theme = 6;
+  // The admin ticked "I accept the Minecraft EULA". Required.
+  bool eula_accepted = 7;
+  bool sleep_when_empty = 8;
+  // Start as soon as installation finishes.
+  bool start_after_create = 9;
+}
+
+message CreateServerResponse {
+  Server server = 1;
+}
+
+message UpdateServerRequest {
+  string id = 1;
+  ServerSettings settings = 2;
+}
+
+message UpdateServerResponse {
+  Server server = 1;
+}
+
+message DeleteServerRequest {
+  string id = 1;
+  // Also delete the world, mods, and configuration files.
+  bool delete_data = 2;
+}
+
+message DeleteServerResponse {}
+
+message StartServerRequest {
+  string id = 1;
+}
+
+message StartServerResponse {}
+
+message StopServerRequest {
+  string id = 1;
+}
+
+message StopServerResponse {}
+
+message RestartServerRequest {
+  string id = 1;
+}
+
+message RestartServerResponse {}
+
+message KillServerRequest {
+  string id = 1;
+}
+
+message KillServerResponse {}
+
+// One resource sample.
+message StatSample {
+  // Unix ms.
+  int64 at_ms = 1;
+  // 100 = one full CPU core.
+  double cpu_percent = 2;
+  uint64 memory_bytes = 3;
+  uint64 memory_limit_bytes = 4;
+  uint64 net_rx_bytes = 5;
+  uint64 net_tx_bytes = 6;
+}
+
+message GetServerStatsRequest {
+  string id = 1;
+}
+
+message GetServerStatsResponse {
+  // Oldest first.
+  repeated StatSample samples = 1;
+}
+
+message GetHostInfoRequest {}
+
+message GetHostInfoResponse {
+  // False when Docker can't be reached; see `error`.
+  bool docker_available = 1;
+  string error = 2;
+  string hostname = 3;
+  string operating_system = 4;
+  string docker_version = 5;
+  uint32 cpus = 6;
+  uint64 memory_bytes = 7;
 }

@@ -50,6 +50,7 @@ async fn harness() -> Harness {
         config: Arc::new(ApiConfig::default()),
         metrics: None,
         shutdown: shutdown_rx,
+        servers: Default::default(),
     });
     let owner = auth
         .setup("owner", PASSWORD, Default::default())
@@ -404,4 +405,91 @@ async fn event_stream_ends_when_the_server_shuts_down() {
         .await
         .expect("stream ended");
     assert!(end.is_none(), "stream should be finished, got {end:?}");
+}
+
+async fn call_servers(
+    app: &Router,
+    method: &str,
+    body: Value,
+    session: &str,
+) -> (StatusCode, Value) {
+    let req = Request::post(format!("/api/rpc/nethernode.v1.ServerService/{method}"))
+        .header(header::CONTENT_TYPE, "application/json")
+        .header(
+            header::COOKIE,
+            format!("nn_csrf={CSRF}; nn_session={session}"),
+        )
+        .header("x-csrf-token", CSRF)
+        .body(Body::from(body.to_string()))
+        .unwrap();
+    let response = app.clone().oneshot(req).await.unwrap();
+    let status = response.status();
+    let bytes = response.into_body().collect().await.unwrap().to_bytes();
+    (
+        status,
+        serde_json::from_slice(&bytes).unwrap_or(Value::Null),
+    )
+}
+
+#[tokio::test]
+async fn server_management_explains_when_docker_is_unavailable() {
+    let h = harness().await;
+    server(&h.store, "smp", "stopped").await;
+
+    // Reads still work from the database.
+    let (status, body) = call_servers(&h.app, "ListServers", json!({}), &h.owner).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(body["servers"][0]["slug"], "smp");
+    assert_eq!(body["servers"][0]["status"], "SERVER_STATUS_STOPPED");
+
+    let (status, body) = call_servers(&h.app, "GetHostInfo", json!({}), &h.owner).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        body["dockerAvailable"],
+        Value::Null,
+        "false is the proto default and omitted"
+    );
+
+    // Lifecycle calls say why they can't run.
+    let create = json!({ "name": "x", "loader": "vanilla", "mcVersion": "LATEST", "memoryMb": 1024, "eulaAccepted": true });
+    let (status, body) = call_servers(&h.app, "CreateServer", create, &h.owner).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(body["code"], "failed_precondition");
+    assert!(
+        body["message"]
+            .as_str()
+            .unwrap()
+            .contains("Docker isn't available"),
+        "{body}"
+    );
+}
+
+#[tokio::test]
+async fn viewers_cannot_manage_servers() {
+    let h = harness().await;
+    let hash = password::hash_password(PASSWORD).unwrap();
+    h.store
+        .create_user(NewUser {
+            username: "viewer",
+            password_hash: &hash,
+            role: "viewer",
+        })
+        .await
+        .unwrap();
+    let viewer = Auth::new(h.store.clone(), AuthConfig::default())
+        .login("viewer", PASSWORD, Default::default())
+        .await
+        .unwrap()
+        .token;
+    let id = server(&h.store, "smp", "stopped").await;
+    assert_eq!(
+        call_servers(&h.app, "ListServers", json!({}), &viewer)
+            .await
+            .0,
+        StatusCode::OK
+    );
+    for method in ["StartServer", "StopServer", "KillServer", "DeleteServer"] {
+        let (status, _) = call_servers(&h.app, method, json!({ "id": id }), &viewer).await;
+        assert_eq!(status, StatusCode::FORBIDDEN, "{method}");
+    }
 }

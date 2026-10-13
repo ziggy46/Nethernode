@@ -95,6 +95,17 @@ pub struct AppState {
     /// Flips to `true` when the server begins shutting down, so long-lived
     /// responses (the event stream) end and graceful shutdown can finish.
     pub shutdown: tokio::sync::watch::Receiver<bool>,
+    /// Docker orchestration, or why it's unavailable.
+    pub servers: ServerManager,
+}
+
+/// Server lifecycle management, which needs Docker.
+#[derive(Clone, Default)]
+pub struct ServerManager {
+    /// The orchestrator, when Docker is reachable.
+    pub orchestrator: Option<Arc<nn_orchestrator::Orchestrator>>,
+    /// Why Docker isn't available, for the UI.
+    pub unavailable_reason: Option<Arc<str>>,
 }
 
 /// Builds the full application router.

@@ -106,26 +106,46 @@ impl ProxyRuntime {
     }
 }
 
-/// Proxy hooks backed by the database.
-///
-/// Waking sleeping servers needs the orchestrator, which doesn't exist yet,
-/// so `wake` reports [`WakeOutcome::Unavailable`].
+/// Proxy hooks backed by the database and, when Docker is available, the
+/// orchestrator (to wake sleeping servers).
 pub struct StoreProxyHooks {
     store: Store,
+    orchestrator: std::sync::OnceLock<Arc<nn_orchestrator::Orchestrator>>,
 }
 
 impl StoreProxyHooks {
-    /// Creates hooks writing to `store`.
+    /// Creates hooks writing to `store`. Waking is unavailable until
+    /// [`StoreProxyHooks::set_orchestrator`] is called.
     pub fn new(store: Store) -> Arc<Self> {
-        Arc::new(Self { store })
+        Arc::new(Self {
+            store,
+            orchestrator: std::sync::OnceLock::new(),
+        })
+    }
+
+    /// Enables wake-on-connect.
+    pub fn set_orchestrator(&self, orchestrator: Arc<nn_orchestrator::Orchestrator>) {
+        let _ = self.orchestrator.set(orchestrator);
     }
 }
 
 impl ProxyHooks for StoreProxyHooks {
     fn wake<'a>(&'a self, server_id: &'a str) -> BoxFuture<'a, WakeOutcome> {
         Box::pin(async move {
-            tracing::info!(server = %server_id, "wake-on-connect requested, but server lifecycle isn't available yet");
-            WakeOutcome::Unavailable
+            let Some(orchestrator) = self.orchestrator.get().cloned() else {
+                tracing::info!(server = %server_id, "wake-on-connect requested, but Docker isn't available");
+                return WakeOutcome::Unavailable;
+            };
+            tracing::info!(server = %server_id, "waking server for a joining player");
+            // Starting can take a while (and may pull an image); the player is
+            // told to retry while it boots.
+            let id = server_id.to_owned();
+            tokio::spawn(async move {
+                if let Err(error) = orchestrator.wake(&id).await {
+                    tracing::warn!(server = %id, %error, "wake-on-connect failed");
+                }
+            });
+            WakeOutcome::Starting
         })
     }
 
