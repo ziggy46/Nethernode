@@ -1,0 +1,4 @@
+[env]
+# Compile-time checked queries use the committed `.sqlx/` cache, so builds
+# don't need a live database. `just db-prepare` regenerates the cache.
+SQLX_OFFLINE = "true"

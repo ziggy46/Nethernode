@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT value_json FROM settings WHERE key = ?1",
+  "describe": {
+    "columns": [
+      {
+        "name": "value_json",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "settings",
+            "name": "value_json"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "b399c1b359bc1af0096b20185325315c68a7ba9782a31aff220e4ec8e248ac10"
+}
