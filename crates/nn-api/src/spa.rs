@@ -21,7 +21,7 @@ use crate::AppState;
 use crate::middleware::CurrentUser;
 
 #[derive(RustEmbed)]
-#[folder = "$CARGO_MANIFEST_DIR/../../web/dist"]
+#[folder = "../../web/dist"]
 #[allow_missing = true]
 struct Assets;
 
@@ -95,4 +95,22 @@ fn file_response(path: &str, data: Cow<'static, [u8]>, cache: &'static str) -> R
         data,
     )
         .into_response()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Assets;
+
+    /// Guards the embed path: if the UI has been built, it must be embedded.
+    #[test]
+    fn embeds_built_ui_when_present() {
+        let dist =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../web/dist/index.html");
+        if dist.exists() {
+            assert!(
+                Assets::get("index.html").is_some(),
+                "web/dist exists but was not embedded"
+            );
+        }
+    }
 }
