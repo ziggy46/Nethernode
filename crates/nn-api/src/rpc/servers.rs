@@ -43,8 +43,9 @@ impl ServerRpc {
             .ok_or_else(|| ConnectError::not_found("server not found"))
     }
 
-    /// Exact hostnames routed to each server.
-    async fn hostnames(&self) -> Result<HashMap<String, Vec<String>>, ConnectError> {
+    /// Hostnames that reach each server: exact routes, then the server's
+    /// subdomain under each slug wildcard (`*.example.com` with no target).
+    async fn hostnames(&self) -> Result<Hostnames, ConnectError> {
         let routes = self
             .state
             .auth
@@ -52,22 +53,20 @@ impl ServerRpc {
             .list_routes()
             .await
             .map_err(store_error)?;
-        let mut map: HashMap<String, Vec<String>> = HashMap::new();
+        let mut out = Hostnames::default();
         for route in routes {
-            if let Some(id) = route.server_id
-                && !route.hostname.starts_with('*')
-            {
-                map.entry(id).or_default().push(route.hostname);
+            match (route.server_id, route.hostname.strip_prefix("*.")) {
+                (None, Some(domain)) => out.slug_domains.push(domain.to_owned()),
+                (Some(id), None) if route.hostname != "*" => {
+                    out.exact.entry(id).or_default().push(route.hostname);
+                }
+                _ => {}
             }
         }
-        Ok(map)
+        Ok(out)
     }
 
-    async fn to_proto(
-        &self,
-        server: Server,
-        hostnames: &HashMap<String, Vec<String>>,
-    ) -> pb::Server {
+    async fn to_proto(&self, server: Server, hostnames: &Hostnames) -> pb::Server {
         let orch = self.state.servers.orchestrator.as_ref();
         let players = orch.and_then(|o| o.players(&server.id));
         let restart_required = match orch {
@@ -77,7 +76,7 @@ impl ServerRpc {
         pb::Server {
             status: proto_status(&server.status).into(),
             settings: proto_settings(&server.settings()).into(),
-            hostnames: hostnames.get(&server.id).cloned().unwrap_or_default(),
+            hostnames: hostnames.for_server(&server),
             players_online: players.map(|p| p.online),
             players_max: players.map(|p| p.max),
             restart_required,
@@ -119,6 +118,25 @@ impl ServerRpc {
 }
 
 /// Maps orchestrator errors to Connect codes with user-facing messages.
+/// Hostnames that reach each server, from the route table.
+#[derive(Default)]
+struct Hostnames {
+    exact: HashMap<String, Vec<String>>,
+    slug_domains: Vec<String>,
+}
+
+impl Hostnames {
+    fn for_server(&self, server: &Server) -> Vec<String> {
+        let mut names = self.exact.get(&server.id).cloned().unwrap_or_default();
+        names.extend(
+            self.slug_domains
+                .iter()
+                .map(|domain| format!("{}.{domain}", server.slug)),
+        );
+        names
+    }
+}
+
 pub(crate) fn orchestrator_error(err: OrchestratorError) -> ConnectError {
     match err {
         OrchestratorError::NotFound => ConnectError::not_found("server not found"),
@@ -280,7 +298,7 @@ impl pb::ServerService for ServerRpc {
             details,
         )
         .await;
-        let server = self.to_proto(server, &HashMap::new()).await;
+        let server = self.to_proto(server, &self.hostnames().await?).await;
         Response::ok(pb::CreateServerResponse {
             server: server.into(),
             ..Default::default()

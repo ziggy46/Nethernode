@@ -465,6 +465,28 @@ async fn server_management_explains_when_docker_is_unavailable() {
 }
 
 #[tokio::test]
+async fn server_hostnames_include_slug_wildcards() {
+    let h = harness().await;
+    let server_id = server(&h.store, "smp", "stopped").await;
+    for route in [
+        json!({ "hostname": "play.example.com", "serverId": server_id }),
+        json!({ "hostname": "*.mc.example.com" }),
+        json!({ "hostname": "*", "serverId": server_id }),
+    ] {
+        let (status, body) = call(&h.app, "UpsertRoute", route, &h.owner).await;
+        assert_eq!(status, StatusCode::OK, "{body}");
+    }
+
+    let (status, body) = call_servers(&h.app, "ListServers", json!({}), &h.owner).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(
+        body["servers"][0]["hostnames"],
+        json!(["play.example.com", "smp.mc.example.com"]),
+        "exact routes first, then the slug under each wildcard; the default route isn't a hostname"
+    );
+}
+
+#[tokio::test]
 async fn viewers_cannot_manage_servers() {
     let h = harness().await;
     let hash = password::hash_password(PASSWORD).unwrap();
