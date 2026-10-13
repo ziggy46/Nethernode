@@ -171,7 +171,12 @@ async fn start(
     let ListenerState::Listening(addr) = statuses[0].state.clone() else {
         panic!("listener failed: {statuses:?}")
     };
-    Harness { proxy, addr, hooks, events }
+    Harness {
+        proxy,
+        addr,
+        hooks,
+        events,
+    }
 }
 
 fn handshake(address: &str, next: NextState) -> Vec<u8> {
@@ -736,14 +741,23 @@ async fn listeners_report_bind_failures_independently() {
 #[tokio::test]
 async fn joined_players_are_listed_before_the_event_fires() {
     let (addr, _rx) = fake_backend().await;
-    let h = start(vec![route("*", Some("a"))], vec![backend("a", addr, ServerState::Running)], Limits::default(), false).await;
+    let h = start(
+        vec![route("*", Some("a"))],
+        vec![backend("a", addr, ServerState::Running)],
+        Limits::default(),
+        false,
+    )
+    .await;
     let mut events = h.events.subscribe();
     let mut client = connect(h.addr).await;
     let mut sent = handshake("a.example.com", NextState::Login);
     sent.extend(login_start("Steve"));
     client.write_all(&sent).await.unwrap();
     loop {
-        let event = tokio::time::timeout(Duration::from_secs(2), events.recv()).await.unwrap().unwrap();
+        let event = tokio::time::timeout(Duration::from_secs(2), events.recv())
+            .await
+            .unwrap()
+            .unwrap();
         if matches!(event, nn_events::Event::PlayerJoined { .. }) {
             // A UI refetching on this event must see the player.
             assert_eq!(h.proxy.active_connections().len(), 1);
