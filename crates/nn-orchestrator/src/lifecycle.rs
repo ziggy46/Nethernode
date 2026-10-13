@@ -53,6 +53,8 @@ pub struct OrchestratorConfig {
     pub default_idle_minutes: i64,
     /// How often running servers are pinged for player counts.
     pub player_poll: Duration,
+    /// User and group servers run as. See [`default_run_as`].
+    pub run_as: Option<(u32, u32)>,
 }
 
 impl OrchestratorConfig {
@@ -65,7 +67,27 @@ impl OrchestratorConfig {
             stop_timeout: Duration::from_secs(60),
             default_idle_minutes: 10,
             player_poll: Duration::from_secs(15),
+            run_as: default_run_as(),
         }
+    }
+}
+
+/// The server image chowns its data directory to the user it runs as
+/// (uid 1000 by default). On Linux that has to be NetherNode's own user, or
+/// NetherNode can read server files but not change or delete them. Root can
+/// manage any files, and Minecraft shouldn't run as root, so a root
+/// NetherNode keeps the image default. Docker Desktop and OrbStack on macOS
+/// map bind-mount ownership to the host user, so nothing is needed there.
+pub fn default_run_as() -> Option<(u32, u32)> {
+    #[cfg(target_os = "linux")]
+    {
+        use rustix::process::{getegid, geteuid};
+        let uid = geteuid();
+        (!uid.is_root()).then(|| (uid.as_raw(), getegid().as_raw()))
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        None
     }
 }
 
@@ -462,6 +484,7 @@ impl Orchestrator {
             motd: server.motd.as_deref(),
             max_players: server.max_players,
             extra_env: &extra_env,
+            run_as: self.config.run_as,
             servers_dir: &self.config.servers_dir,
         }))
     }

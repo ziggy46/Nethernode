@@ -34,6 +34,8 @@ pub const RESERVED_ENV: &[&str] = &[
     "MEMORY",
     "TYPE",
     "VERSION",
+    "UID",
+    "GID",
 ];
 
 /// Supported server software: (loader id, `TYPE`, version-pin env var).
@@ -86,6 +88,9 @@ pub struct SpecInput<'a> {
     pub extra_env: &'a BTreeMap<String, String>,
     /// Host directory holding all servers' data (absolute).
     pub servers_dir: &'a Path,
+    /// User and group the server runs as, so its files stay manageable by
+    /// NetherNode; `None` keeps the image default.
+    pub run_as: Option<(u32, u32)>,
 }
 
 /// A container definition plus its name and drift hash.
@@ -137,6 +142,10 @@ pub fn build(input: &SpecInput<'_>) -> ContainerSpec {
     env.insert("RCON_PASSWORD".into(), input.rcon_password.into());
     env.insert("USE_AIKAR_FLAGS".into(), input.use_aikar_flags.to_string());
     env.insert("MAX_PLAYERS".into(), input.max_players.to_string());
+    if let Some((uid, gid)) = input.run_as {
+        env.insert("UID".into(), uid.to_string());
+        env.insert("GID".into(), gid.to_string());
+    }
     if let Some(motd) = input.motd.filter(|m| !m.is_empty()) {
         env.insert("MOTD".into(), motd.into());
     }
@@ -245,6 +254,7 @@ mod tests {
             max_players: 20,
             extra_env: extra,
             servers_dir: dir,
+            run_as: None,
         }
     }
 
@@ -301,6 +311,21 @@ mod tests {
         let labels = spec.body.labels.as_ref().unwrap();
         assert_eq!(labels[LABEL_SERVER_ID], "01SERVER");
         assert_eq!(labels[LABEL_SPEC_HASH], spec.hash);
+    }
+
+    #[test]
+    fn runs_as_the_given_user() {
+        let extra = BTreeMap::from([("UID".to_owned(), "0".to_owned())]);
+        let dir = PathBuf::from("/d");
+        let mut i = input(&extra, &dir);
+        assert!(
+            !env(&build(&i)).iter().any(|e| e.starts_with("UID=")),
+            "custom env can't pick the user"
+        );
+        i.run_as = Some((1001, 1002));
+        let env = env(&build(&i));
+        assert!(env.contains(&"UID=1001".to_owned()));
+        assert!(env.contains(&"GID=1002".to_owned()));
     }
 
     #[test]

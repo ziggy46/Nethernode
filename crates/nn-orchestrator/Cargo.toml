@@ -31,3 +31,6 @@ hex.workspace = true
 [dev-dependencies]
 tempfile.workspace = true
 bollard.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+rustix.workspace = true

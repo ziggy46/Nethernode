@@ -108,6 +108,14 @@ async fn create_start_adopt_sleep_wake_stop_delete() {
         logs.iter().any(|l| l.contains("Done (")),
         "console output captured"
     );
+    {
+        // The server writes its files as NetherNode's user, so NetherNode
+        // can manage them later.
+        use std::os::unix::fs::MetadataExt;
+        let ours = std::fs::metadata(&servers_dir).unwrap().uid();
+        let props = servers_dir.join(&server.slug).join("server.properties");
+        assert_eq!(std::fs::metadata(props).unwrap().uid(), ours);
+    }
 
     let mut saw_pull = false;
     while let Ok(event) = rx.try_recv() {
