@@ -1,0 +1,28 @@
+# Build guide and other private docs stay out of the repo until it goes public.
+/docs/
+
+# Secrets and local state (00-ground-rules.md §0.1)
+.env
+.env.*
+*.db
+*.db-shm
+*.db-wal
+data/
+backups/
+tmp/
+
+# Rust
+/target/
+
+# Frontend
+node_modules/
+/web/dist/
+/web/test-results/
+/web/playwright-report/
+*.tsbuildinfo
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
