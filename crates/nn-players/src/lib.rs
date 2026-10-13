@@ -4,6 +4,7 @@
 pub mod commands;
 pub mod lists;
 pub mod mgmt;
+pub mod mojang;
 pub mod nbt;
 pub mod playerdata;
 pub mod profile;
