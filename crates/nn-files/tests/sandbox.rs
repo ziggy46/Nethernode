@@ -464,7 +464,7 @@ fn extraction_respects_overwrite() {
             Limits::default(),
             &mut noop
         ),
-        Err(FileError::AlreadyExists(_))
+        Err(FileError::Invalid(m)) if m.contains("already exists")
     ));
     assert_eq!(
         fs::read_to_string(f.root.join("config/a.txt")).unwrap(),

@@ -128,8 +128,8 @@ impl ServerFiles {
         if !overwrite {
             for item in plan.iter().filter(|p| !p.is_dir) {
                 if self.dir().symlink_metadata(item.path.as_path()).is_ok() {
-                    return Err(FileError::AlreadyExists(format!(
-                        "{} (nothing was extracted)",
+                    return Err(FileError::Invalid(format!(
+                        "{} already exists, so nothing was extracted. Extract somewhere else or choose to replace existing files.",
                         item.path
                     )));
                 }
