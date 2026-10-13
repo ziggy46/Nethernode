@@ -24,12 +24,12 @@ pub fn spawn(state: AppState) {
 
     let expiry = state.clone();
     tokio::spawn(async move {
-        expiry.players.ip_bans.reload(expiry.auth.store()).await;
+        expiry.players.bans.reload(expiry.auth.store()).await;
         let mut tick = tokio::time::interval(EXPIRY_INTERVAL);
         loop {
             tick.tick().await;
             lift_expired(&expiry).await;
-            expiry.players.ip_bans.reload(expiry.auth.store()).await;
+            expiry.players.bans.reload(expiry.auth.store()).await;
         }
     });
 

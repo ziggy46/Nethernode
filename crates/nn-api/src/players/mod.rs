@@ -24,30 +24,54 @@ const PROFILE_TTL_MS: i64 = 7 * 24 * 3600 * 1000;
 /// How long "no such account" stays cached.
 const MISSING_TTL_MS: i64 = 24 * 3600 * 1000;
 
-/// IP bans, enforced by the proxy (servers behind it only see the proxy's
-/// address). Kept in memory for the connection path; reloaded on change.
+/// Bans recorded by NetherNode, enforced by the proxy at login. This is the
+/// only place IP bans can work (servers behind the proxy only see its
+/// address), and it backs up name bans that an offline-mode server dropped
+/// because it had never seen the player. Kept in memory for the connection
+/// path; reloaded on change.
 #[derive(Default)]
-pub struct IpBans {
-    rules: RwLock<Vec<IpRule>>,
+pub struct ProxyBans {
+    rules: RwLock<Vec<BanRule>>,
 }
 
 #[derive(Debug, Clone)]
-struct IpRule {
+struct BanRule {
     server_id: Option<String>,
-    ip: IpAddr,
+    uuid: Option<String>,
+    name: String,
+    ip: Option<IpAddr>,
     reason: Option<String>,
     expires_at: Option<i64>,
 }
 
-impl IpBans {
-    /// The disconnect message for `ip` joining `server_id`, if it's banned.
-    pub fn refusal(&self, server_id: &str, ip: IpAddr) -> Option<String> {
+impl BanRule {
+    fn matches(&self, login: &nn_proxy::Admission) -> bool {
+        self.ip == Some(login.ip)
+            || login
+                .username
+                .as_deref()
+                .is_some_and(|n| n.eq_ignore_ascii_case(&self.name))
+            || login
+                .uuid
+                .as_deref()
+                .zip(self.uuid.as_deref())
+                .is_some_and(|(a, b)| normalize(a) == normalize(b))
+    }
+}
+
+fn normalize(uuid: &str) -> String {
+    uuid.replace('-', "").to_ascii_lowercase()
+}
+
+impl ProxyBans {
+    /// The disconnect message for this login, if it's banned.
+    pub fn refusal(&self, login: &nn_proxy::Admission) -> Option<String> {
         let now = nn_store::now_ms();
         let rules = self.rules.read().unwrap_or_else(|e| e.into_inner());
         let rule = rules.iter().find(|r| {
-            r.ip == ip
-                && r.server_id.as_deref().is_none_or(|s| s == server_id)
+            r.server_id.as_deref().is_none_or(|s| s == login.server_id)
                 && r.expires_at.is_none_or(|e| e > now)
+                && r.matches(login)
         })?;
         let mut message = "You are banned from this server.".to_owned();
         if let Some(reason) = rule.reason.as_deref().filter(|r| !r.is_empty()) {
@@ -68,18 +92,18 @@ impl IpBans {
             Ok(bans) => {
                 let rules = bans
                     .into_iter()
-                    .filter_map(|b| {
-                        Some(IpRule {
-                            ip: b.ip.as_deref()?.parse().ok()?,
-                            server_id: b.server_id,
-                            reason: b.reason,
-                            expires_at: b.expires_at,
-                        })
+                    .map(|b| BanRule {
+                        ip: b.ip.as_deref().and_then(|ip| ip.parse().ok()),
+                        server_id: b.server_id,
+                        uuid: b.uuid,
+                        name: b.name,
+                        reason: b.reason,
+                        expires_at: b.expires_at,
                     })
                     .collect();
                 *self.rules.write().unwrap_or_else(|e| e.into_inner()) = rules;
             }
-            Err(e) => tracing::warn!(error = %e, "couldn't load IP bans"),
+            Err(e) => tracing::warn!(error = %e, "couldn't load bans"),
         }
     }
 }
@@ -99,7 +123,7 @@ enum MgmtSlot {
 /// Player management state shared by the RPC service and background tasks.
 pub struct PlayerManager {
     pub(crate) mojang: Mojang,
-    pub(crate) ip_bans: Arc<IpBans>,
+    pub(crate) bans: Arc<ProxyBans>,
     /// Limits concurrent skin fetches, so a page of new players doesn't
     /// trip Mojang's rate limit.
     pub(crate) head_fetches: tokio::sync::Semaphore,
@@ -113,11 +137,11 @@ impl Default for PlayerManager {
 }
 
 impl PlayerManager {
-    /// A manager sharing `ip_bans` with the proxy hooks.
-    pub fn new(ip_bans: Arc<IpBans>) -> Self {
+    /// A manager sharing `bans` with the proxy hooks.
+    pub fn new(bans: Arc<ProxyBans>) -> Self {
         Self {
             mojang: Mojang::new(),
-            ip_bans,
+            bans,
             head_fetches: tokio::sync::Semaphore::new(2),
             mgmt: tokio::sync::Mutex::default(),
         }

@@ -116,7 +116,7 @@ async fn serve(config: Config) -> Result<()> {
         metrics: Some(metrics),
         shutdown: shutdown_rx.clone(),
         servers,
-        players: Arc::new(nn_api::players::PlayerManager::new(hooks.ip_bans())),
+        players: Arc::new(nn_api::players::PlayerManager::new(hooks.bans())),
     };
     nn_api::players::tasks::spawn(state.clone());
     let app = nn_api::router(state);

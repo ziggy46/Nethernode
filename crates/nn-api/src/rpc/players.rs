@@ -577,7 +577,7 @@ impl pb::PlayerService for PlayerRpc {
             })
             .await
             .map_err(store_error)?;
-        self.state.players.ip_bans.reload(store).await;
+        self.state.players.bans.reload(store).await;
         self.record(
             &user,
             "player.ban",
@@ -614,7 +614,7 @@ impl pb::PlayerService for PlayerRpc {
             .lift_player_bans_for(&profile.uuid, request.server_id)
             .await
             .map_err(store_error)?;
-        self.state.players.ip_bans.reload(store).await;
+        self.state.players.bans.reload(store).await;
         self.record(
             &user,
             "player.unban",

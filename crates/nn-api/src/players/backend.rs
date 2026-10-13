@@ -402,7 +402,13 @@ impl<'a> Ctx<'a> {
                         .map(|t| t.to_string()),
                 };
                 let list = client.ban(&ban).await.map_err(mgmt_error)?;
-                self.check_kept(list.iter().any(|b| b.player.uuid == player.uuid), player)
+                let kept = list.iter().any(|b| b.player.uuid == player.uuid);
+                // An offline-mode server drops players it has never seen;
+                // the ban still holds, as the proxy refuses them by name.
+                if !kept && !self.online_mode {
+                    return Ok(());
+                }
+                self.check_kept(kept, player)
             }
             // RCON bans are permanent; NetherNode's scheduler lifts timed ones.
             Via::Rcon => self

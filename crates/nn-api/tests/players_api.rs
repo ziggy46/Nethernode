@@ -270,7 +270,7 @@ async fn notes() {
 }
 
 #[tokio::test]
-async fn ip_bans_are_enforced_by_the_proxy_hooks() {
+async fn bans_are_enforced_by_the_proxy_hooks() {
     let h = harness().await;
     let hooks = StoreProxyHooks::new(h.store.clone());
     h.store
@@ -285,19 +285,40 @@ async fn ip_bans_are_enforced_by_the_proxy_hooks() {
         })
         .await
         .unwrap();
-    hooks.ip_bans().reload(&h.store).await;
+    hooks.bans().reload(&h.store).await;
+    let login = |ip: &str, name: &str, uuid: Option<&str>| nn_proxy::Admission {
+        server_id: h.server_id.clone(),
+        ip: ip.parse().unwrap(),
+        username: Some(name.to_owned()),
+        uuid: uuid.map(str::to_owned),
+    };
     let refusal = hooks
-        .ip_bans()
-        .refusal(&h.server_id, "203.0.113.7".parse().unwrap())
+        .bans()
+        .refusal(&login("203.0.113.7", "someone_else", None))
         .unwrap();
     assert!(
         refusal.contains("banned") && refusal.contains("griefing"),
         "{refusal}"
     );
+    // By name (any case), as offline-mode servers may not have the entry.
     assert!(
         hooks
-            .ip_bans()
-            .refusal(&h.server_id, "203.0.113.8".parse().unwrap())
+            .bans()
+            .refusal(&login("203.0.113.8", "JEB_", None))
+            .is_some()
+    );
+    // By UUID, with or without dashes.
+    let undashed = JEB.replace('-', "");
+    assert!(
+        hooks
+            .bans()
+            .refusal(&login("203.0.113.8", "renamed", Some(&undashed)))
+            .is_some()
+    );
+    assert!(
+        hooks
+            .bans()
+            .refusal(&login("203.0.113.8", "someone_else", None))
             .is_none()
     );
 }

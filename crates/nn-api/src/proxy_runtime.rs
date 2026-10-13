@@ -111,7 +111,7 @@ impl ProxyRuntime {
 pub struct StoreProxyHooks {
     store: Store,
     orchestrator: std::sync::OnceLock<Arc<nn_orchestrator::Orchestrator>>,
-    ip_bans: Arc<crate::players::IpBans>,
+    bans: Arc<crate::players::ProxyBans>,
 }
 
 impl StoreProxyHooks {
@@ -121,7 +121,7 @@ impl StoreProxyHooks {
         Arc::new(Self {
             store,
             orchestrator: std::sync::OnceLock::new(),
-            ip_bans: Arc::default(),
+            bans: Arc::default(),
         })
     }
 
@@ -130,9 +130,9 @@ impl StoreProxyHooks {
         let _ = self.orchestrator.set(orchestrator);
     }
 
-    /// The IP bans this proxy enforces, shared with player management.
-    pub fn ip_bans(&self) -> Arc<crate::players::IpBans> {
-        self.ip_bans.clone()
+    /// The bans this proxy enforces, shared with player management.
+    pub fn bans(&self) -> Arc<crate::players::ProxyBans> {
+        self.bans.clone()
     }
 }
 
@@ -184,7 +184,7 @@ impl ProxyHooks for StoreProxyHooks {
     }
 
     fn admit<'a>(&'a self, login: &'a nn_proxy::Admission) -> BoxFuture<'a, Option<String>> {
-        let refusal = self.ip_bans.refusal(&login.server_id, login.ip);
+        let refusal = self.bans.refusal(login);
         Box::pin(async move { refusal })
     }
 }
