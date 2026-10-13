@@ -159,8 +159,8 @@ function RoutesSection({ onEdit, canManage }: { onEdit: (route: Route) => void; 
       ) : routes.data.length === 0 ? (
         <div className="rounded-lg border border-divider border-dashed bg-surface-subtle">
           <EmptyState icon={<Globe />} title="No routes yet">
-            Routes send players to a server based on the address they type, like play.example.com. Add one
-            once you have a server.
+            Routes send players to a server based on the address they type, like play.example.com.{" "}
+            {servers.data?.length ? "Add one to let players in." : "Add one once you have a server."}
           </EmptyState>
         </div>
       ) : (
@@ -215,26 +215,40 @@ function RouteCard({
 
   return (
     <li className="rounded-[9px] border border-border bg-surface-subtle p-5 below-md:p-4">
-      <div className="flex items-center gap-5 below-md:flex-wrap below-md:gap-3">
+      {/*
+        Desktop: icon | hostname | → | destination | status | actions.
+        Phone: icon | hostname | status, then destination, then actions.
+      */}
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)_auto_auto] items-center gap-5 below-md:grid-cols-[auto_minmax(0,1fr)_auto] below-md:gap-x-3 below-md:gap-y-2">
         <IconTile>
           <Network />
         </IconTile>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0">
           <p className="truncate font-mono font-semibold text-[13px]">{route.hostname}</p>
           <p className="mt-1 text-meta text-text-muted">{KIND_LABEL[route.kind]}</p>
         </div>
-        <ArrowRight className="size-[18px] shrink-0 text-primary below-md:hidden" aria-label="routes to" />
-        <div className="min-w-0 flex-1">
+        <ArrowRight className="size-[18px] text-primary below-md:hidden" aria-label="routes to" />
+        <div className="min-w-0 below-md:col-span-2 below-md:col-start-2 below-md:row-start-2">
           {route.serverId ? (
             <>
-              <p className="truncate font-semibold text-[13px]">{route.serverName || "Unknown server"}</p>
+              <p className="truncate font-semibold text-[13px]">
+                <span className="hidden text-primary below-md:inline" aria-hidden>
+                  →{" "}
+                </span>
+                {route.serverName || "Unknown server"}
+              </p>
               <p className="mt-1 text-meta text-text-muted">
                 {server ? `Internal port ${server.internalPort}` : "Server details unavailable"}
               </p>
             </>
           ) : (
             <>
-              <p className="font-semibold text-[13px]">Server matching the subdomain</p>
+              <p className="font-semibold text-[13px]">
+                <span className="hidden text-primary below-md:inline" aria-hidden>
+                  →{" "}
+                </span>
+                Server matching the subdomain
+              </p>
               <p className="mt-1 text-meta text-text-muted">
                 {slugTargets
                   ? `${slugTargets} server${slugTargets === 1 ? "" : "s"} by slug`
@@ -243,8 +257,10 @@ function RouteCard({
             </>
           )}
         </div>
-        {server && <ServerStatusBadge status={server.status} />}
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="below-md:col-start-3 below-md:row-start-1">
+          {server && <ServerStatusBadge status={server.status} />}
+        </div>
+        <div className="flex items-center gap-1 below-md:col-span-2 below-md:col-start-2 below-md:row-start-3">
           {route.kind !== RouteKind.DEFAULT && (
             <Button
               variant="ghost"
