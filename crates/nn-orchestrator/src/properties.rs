@@ -116,7 +116,7 @@ pub const FIELDS: &[Field] = &[
         "Difficulty",
         General,
         Choice(&["peaceful", "easy", "normal", "hard"]),
-        "How dangerous mobs are and whether hunger can kill.",
+        "How dangerous mobs are and whether hunger can kill. Paper and Purpur keep an existing world's difficulty; change it with /difficulty in the console.",
     ),
     f(
         "gamemode",
