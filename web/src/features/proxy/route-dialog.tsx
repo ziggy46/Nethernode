@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { TriangleAlert } from "lucide-react";
 import { type FormEvent, useEffect, useId, useState } from "react";
 import { toast } from "sonner";
-
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+
 import { ErrorAlert, Field, Select } from "@/components/ui/field";
 import type { Route } from "@/gen/nethernode/v1/proxy_pb";
 import { errorMessage, proxyClient } from "@/lib/api";
@@ -18,6 +19,12 @@ import { errorMessage, proxyClient } from "@/lib/api";
 import { listenersQuery, serversQuery } from "./queries";
 
 const SLUG_WILDCARD = "__slug__";
+
+/** IPv4 literal, or anything with a colon (IPv6). */
+export function looksLikeIpAddress(hostname: string): boolean {
+  const h = hostname.trim().replace(/^\[|\]$/g, "");
+  return /^\d{1,3}(\.\d{1,3}){3}$/.test(h) || (h.includes(":") && /^[0-9a-f:.]+$/i.test(h));
+}
 
 /** Creates or edits a hostname route. */
 export function RouteDialog({
@@ -97,6 +104,14 @@ export function RouteDialog({
             onChange={(e) => setHostname(e.target.value)}
             autoFocus
           />
+          {looksLikeIpAddress(hostname) && (
+            <p className="mb-[17px] flex gap-2 rounded-md border border-warning/30 bg-warning-subtle px-3 py-2.5 text-meta text-warning">
+              <TriangleAlert className="mt-px size-3.5 shrink-0" aria-hidden />
+              Players who join by IP address may not send that address: some clients send a reverse-DNS name
+              instead (e.g. localhost), even though the server list looks fine. Use a hostname, or * to catch
+              everyone joining by IP.
+            </p>
+          )}
           <div className="mb-[17px]">
             <label htmlFor={destinationId} className="mb-[7px] block text-label text-text-secondary">
               Destination
