@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE servers SET mgmt_port = ?1, mgmt_secret_enc = ?2, updated_at = ?3 WHERE id = ?4",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "3a9390168772a76b04f9a67395d38543334dc15186871d3c80ed3819de502ef4"
+}

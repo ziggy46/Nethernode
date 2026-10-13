@@ -116,6 +116,15 @@ async fn create_start_adopt_sleep_wake_stop_delete() {
         let props = servers_dir.join(&server.slug).join("server.properties");
         assert_eq!(std::fs::metadata(props).unwrap().uid(), ours);
     }
+    {
+        // Player management: a management port and the protocol's keys.
+        assert!(server.mgmt_port.is_some(), "management port allocated");
+        let props =
+            std::fs::read_to_string(servers_dir.join(&server.slug).join("server.properties"))
+                .unwrap();
+        assert!(props.contains("management-server-enabled=true"));
+        assert!(props.contains("management-server-tls-enabled=false"));
+    }
 
     let mut saw_pull = false;
     while let Ok(event) = rx.try_recv() {

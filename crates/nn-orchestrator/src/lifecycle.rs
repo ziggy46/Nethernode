@@ -482,6 +482,7 @@ impl Orchestrator {
                 .rcon_port
                 .and_then(|p| u16::try_from(p).ok())
                 .unwrap_or(0),
+            mgmt_port: server.mgmt_port.and_then(|p| u16::try_from(p).ok()),
             rcon_password: &password,
             eula_accepted: server.eula_accepted_at.is_some(),
             use_aikar_flags: server.use_aikar_flags,
@@ -496,6 +497,7 @@ impl Orchestrator {
     /// Makes sure the server's container exists and matches its settings,
     /// pulling the image and (re)creating the container as needed.
     pub(crate) async fn ensure_container(&self, server: &Server) -> Result<String> {
+        let server = &self.ensure_management(server).await?;
         let spec = self.spec(server)?;
         std::fs::create_dir_all(self.config.servers_dir.join(&server.slug))?;
 
@@ -532,6 +534,77 @@ impl Orchestrator {
             .set_container_id(&server.id, Some(&created.id))
             .await?;
         Ok(created.id)
+    }
+
+    /// Gives the server a management protocol port and secret if it has
+    /// none (servers created before player management, or new ones).
+    async fn ensure_management(&self, server: &Server) -> Result<Server> {
+        if server.mgmt_port.is_some() && server.mgmt_secret_enc.is_some() {
+            return Ok(server.clone());
+        }
+        let _guard = self.create_lock.lock().await;
+        let used = self.store.used_ports().await?;
+        let range = self.config.port_range.clone();
+        let port = ports::allocate(range.clone(), &used, 1, ports::is_free_on_localhost)
+            .and_then(|p| p.first().copied())
+            .ok_or_else(|| {
+                OrchestratorError::NoPorts(format!("{}–{}", range.start(), range.end()))
+            })?;
+        let sealed = self.secrets.seal(&management_secret());
+        self.store
+            .set_management(&server.id, i64::from(port), &sealed)
+            .await?;
+        self.load(&server.id).await
+    }
+
+    /// Turns on the management protocol in `server.properties` before a
+    /// start. The image keeps keys it doesn't manage, and versions before
+    /// 1.21.9 ignore them.
+    async fn write_management_properties(&self, server: &Server) -> Result<()> {
+        let Some(sealed) = &server.mgmt_secret_enc else {
+            return Ok(());
+        };
+        let secret = self.secrets.open(sealed)?;
+        let dir = self.server_dir(&server.slug)?;
+        tokio::task::spawn_blocking(move || -> std::result::Result<(), nn_files::FileError> {
+            let files = nn_files::ServerFiles::open(&dir)?;
+            let path = nn_files::RelPath::parse("server.properties")?;
+            let mut props = match files.read(&path, nn_files::EDITOR_LIMIT) {
+                Ok(content) => nn_files::Properties::parse(&String::from_utf8_lossy(&content.data)),
+                Err(nn_files::FileError::NotFound(_)) => nn_files::Properties::default(),
+                Err(e) => return Err(e),
+            };
+            let port = spec::MGMT_PORT.to_string();
+            for (key, value) in [
+                ("management-server-enabled", "true"),
+                ("management-server-host", "0.0.0.0"),
+                ("management-server-port", port.as_str()),
+                ("management-server-secret", secret.as_str()),
+                ("management-server-tls-enabled", "false"),
+            ] {
+                props.set(key, value);
+            }
+            files.write(&path, props.to_string().as_bytes(), nn_files::Expect::Any)?;
+            Ok(())
+        })
+        .await
+        .map_err(|e| OrchestratorError::Io(std::io::Error::other(e)))?
+        .map_err(|e| OrchestratorError::Io(std::io::Error::other(e.to_string())))
+    }
+
+    /// Where to reach a running server's management protocol: its address
+    /// and secret. `None` until the server has started with one.
+    pub async fn management(&self, id: &str) -> Result<Option<(std::net::SocketAddr, String)>> {
+        let server = self.load(id).await?;
+        let (Some(port), Some(sealed)) = (server.mgmt_port, &server.mgmt_secret_enc) else {
+            return Ok(None);
+        };
+        let port =
+            u16::try_from(port).map_err(|_| OrchestratorError::InvalidInput("bad port".into()))?;
+        Ok(Some((
+            std::net::SocketAddr::from(([127, 0, 0, 1], port)),
+            self.secrets.open(sealed)?,
+        )))
     }
 
     /// Pulls an image, publishing progress at most twice a second.
@@ -608,6 +681,8 @@ impl Orchestrator {
         self.set_status(id, "starting").await;
         let result = async {
             let container = self.ensure_container(&server).await?;
+            let server = self.load(id).await?;
+            self.write_management_properties(&server).await?;
             {
                 let mut state = rt.state();
                 state.expected_exit = None;
@@ -903,6 +978,12 @@ pub fn slugify(name: &str) -> String {
     } else {
         slug
     }
+}
+
+/// 40 alphanumeric characters, the format Minecraft requires.
+fn management_secret() -> String {
+    use rand::distr::{Alphanumeric, SampleString};
+    Alphanumeric.sample_string(&mut rand::rng(), 40)
 }
 
 fn random_password() -> String {

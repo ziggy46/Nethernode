@@ -65,6 +65,10 @@ pub struct Server {
     pub max_players: i64,
     /// Last time the server reached running, unix ms.
     pub last_started_at: Option<i64>,
+    /// Host port (127.0.0.1) for the server management protocol.
+    pub mgmt_port: Option<i64>,
+    /// Management protocol secret, sealed.
+    pub mgmt_secret_enc: Option<String>,
 }
 
 /// Fields needed to create a server.
@@ -162,7 +166,8 @@ impl Store {
                       sleep_when_empty AS "sleep_when_empty: bool", rcon_password_enc, env_json,
                       created_at, updated_at, rcon_port, container_id, eula_accepted_at, card_theme,
                       restart_on_crash AS "restart_on_crash: bool",
-                      use_aikar_flags AS "use_aikar_flags: bool", motd, max_players, last_started_at
+                      use_aikar_flags AS "use_aikar_flags: bool", motd, max_players, last_started_at,
+                      mgmt_port, mgmt_secret_enc
                FROM servers ORDER BY name COLLATE NOCASE, id"#,
         )
         .fetch_all(self.pool())
@@ -180,7 +185,8 @@ impl Store {
                       sleep_when_empty AS "sleep_when_empty: bool", rcon_password_enc, env_json,
                       created_at, updated_at, rcon_port, container_id, eula_accepted_at, card_theme,
                       restart_on_crash AS "restart_on_crash: bool",
-                      use_aikar_flags AS "use_aikar_flags: bool", motd, max_players, last_started_at
+                      use_aikar_flags AS "use_aikar_flags: bool", motd, max_players, last_started_at,
+                      mgmt_port, mgmt_secret_enc
                FROM servers WHERE id = ?1"#,
             id,
         )
@@ -344,11 +350,27 @@ impl Store {
     pub async fn used_ports(&self) -> Result<Vec<i64>> {
         let rows = sqlx::query!(
             r#"SELECT internal_port AS "port!: i64" FROM servers
-               UNION SELECT rcon_port AS "port!: i64" FROM servers WHERE rcon_port IS NOT NULL"#
+               UNION SELECT rcon_port AS "port!: i64" FROM servers WHERE rcon_port IS NOT NULL
+               UNION SELECT mgmt_port AS "port!: i64" FROM servers WHERE mgmt_port IS NOT NULL"#
         )
         .fetch_all(self.pool())
         .await?;
         Ok(rows.into_iter().map(|r| r.port).collect())
+    }
+
+    /// Records the management protocol port and sealed secret.
+    pub async fn set_management(&self, id: &str, port: i64, secret_enc: &str) -> Result<()> {
+        let now = now_ms();
+        sqlx::query!(
+            "UPDATE servers SET mgmt_port = ?1, mgmt_secret_enc = ?2, updated_at = ?3 WHERE id = ?4",
+            port,
+            secret_enc,
+            now,
+            id,
+        )
+        .execute(self.pool())
+        .await?;
+        Ok(())
     }
 
     /// Whether a slug is already taken.

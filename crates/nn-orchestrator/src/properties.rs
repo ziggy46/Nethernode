@@ -548,9 +548,58 @@ pub const FIELDS: &[Field] = &[
     f(
         "management-server-enabled",
         "Management API",
-        Advanced,
+        Network,
         Bool,
         "Minecraft's server management protocol.",
+    ),
+    f(
+        "management-server-host",
+        "Management API address",
+        Network,
+        Text,
+        "Address the management API listens on.",
+    ),
+    f(
+        "management-server-port",
+        "Management API port",
+        Network,
+        int(0, 65_535),
+        "Port for the management API.",
+    ),
+    f(
+        "management-server-secret",
+        "Management API secret",
+        Network,
+        Text,
+        "Secret clients present to the management API.",
+    ),
+    f(
+        "management-server-tls-enabled",
+        "Management API TLS",
+        Network,
+        Bool,
+        "Encrypt management API connections.",
+    ),
+    f(
+        "management-server-tls-keystore",
+        "Management API keystore",
+        Network,
+        Text,
+        "PKCS12 keystore for management API TLS.",
+    ),
+    f(
+        "management-server-tls-keystore-password",
+        "Management API keystore password",
+        Network,
+        Text,
+        "Password for the keystore.",
+    ),
+    f(
+        "management-server-allowed-origins",
+        "Management API origins",
+        Network,
+        Text,
+        "Browser origins allowed to connect.",
     ),
     f(
         "debug",
@@ -575,7 +624,10 @@ pub fn managed_reason(key: &str) -> Option<&'static str> {
 
 /// Whether `key`'s value must never be shown.
 pub fn is_secret(key: &str) -> bool {
-    key == "rcon.password"
+    matches!(
+        key,
+        "rcon.password" | "management-server-secret" | "management-server-tls-keystore-password"
+    )
 }
 
 /// Checks a new value for `key`. Returns a message for the admin on failure.

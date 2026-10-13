@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!\", name, slug, status, mc_version, loader, loader_version, image,\n                      java_version, memory_mb, cpu_limit, internal_port, public_port, hostname,\n                      auto_start AS \"auto_start: bool\", auto_stop_idle_minutes,\n                      sleep_when_empty AS \"sleep_when_empty: bool\", rcon_password_enc, env_json,\n                      created_at, updated_at, rcon_port, container_id, eula_accepted_at, card_theme,\n                      restart_on_crash AS \"restart_on_crash: bool\",\n                      use_aikar_flags AS \"use_aikar_flags: bool\", motd, max_players, last_started_at\n               FROM servers WHERE id = ?1",
+  "query": "SELECT id AS \"id!\", name, slug, status, mc_version, loader, loader_version, image,\n                      java_version, memory_mb, cpu_limit, internal_port, public_port, hostname,\n                      auto_start AS \"auto_start: bool\", auto_stop_idle_minutes,\n                      sleep_when_empty AS \"sleep_when_empty: bool\", rcon_password_enc, env_json,\n                      created_at, updated_at, rcon_port, container_id, eula_accepted_at, card_theme,\n                      restart_on_crash AS \"restart_on_crash: bool\",\n                      use_aikar_flags AS \"use_aikar_flags: bool\", motd, max_players, last_started_at,\n                      mgmt_port, mgmt_secret_enc\n               FROM servers WHERE id = ?1",
   "describe": {
     "columns": [
       {
@@ -332,6 +332,28 @@
             "name": "last_started_at"
           }
         }
+      },
+      {
+        "name": "mgmt_port",
+        "ordinal": 30,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "mgmt_port"
+          }
+        }
+      },
+      {
+        "name": "mgmt_secret_enc",
+        "ordinal": 31,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "mgmt_secret_enc"
+          }
+        }
       }
     ],
     "parameters": {
@@ -367,8 +389,10 @@
       false,
       true,
       false,
+      true,
+      true,
       true
     ]
   },
-  "hash": "0d3706b157d9c55d6cb6d0b8fd4f573f3cde5bcc632a85a54a92481d40f87d16"
+  "hash": "cd60b17e8fe02fe6a813884865267bcd71b06e5b918e0e6ad98649740392dc87"
 }

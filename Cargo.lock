@@ -2080,6 +2080,7 @@ dependencies = [
  "hex",
  "nn-auth",
  "nn-events",
+ "nn-files",
  "nn-mcproto",
  "nn-players",
  "nn-store",

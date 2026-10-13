@@ -23,6 +23,10 @@ pub const LABEL_SPEC_HASH: &str = "nethernode.spec_hash";
 pub const CONTAINER_GAME_PORT: &str = "25565/tcp";
 /// RCON port inside the container (the image default).
 pub const CONTAINER_RCON_PORT: &str = "25575/tcp";
+/// Server management protocol port inside the container.
+pub const CONTAINER_MGMT_PORT: &str = "25585/tcp";
+/// [`CONTAINER_MGMT_PORT`] as a number, for `server.properties`.
+pub const MGMT_PORT: u16 = 25585;
 
 /// Env vars NetherNode manages; custom env can't override them.
 pub const RESERVED_ENV: &[&str] = &[
@@ -65,7 +69,18 @@ pub const MANAGED_PROPERTIES: &[(&str, &str)] = &[
     ),
     ("rcon.port", "NetherNode sends console commands over RCON."),
     ("rcon.password", "Generated and kept secret by NetherNode."),
+    ("management-server-enabled", MGMT_REASON),
+    ("management-server-host", MGMT_REASON),
+    ("management-server-port", MGMT_REASON),
+    ("management-server-secret", MGMT_REASON),
+    ("management-server-tls-enabled", MGMT_REASON),
+    ("management-server-tls-keystore", MGMT_REASON),
+    ("management-server-tls-keystore-password", MGMT_REASON),
+    ("management-server-allowed-origins", MGMT_REASON),
 ];
+
+const MGMT_REASON: &str =
+    "NetherNode manages players through this server's management protocol (Minecraft 1.21.9+).";
 
 /// Container memory limit in MiB for a Java heap of `heap_mb`: the heap plus
 /// `percent` of it, but at least `min_mb` more. Java needs a few hundred MB
@@ -115,6 +130,8 @@ pub struct SpecInput<'a> {
     pub game_port: u16,
     /// Host port for RCON, bound to 127.0.0.1.
     pub rcon_port: u16,
+    /// Host port for the management protocol, bound to 127.0.0.1.
+    pub mgmt_port: Option<u16>,
     /// RCON password (plaintext; passed to the container).
     pub rcon_password: &'a str,
     /// Whether the admin accepted the Minecraft EULA.
@@ -201,10 +218,18 @@ pub fn build(input: &SpecInput<'_>) -> ContainerSpec {
             host_port: Some(port.to_string()),
         }])
     };
-    let port_bindings = HashMap::from([
+    let mut port_bindings = HashMap::from([
         (CONTAINER_GAME_PORT.to_owned(), localhost(input.game_port)),
         (CONTAINER_RCON_PORT.to_owned(), localhost(input.rcon_port)),
     ]);
+    let mut exposed = vec![
+        CONTAINER_GAME_PORT.to_owned(),
+        CONTAINER_RCON_PORT.to_owned(),
+    ];
+    if let Some(port) = input.mgmt_port {
+        port_bindings.insert(CONTAINER_MGMT_PORT.to_owned(), localhost(port));
+        exposed.push(CONTAINER_MGMT_PORT.to_owned());
+    }
     let memory_bytes = memory_limit_mb(
         input.memory_mb,
         input.memory_overhead_percent,
@@ -235,7 +260,7 @@ pub fn build(input: &SpecInput<'_>) -> ContainerSpec {
     let mut body = ContainerCreateBody {
         image: Some(input.image.to_owned()),
         env: Some(env.iter().map(|(k, v)| format!("{k}={v}")).collect()),
-        exposed_ports: Some(vec![CONTAINER_GAME_PORT.into(), CONTAINER_RCON_PORT.into()]),
+        exposed_ports: Some(exposed),
         host_config: Some(host_config),
         // A TTY and open stdin let the console attach later.
         tty: Some(true),
@@ -294,6 +319,7 @@ mod tests {
             cpu_limit: Some(2.0),
             game_port: 30000,
             rcon_port: 30001,
+            mgmt_port: None,
             rcon_password: "secret",
             eula_accepted: true,
             use_aikar_flags: true,
@@ -371,6 +397,30 @@ mod tests {
             "big heaps keep the percentage"
         );
         assert_eq!(memory_limit_mb(1024, 25, 0), 1280);
+    }
+
+    #[test]
+    fn management_port_is_localhost_only() {
+        let extra = BTreeMap::new();
+        let dir = PathBuf::from("/d");
+        let mut i = input(&extra, &dir);
+        assert!(
+            !build(&i)
+                .body
+                .host_config
+                .unwrap()
+                .port_bindings
+                .unwrap()
+                .contains_key(CONTAINER_MGMT_PORT),
+            "no binding until a port is allocated"
+        );
+        i.mgmt_port = Some(30002);
+        let bindings = build(&i).body.host_config.unwrap().port_bindings.unwrap();
+        let mgmt = &bindings[CONTAINER_MGMT_PORT].as_ref().unwrap()[0];
+        assert_eq!(
+            (mgmt.host_ip.as_deref(), mgmt.host_port.as_deref()),
+            (Some("127.0.0.1"), Some("30002"))
+        );
     }
 
     #[test]

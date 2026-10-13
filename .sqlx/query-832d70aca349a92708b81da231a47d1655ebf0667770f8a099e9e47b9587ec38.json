@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT internal_port AS \"port!: i64\" FROM servers\n               UNION SELECT rcon_port AS \"port!: i64\" FROM servers WHERE rcon_port IS NOT NULL",
+  "query": "SELECT internal_port AS \"port!: i64\" FROM servers\n               UNION SELECT rcon_port AS \"port!: i64\" FROM servers WHERE rcon_port IS NOT NULL\n               UNION SELECT mgmt_port AS \"port!: i64\" FROM servers WHERE mgmt_port IS NOT NULL",
   "describe": {
     "columns": [
       {
@@ -22,5 +22,5 @@
       true
     ]
   },
-  "hash": "89a224d33453246246c6e2ee85aa65a612696beb2e0777b9c3c121a54c792ba8"
+  "hash": "832d70aca349a92708b81da231a47d1655ebf0667770f8a099e9e47b9587ec38"
 }
