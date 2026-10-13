@@ -6,6 +6,7 @@
 //! detect concurrent changes, and zip extraction is protected against
 //! zip-slip and zip bombs.
 
+mod adopt;
 mod archive;
 mod error;
 mod owner;
@@ -14,6 +15,7 @@ pub mod properties;
 mod sandbox;
 mod trash;
 
+pub use adopt::{Adopted, OnConflict};
 pub use archive::{CompressReport, ExtractReport, Limits, Progress};
 pub use error::{FileError, Result};
 pub use owner::Owner;

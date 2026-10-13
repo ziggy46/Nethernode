@@ -378,6 +378,11 @@ impl ServerFiles {
         self.open_parent(&parent).map(drop)
     }
 
+    /// Opens a folder inside the sandbox.
+    pub(crate) fn open_folder(&self, path: &RelPath) -> Result<Dir> {
+        self.open_parent(path)
+    }
+
     fn open_parent(&self, parent: &RelPath) -> Result<Dir> {
         self.root.open_dir(parent.as_path()).map_err(|e| {
             if e.kind() == io::ErrorKind::NotFound {
