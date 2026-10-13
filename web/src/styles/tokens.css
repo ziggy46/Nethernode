@@ -191,3 +191,43 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 }
+
+/*
+ * World banner palettes for server cards (UI reference `terrain()`): sky,
+ * three terrain depths, block highlight, accent, accent highlight, detail.
+ * Decorative artwork only; never text.
+ */
+:root {
+  --world-nether-0: #321322;
+  --world-nether-1: #631926;
+  --world-nether-2: #862136;
+  --world-nether-3: #b03532;
+  --world-nether-4: #ff961b;
+  --world-nether-5: #ffcf60;
+  --world-nether-6: #c85620;
+  --world-overworld-0: #152824;
+  --world-overworld-1: #22463c;
+  --world-overworld-2: #30594a;
+  --world-overworld-3: #42715b;
+  --world-overworld-4: #6b9571;
+  --world-overworld-5: #bfd09b;
+  --world-overworld-6: #594031;
+  --world-overworld-7: #547b58;
+  --world-overworld-8: #345942;
+  --world-overworld-9: #41694d;
+  --world-end-0: #241b39;
+  --world-end-1: #3d2f54;
+  --world-end-2: #574169;
+  --world-end-3: #725784;
+  --world-end-4: #c1a3db;
+  --world-end-5: #eadbff;
+  --world-end-6: #2a2038;
+  --world-sky-0: #172534;
+  --world-sky-1: #253d4e;
+  --world-sky-2: #375d64;
+  --world-sky-3: #548478;
+  --world-sky-4: #7bad80;
+  --world-sky-5: #c6e2c8;
+  --world-sky-6: #94b8ba;
+  --world-fade: color-mix(in oklab, #1b1425 50%, transparent);
+}

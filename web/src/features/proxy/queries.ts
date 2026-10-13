@@ -1,6 +1,8 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { proxyClient, serverClient } from "@/lib/api";
+import { proxyClient } from "@/lib/api";
+
+export { serversQuery } from "@/features/servers/queries";
 
 export const listenersQuery = queryOptions({
   queryKey: ["proxy", "listeners"],
@@ -15,9 +17,4 @@ export const routesQuery = queryOptions({
 export const connectionsQuery = queryOptions({
   queryKey: ["proxy", "connections"],
   queryFn: async () => (await proxyClient.listConnections({})).connections,
-});
-
-export const serversQuery = queryOptions({
-  queryKey: ["servers"],
-  queryFn: async () => (await serverClient.listServers({})).servers,
 });

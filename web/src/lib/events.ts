@@ -1,5 +1,8 @@
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { toast } from "sonner";
+
+import { type LiveStats, liveStatsKey, type PullProgress, pullKey } from "@/features/servers/queries";
 
 /**
  * Bus event names sent by `/api/events`, mapped to the queries they make
@@ -11,7 +14,64 @@ const INVALIDATES: Record<string, string[][]> = {
   player_left: [["proxy", "connections"]],
   proxy_connection_closed: [["proxy", "connections"]],
   proxy_listener_changed: [["proxy", "listeners"]],
+  server_status_changed: [["servers"], ["proxy", "routes"]],
+  server_players: [["servers"]],
+  server_operation_failed: [["servers"]],
 };
+
+/** Events whose payload updates the cache directly instead of refetching. */
+type DataEvent =
+  | {
+      type: "server_stats";
+      server_id: string;
+      cpu_percent: number;
+      memory_bytes: number;
+      memory_limit_bytes: number;
+    }
+  | { type: "image_pull_progress"; server_id: string; percent: number | null; status: string }
+  | { type: "server_operation_failed"; server_id: string; operation: string; message: string }
+  | { type: "server_status_changed"; server_id: string; status: string };
+
+const DATA_EVENTS = [
+  "server_stats",
+  "image_pull_progress",
+  "server_operation_failed",
+  "server_status_changed",
+];
+
+function applyData(client: QueryClient, event: DataEvent) {
+  switch (event.type) {
+    case "server_stats": {
+      const live: LiveStats = {
+        cpuPercent: event.cpu_percent,
+        memoryBytes: event.memory_bytes,
+        memoryLimitBytes: event.memory_limit_bytes,
+        atMs: Date.now(),
+      };
+      client.setQueryData(liveStatsKey(event.server_id), live);
+      break;
+    }
+    case "image_pull_progress": {
+      const pull: PullProgress = { percent: event.percent, status: event.status };
+      client.setQueryData(pullKey(event.server_id), pull);
+      break;
+    }
+    case "server_operation_failed": {
+      // Crashes and failed operations stay visible until dismissed.
+      const name = client
+        .getQueryData<{ id: string; name: string }[]>(["servers"])
+        ?.find((s) => s.id === event.server_id)?.name;
+      toast.error(name ? `${name}: ${event.message}` : event.message, { duration: Number.POSITIVE_INFINITY });
+      break;
+    }
+    case "server_status_changed":
+      if (event.status !== "starting" && event.status !== "running") {
+        client.removeQueries({ queryKey: liveStatsKey(event.server_id) });
+      }
+      if (event.status !== "installing") client.removeQueries({ queryKey: pullKey(event.server_id) });
+      break;
+  }
+}
 
 /**
  * Busy servers emit an event for every server-list ping, so invalidations
@@ -60,9 +120,18 @@ export function useServerEvents() {
   useEffect(() => {
     const invalidator = createInvalidator(client);
     const source = new EventSource("/api/events");
-    const names = [...Object.keys(INVALIDATES), "lagged"];
+    const names = [...new Set([...Object.keys(INVALIDATES), ...DATA_EVENTS, "lagged"])];
     const handlers = names.map((name) => {
-      const handler = () => invalidator.note(name);
+      const handler = (message: MessageEvent<string>) => {
+        if (DATA_EVENTS.includes(name)) {
+          try {
+            applyData(client, JSON.parse(message.data) as DataEvent);
+          } catch {
+            // A malformed event shouldn't break the stream.
+          }
+        }
+        invalidator.note(name);
+      };
       source.addEventListener(name, handler);
       return [name, handler] as const;
     });

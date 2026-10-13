@@ -1,51 +1,40 @@
-import { Link } from "@tanstack/react-router";
-import { LogOut, Settings } from "lucide-react";
-import type * as React from "react";
+import { cloneElement, lazy, type ReactElement, Suspense, useState } from "react";
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { ROLE_LABELS, useCurrentUser } from "@/lib/session";
+const AccountMenuImpl = lazy(() => import("./account-menu-impl"));
 
-import { useSignOut } from "./use-sign-out";
+type Trigger = ReactElement<{ onClick?: () => void; "aria-haspopup"?: "menu"; "aria-expanded"?: boolean }>;
 
-/** Account actions, opened from the sidebar user row or the top-bar avatar. */
+/**
+ * Account actions, opened from the sidebar user row or the top-bar avatar.
+ * The menu (Radix + positioning, ~15 KB) loads on first click, keeping it
+ * out of every page's first load.
+ */
 export function AccountMenu({
   children,
   align = "end",
   side = "bottom",
 }: {
-  children: React.ReactNode;
+  children: Trigger;
   align?: "start" | "end";
   side?: "top" | "bottom";
 }) {
-  const user = useCurrentUser();
-  const signOut = useSignOut();
+  const [loaded, setLoaded] = useState(false);
+  const [open, setOpen] = useState(false);
+  if (!loaded) {
+    return cloneElement(children, {
+      "aria-haspopup": "menu",
+      "aria-expanded": false,
+      onClick: () => {
+        setLoaded(true);
+        setOpen(true);
+      },
+    });
+  }
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
-      <DropdownMenuContent align={align} side={side} sideOffset={8} className="min-w-52">
-        <DropdownMenuLabel className="font-normal">
-          <span className="block font-semibold text-label">{user.username}</span>
-          <span className="block text-meta text-text-muted">{ROLE_LABELS[user.role]}</span>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link to="/settings">
-            <Settings />
-            Settings
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => void signOut()}>
-          <LogOut />
-          Sign out
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Suspense fallback={children}>
+      <AccountMenuImpl open={open} onOpenChange={setOpen} align={align} side={side}>
+        {children}
+      </AccountMenuImpl>
+    </Suspense>
   );
 }

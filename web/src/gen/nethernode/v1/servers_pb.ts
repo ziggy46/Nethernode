@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file nethernode/v1/servers.proto.
  */
 export const file_nethernode_v1_servers: GenFile = /*@__PURE__*/
-  fileDesc("ChtuZXRoZXJub2RlL3YxL3NlcnZlcnMucHJvdG8SDW5ldGhlcm5vZGUudjEisgEKBlNlcnZlchIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHNsdWcYAyABKAkSKwoGc3RhdHVzGAQgASgOMhsubmV0aGVybm9kZS52MS5TZXJ2ZXJTdGF0dXMSEgoKbWNfdmVyc2lvbhgFIAEoCRIOCgZsb2FkZXIYBiABKAkSFQoNaW50ZXJuYWxfcG9ydBgHIAEoDRIYChBzbGVlcF93aGVuX2VtcHR5GAggASgIIhQKEkxpc3RTZXJ2ZXJzUmVxdWVzdCI9ChNMaXN0U2VydmVyc1Jlc3BvbnNlEiYKB3NlcnZlcnMYASADKAsyFS5uZXRoZXJub2RlLnYxLlNlcnZlcirwAQoMU2VydmVyU3RhdHVzEh0KGVNFUlZFUl9TVEFUVVNfVU5TUEVDSUZJRUQQABIcChhTRVJWRVJfU1RBVFVTX0lOU1RBTExJTkcQARIZChVTRVJWRVJfU1RBVFVTX1NUT1BQRUQQAhIaChZTRVJWRVJfU1RBVFVTX1NUQVJUSU5HEAMSGQoVU0VSVkVSX1NUQVRVU19SVU5OSU5HEAQSGgoWU0VSVkVSX1NUQVRVU19TVE9QUElORxAFEhoKFlNFUlZFUl9TVEFUVVNfU0xFRVBJTkcQBhIZChVTRVJWRVJfU1RBVFVTX0NSQVNIRUQQBzJqCg1TZXJ2ZXJTZXJ2aWNlElkKC0xpc3RTZXJ2ZXJzEiEubmV0aGVybm9kZS52MS5MaXN0U2VydmVyc1JlcXVlc3QaIi5uZXRoZXJub2RlLnYxLkxpc3RTZXJ2ZXJzUmVzcG9uc2UiA5ACAWIGcHJvdG8z");
+  fileDesc("ChtuZXRoZXJub2RlL3YxL3NlcnZlcnMucHJvdG8SDW5ldGhlcm5vZGUudjEiuQMKBlNlcnZlchIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHNsdWcYAyABKAkSKwoGc3RhdHVzGAQgASgOMhsubmV0aGVybm9kZS52MS5TZXJ2ZXJTdGF0dXMSEgoKbWNfdmVyc2lvbhgFIAEoCRIOCgZsb2FkZXIYBiABKAkSFQoNaW50ZXJuYWxfcG9ydBgHIAEoDRIYChBzbGVlcF93aGVuX2VtcHR5GAggASgIEi8KCHNldHRpbmdzGAkgASgLMh0ubmV0aGVybm9kZS52MS5TZXJ2ZXJTZXR0aW5ncxIVCg1jcmVhdGVkX2F0X21zGAogASgDEh8KEmxhc3Rfc3RhcnRlZF9hdF9tcxgLIAEoA0gAiAEBEhsKDnBsYXllcnNfb25saW5lGAwgASgNSAGIAQESGAoLcGxheWVyc19tYXgYDSABKA1IAogBARIRCglob3N0bmFtZXMYDiADKAkSGAoQcmVzdGFydF9yZXF1aXJlZBgPIAEoCEIVChNfbGFzdF9zdGFydGVkX2F0X21zQhEKD19wbGF5ZXJzX29ubGluZUIOCgxfcGxheWVyc19tYXgirAMKDlNlcnZlclNldHRpbmdzEgwKBG5hbWUYASABKAkSEgoKbWNfdmVyc2lvbhgCIAEoCRIOCgZsb2FkZXIYAyABKAkSFgoObG9hZGVyX3ZlcnNpb24YBCABKAkSDQoFaW1hZ2UYBSABKAkSGQoMamF2YV92ZXJzaW9uGAYgASgNSACIAQESEQoJbWVtb3J5X21iGAcgASgNEhYKCWNwdV9saW1pdBgIIAEoAUgBiAEBEhIKCmF1dG9fc3RhcnQYCSABKAgSGAoQc2xlZXBfd2hlbl9lbXB0eRgKIAEoCBIZCgxpZGxlX21pbnV0ZXMYCyABKA1IAogBARIYChByZXN0YXJ0X29uX2NyYXNoGAwgASgIEhcKD3VzZV9haWthcl9mbGFncxgNIAEoCBIMCgRtb3RkGA4gASgJEhMKC21heF9wbGF5ZXJzGA8gASgNEiwKCmNhcmRfdGhlbWUYECABKA4yGC5uZXRoZXJub2RlLnYxLkNhcmRUaGVtZUIPCg1famF2YV92ZXJzaW9uQgwKCl9jcHVfbGltaXRCDwoNX2lkbGVfbWludXRlcyIUChJMaXN0U2VydmVyc1JlcXVlc3QiPQoTTGlzdFNlcnZlcnNSZXNwb25zZRImCgdzZXJ2ZXJzGAEgAygLMhUubmV0aGVybm9kZS52MS5TZXJ2ZXIiHgoQR2V0U2VydmVyUmVxdWVzdBIKCgJpZBgBIAEoCSI6ChFHZXRTZXJ2ZXJSZXNwb25zZRIlCgZzZXJ2ZXIYASABKAsyFS5uZXRoZXJub2RlLnYxLlNlcnZlciLtAQoTQ3JlYXRlU2VydmVyUmVxdWVzdBIMCgRuYW1lGAEgASgJEg4KBmxvYWRlchgCIAEoCRISCgptY192ZXJzaW9uGAMgASgJEhYKDmxvYWRlcl92ZXJzaW9uGAQgASgJEhEKCW1lbW9yeV9tYhgFIAEoDRIsCgpjYXJkX3RoZW1lGAYgASgOMhgubmV0aGVybm9kZS52MS5DYXJkVGhlbWUSFQoNZXVsYV9hY2NlcHRlZBgHIAEoCBIYChBzbGVlcF93aGVuX2VtcHR5GAggASgIEhoKEnN0YXJ0X2FmdGVyX2NyZWF0ZRgJIAEoCCI9ChRDcmVhdGVTZXJ2ZXJSZXNwb25zZRIlCgZzZXJ2ZXIYASABKAsyFS5uZXRoZXJub2RlLnYxLlNlcnZlciJSChNVcGRhdGVTZXJ2ZXJSZXF1ZXN0EgoKAmlkGAEgASgJEi8KCHNldHRpbmdzGAIgASgLMh0ubmV0aGVybm9kZS52MS5TZXJ2ZXJTZXR0aW5ncyI9ChRVcGRhdGVTZXJ2ZXJSZXNwb25zZRIlCgZzZXJ2ZXIYASABKAsyFS5uZXRoZXJub2RlLnYxLlNlcnZlciI2ChNEZWxldGVTZXJ2ZXJSZXF1ZXN0EgoKAmlkGAEgASgJEhMKC2RlbGV0ZV9kYXRhGAIgASgIIhYKFERlbGV0ZVNlcnZlclJlc3BvbnNlIiAKElN0YXJ0U2VydmVyUmVxdWVzdBIKCgJpZBgBIAEoCSIVChNTdGFydFNlcnZlclJlc3BvbnNlIh8KEVN0b3BTZXJ2ZXJSZXF1ZXN0EgoKAmlkGAEgASgJIhQKElN0b3BTZXJ2ZXJSZXNwb25zZSIiChRSZXN0YXJ0U2VydmVyUmVxdWVzdBIKCgJpZBgBIAEoCSIXChVSZXN0YXJ0U2VydmVyUmVzcG9uc2UiHwoRS2lsbFNlcnZlclJlcXVlc3QSCgoCaWQYASABKAkiFAoSS2lsbFNlcnZlclJlc3BvbnNlIo4BCgpTdGF0U2FtcGxlEg0KBWF0X21zGAEgASgDEhMKC2NwdV9wZXJjZW50GAIgASgBEhQKDG1lbW9yeV9ieXRlcxgDIAEoBBIaChJtZW1vcnlfbGltaXRfYnl0ZXMYBCABKAQSFAoMbmV0X3J4X2J5dGVzGAUgASgEEhQKDG5ldF90eF9ieXRlcxgGIAEoBCIjChVHZXRTZXJ2ZXJTdGF0c1JlcXVlc3QSCgoCaWQYASABKAkiRAoWR2V0U2VydmVyU3RhdHNSZXNwb25zZRIqCgdzYW1wbGVzGAEgAygLMhkubmV0aGVybm9kZS52MS5TdGF0U2FtcGxlIhQKEkdldEhvc3RJbmZvUmVxdWVzdCKmAQoTR2V0SG9zdEluZm9SZXNwb25zZRIYChBkb2NrZXJfYXZhaWxhYmxlGAEgASgIEg0KBWVycm9yGAIgASgJEhAKCGhvc3RuYW1lGAMgASgJEhgKEG9wZXJhdGluZ19zeXN0ZW0YBCABKAkSFgoOZG9ja2VyX3ZlcnNpb24YBSABKAkSDAoEY3B1cxgGIAEoDRIUCgxtZW1vcnlfYnl0ZXMYByABKAQq8AEKDFNlcnZlclN0YXR1cxIdChlTRVJWRVJfU1RBVFVTX1VOU1BFQ0lGSUVEEAASHAoYU0VSVkVSX1NUQVRVU19JTlNUQUxMSU5HEAESGQoVU0VSVkVSX1NUQVRVU19TVE9QUEVEEAISGgoWU0VSVkVSX1NUQVRVU19TVEFSVElORxADEhkKFVNFUlZFUl9TVEFUVVNfUlVOTklORxAEEhoKFlNFUlZFUl9TVEFUVVNfU1RPUFBJTkcQBRIaChZTRVJWRVJfU1RBVFVTX1NMRUVQSU5HEAYSGQoVU0VSVkVSX1NUQVRVU19DUkFTSEVEEAcqgAEKCUNhcmRUaGVtZRIaChZDQVJEX1RIRU1FX1VOU1BFQ0lGSUVEEAASFQoRQ0FSRF9USEVNRV9ORVRIRVIQARIYChRDQVJEX1RIRU1FX09WRVJXT1JMRBACEhIKDkNBUkRfVEhFTUVfRU5EEAMSEgoOQ0FSRF9USEVNRV9TS1kQBDLhBwoNU2VydmVyU2VydmljZRJZCgtMaXN0U2VydmVycxIhLm5ldGhlcm5vZGUudjEuTGlzdFNlcnZlcnNSZXF1ZXN0GiIubmV0aGVybm9kZS52MS5MaXN0U2VydmVyc1Jlc3BvbnNlIgOQAgESUwoJR2V0U2VydmVyEh8ubmV0aGVybm9kZS52MS5HZXRTZXJ2ZXJSZXF1ZXN0GiAubmV0aGVybm9kZS52MS5HZXRTZXJ2ZXJSZXNwb25zZSIDkAIBElcKDENyZWF0ZVNlcnZlchIiLm5ldGhlcm5vZGUudjEuQ3JlYXRlU2VydmVyUmVxdWVzdBojLm5ldGhlcm5vZGUudjEuQ3JlYXRlU2VydmVyUmVzcG9uc2USVwoMVXBkYXRlU2VydmVyEiIubmV0aGVybm9kZS52MS5VcGRhdGVTZXJ2ZXJSZXF1ZXN0GiMubmV0aGVybm9kZS52MS5VcGRhdGVTZXJ2ZXJSZXNwb25zZRJXCgxEZWxldGVTZXJ2ZXISIi5uZXRoZXJub2RlLnYxLkRlbGV0ZVNlcnZlclJlcXVlc3QaIy5uZXRoZXJub2RlLnYxLkRlbGV0ZVNlcnZlclJlc3BvbnNlElQKC1N0YXJ0U2VydmVyEiEubmV0aGVybm9kZS52MS5TdGFydFNlcnZlclJlcXVlc3QaIi5uZXRoZXJub2RlLnYxLlN0YXJ0U2VydmVyUmVzcG9uc2USUQoKU3RvcFNlcnZlchIgLm5ldGhlcm5vZGUudjEuU3RvcFNlcnZlclJlcXVlc3QaIS5uZXRoZXJub2RlLnYxLlN0b3BTZXJ2ZXJSZXNwb25zZRJaCg1SZXN0YXJ0U2VydmVyEiMubmV0aGVybm9kZS52MS5SZXN0YXJ0U2VydmVyUmVxdWVzdBokLm5ldGhlcm5vZGUudjEuUmVzdGFydFNlcnZlclJlc3BvbnNlElEKCktpbGxTZXJ2ZXISIC5uZXRoZXJub2RlLnYxLktpbGxTZXJ2ZXJSZXF1ZXN0GiEubmV0aGVybm9kZS52MS5LaWxsU2VydmVyUmVzcG9uc2USYgoOR2V0U2VydmVyU3RhdHMSJC5uZXRoZXJub2RlLnYxLkdldFNlcnZlclN0YXRzUmVxdWVzdBolLm5ldGhlcm5vZGUudjEuR2V0U2VydmVyU3RhdHNSZXNwb25zZSIDkAIBElkKC0dldEhvc3RJbmZvEiEubmV0aGVybm9kZS52MS5HZXRIb3N0SW5mb1JlcXVlc3QaIi5uZXRoZXJub2RlLnYxLkdldEhvc3RJbmZvUmVzcG9uc2UiA5ACAWIGcHJvdG8z");
 
 /**
  * A managed Minecraft server.
@@ -39,12 +39,14 @@ export type Server = Message<"nethernode.v1.Server"> & {
   status: ServerStatus;
 
   /**
+   * e.g. "1.21.4", or "LATEST".
+   *
    * @generated from field: string mc_version = 5;
    */
   mcVersion: string;
 
   /**
-   * Server software or mod loader, e.g. "paper", "forge".
+   * Server software: vanilla, paper, purpur, fabric, forge, neoforge, quilt.
    *
    * @generated from field: string loader = 6;
    */
@@ -63,6 +65,51 @@ export type Server = Message<"nethernode.v1.Server"> & {
    * @generated from field: bool sleep_when_empty = 8;
    */
   sleepWhenEmpty: boolean;
+
+  /**
+   * @generated from field: nethernode.v1.ServerSettings settings = 9;
+   */
+  settings?: ServerSettings | undefined;
+
+  /**
+   * Unix ms.
+   *
+   * @generated from field: int64 created_at_ms = 10;
+   */
+  createdAtMs: bigint;
+
+  /**
+   * Unix ms; when the server last became RUNNING.
+   *
+   * @generated from field: optional int64 last_started_at_ms = 11;
+   */
+  lastStartedAtMs?: bigint | undefined;
+
+  /**
+   * From the last status ping, while running.
+   *
+   * @generated from field: optional uint32 players_online = 12;
+   */
+  playersOnline?: number | undefined;
+
+  /**
+   * @generated from field: optional uint32 players_max = 13;
+   */
+  playersMax?: number | undefined;
+
+  /**
+   * Exact hostnames routed to this server, for display.
+   *
+   * @generated from field: repeated string hostnames = 14;
+   */
+  hostnames: string[];
+
+  /**
+   * Settings changed since the container was created; restart to apply.
+   *
+   * @generated from field: bool restart_required = 15;
+   */
+  restartRequired: boolean;
 };
 
 /**
@@ -71,6 +118,112 @@ export type Server = Message<"nethernode.v1.Server"> & {
  */
 export const ServerSchema: GenMessage<Server> = /*@__PURE__*/
   messageDesc(file_nethernode_v1_servers, 0);
+
+/**
+ * Settings an admin can change after creation.
+ *
+ * @generated from message nethernode.v1.ServerSettings
+ */
+export type ServerSettings = Message<"nethernode.v1.ServerSettings"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string mc_version = 2;
+   */
+  mcVersion: string;
+
+  /**
+   * @generated from field: string loader = 3;
+   */
+  loader: string;
+
+  /**
+   * Loader or build pin; empty for the default.
+   *
+   * @generated from field: string loader_version = 4;
+   */
+  loaderVersion: string;
+
+  /**
+   * Container image; empty to pick the default for the Java version.
+   *
+   * @generated from field: string image = 5;
+   */
+  image: string;
+
+  /**
+   * Java major version override.
+   *
+   * @generated from field: optional uint32 java_version = 6;
+   */
+  javaVersion?: number | undefined;
+
+  /**
+   * Java heap in MiB.
+   *
+   * @generated from field: uint32 memory_mb = 7;
+   */
+  memoryMb: number;
+
+  /**
+   * CPU limit in cores.
+   *
+   * @generated from field: optional double cpu_limit = 8;
+   */
+  cpuLimit?: number | undefined;
+
+  /**
+   * @generated from field: bool auto_start = 9;
+   */
+  autoStart: boolean;
+
+  /**
+   * @generated from field: bool sleep_when_empty = 10;
+   */
+  sleepWhenEmpty: boolean;
+
+  /**
+   * Minutes with no players before sleeping (default 10).
+   *
+   * @generated from field: optional uint32 idle_minutes = 11;
+   */
+  idleMinutes?: number | undefined;
+
+  /**
+   * @generated from field: bool restart_on_crash = 12;
+   */
+  restartOnCrash: boolean;
+
+  /**
+   * @generated from field: bool use_aikar_flags = 13;
+   */
+  useAikarFlags: boolean;
+
+  /**
+   * @generated from field: string motd = 14;
+   */
+  motd: string;
+
+  /**
+   * @generated from field: uint32 max_players = 15;
+   */
+  maxPlayers: number;
+
+  /**
+   * @generated from field: nethernode.v1.CardTheme card_theme = 16;
+   */
+  cardTheme: CardTheme;
+};
+
+/**
+ * Describes the message nethernode.v1.ServerSettings.
+ * Use `create(ServerSettingsSchema)` to create a new message.
+ */
+export const ServerSettingsSchema: GenMessage<ServerSettings> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 1);
 
 /**
  * @generated from message nethernode.v1.ListServersRequest
@@ -83,7 +236,7 @@ export type ListServersRequest = Message<"nethernode.v1.ListServersRequest"> & {
  * Use `create(ListServersRequestSchema)` to create a new message.
  */
 export const ListServersRequestSchema: GenMessage<ListServersRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 1);
+  messageDesc(file_nethernode_v1_servers, 2);
 
 /**
  * @generated from message nethernode.v1.ListServersResponse
@@ -100,7 +253,461 @@ export type ListServersResponse = Message<"nethernode.v1.ListServersResponse"> &
  * Use `create(ListServersResponseSchema)` to create a new message.
  */
 export const ListServersResponseSchema: GenMessage<ListServersResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 2);
+  messageDesc(file_nethernode_v1_servers, 3);
+
+/**
+ * @generated from message nethernode.v1.GetServerRequest
+ */
+export type GetServerRequest = Message<"nethernode.v1.GetServerRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+};
+
+/**
+ * Describes the message nethernode.v1.GetServerRequest.
+ * Use `create(GetServerRequestSchema)` to create a new message.
+ */
+export const GetServerRequestSchema: GenMessage<GetServerRequest> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 4);
+
+/**
+ * @generated from message nethernode.v1.GetServerResponse
+ */
+export type GetServerResponse = Message<"nethernode.v1.GetServerResponse"> & {
+  /**
+   * @generated from field: nethernode.v1.Server server = 1;
+   */
+  server?: Server | undefined;
+};
+
+/**
+ * Describes the message nethernode.v1.GetServerResponse.
+ * Use `create(GetServerResponseSchema)` to create a new message.
+ */
+export const GetServerResponseSchema: GenMessage<GetServerResponse> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 5);
+
+/**
+ * @generated from message nethernode.v1.CreateServerRequest
+ */
+export type CreateServerRequest = Message<"nethernode.v1.CreateServerRequest"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string loader = 2;
+   */
+  loader: string;
+
+  /**
+   * @generated from field: string mc_version = 3;
+   */
+  mcVersion: string;
+
+  /**
+   * @generated from field: string loader_version = 4;
+   */
+  loaderVersion: string;
+
+  /**
+   * @generated from field: uint32 memory_mb = 5;
+   */
+  memoryMb: number;
+
+  /**
+   * @generated from field: nethernode.v1.CardTheme card_theme = 6;
+   */
+  cardTheme: CardTheme;
+
+  /**
+   * The admin ticked "I accept the Minecraft EULA". Required.
+   *
+   * @generated from field: bool eula_accepted = 7;
+   */
+  eulaAccepted: boolean;
+
+  /**
+   * @generated from field: bool sleep_when_empty = 8;
+   */
+  sleepWhenEmpty: boolean;
+
+  /**
+   * Start as soon as installation finishes.
+   *
+   * @generated from field: bool start_after_create = 9;
+   */
+  startAfterCreate: boolean;
+};
+
+/**
+ * Describes the message nethernode.v1.CreateServerRequest.
+ * Use `create(CreateServerRequestSchema)` to create a new message.
+ */
+export const CreateServerRequestSchema: GenMessage<CreateServerRequest> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 6);
+
+/**
+ * @generated from message nethernode.v1.CreateServerResponse
+ */
+export type CreateServerResponse = Message<"nethernode.v1.CreateServerResponse"> & {
+  /**
+   * @generated from field: nethernode.v1.Server server = 1;
+   */
+  server?: Server | undefined;
+};
+
+/**
+ * Describes the message nethernode.v1.CreateServerResponse.
+ * Use `create(CreateServerResponseSchema)` to create a new message.
+ */
+export const CreateServerResponseSchema: GenMessage<CreateServerResponse> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 7);
+
+/**
+ * @generated from message nethernode.v1.UpdateServerRequest
+ */
+export type UpdateServerRequest = Message<"nethernode.v1.UpdateServerRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: nethernode.v1.ServerSettings settings = 2;
+   */
+  settings?: ServerSettings | undefined;
+};
+
+/**
+ * Describes the message nethernode.v1.UpdateServerRequest.
+ * Use `create(UpdateServerRequestSchema)` to create a new message.
+ */
+export const UpdateServerRequestSchema: GenMessage<UpdateServerRequest> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 8);
+
+/**
+ * @generated from message nethernode.v1.UpdateServerResponse
+ */
+export type UpdateServerResponse = Message<"nethernode.v1.UpdateServerResponse"> & {
+  /**
+   * @generated from field: nethernode.v1.Server server = 1;
+   */
+  server?: Server | undefined;
+};
+
+/**
+ * Describes the message nethernode.v1.UpdateServerResponse.
+ * Use `create(UpdateServerResponseSchema)` to create a new message.
+ */
+export const UpdateServerResponseSchema: GenMessage<UpdateServerResponse> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 9);
+
+/**
+ * @generated from message nethernode.v1.DeleteServerRequest
+ */
+export type DeleteServerRequest = Message<"nethernode.v1.DeleteServerRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * Also delete the world, mods, and configuration files.
+   *
+   * @generated from field: bool delete_data = 2;
+   */
+  deleteData: boolean;
+};
+
+/**
+ * Describes the message nethernode.v1.DeleteServerRequest.
+ * Use `create(DeleteServerRequestSchema)` to create a new message.
+ */
+export const DeleteServerRequestSchema: GenMessage<DeleteServerRequest> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 10);
+
+/**
+ * @generated from message nethernode.v1.DeleteServerResponse
+ */
+export type DeleteServerResponse = Message<"nethernode.v1.DeleteServerResponse"> & {
+};
+
+/**
+ * Describes the message nethernode.v1.DeleteServerResponse.
+ * Use `create(DeleteServerResponseSchema)` to create a new message.
+ */
+export const DeleteServerResponseSchema: GenMessage<DeleteServerResponse> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 11);
+
+/**
+ * @generated from message nethernode.v1.StartServerRequest
+ */
+export type StartServerRequest = Message<"nethernode.v1.StartServerRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+};
+
+/**
+ * Describes the message nethernode.v1.StartServerRequest.
+ * Use `create(StartServerRequestSchema)` to create a new message.
+ */
+export const StartServerRequestSchema: GenMessage<StartServerRequest> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 12);
+
+/**
+ * @generated from message nethernode.v1.StartServerResponse
+ */
+export type StartServerResponse = Message<"nethernode.v1.StartServerResponse"> & {
+};
+
+/**
+ * Describes the message nethernode.v1.StartServerResponse.
+ * Use `create(StartServerResponseSchema)` to create a new message.
+ */
+export const StartServerResponseSchema: GenMessage<StartServerResponse> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 13);
+
+/**
+ * @generated from message nethernode.v1.StopServerRequest
+ */
+export type StopServerRequest = Message<"nethernode.v1.StopServerRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+};
+
+/**
+ * Describes the message nethernode.v1.StopServerRequest.
+ * Use `create(StopServerRequestSchema)` to create a new message.
+ */
+export const StopServerRequestSchema: GenMessage<StopServerRequest> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 14);
+
+/**
+ * @generated from message nethernode.v1.StopServerResponse
+ */
+export type StopServerResponse = Message<"nethernode.v1.StopServerResponse"> & {
+};
+
+/**
+ * Describes the message nethernode.v1.StopServerResponse.
+ * Use `create(StopServerResponseSchema)` to create a new message.
+ */
+export const StopServerResponseSchema: GenMessage<StopServerResponse> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 15);
+
+/**
+ * @generated from message nethernode.v1.RestartServerRequest
+ */
+export type RestartServerRequest = Message<"nethernode.v1.RestartServerRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+};
+
+/**
+ * Describes the message nethernode.v1.RestartServerRequest.
+ * Use `create(RestartServerRequestSchema)` to create a new message.
+ */
+export const RestartServerRequestSchema: GenMessage<RestartServerRequest> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 16);
+
+/**
+ * @generated from message nethernode.v1.RestartServerResponse
+ */
+export type RestartServerResponse = Message<"nethernode.v1.RestartServerResponse"> & {
+};
+
+/**
+ * Describes the message nethernode.v1.RestartServerResponse.
+ * Use `create(RestartServerResponseSchema)` to create a new message.
+ */
+export const RestartServerResponseSchema: GenMessage<RestartServerResponse> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 17);
+
+/**
+ * @generated from message nethernode.v1.KillServerRequest
+ */
+export type KillServerRequest = Message<"nethernode.v1.KillServerRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+};
+
+/**
+ * Describes the message nethernode.v1.KillServerRequest.
+ * Use `create(KillServerRequestSchema)` to create a new message.
+ */
+export const KillServerRequestSchema: GenMessage<KillServerRequest> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 18);
+
+/**
+ * @generated from message nethernode.v1.KillServerResponse
+ */
+export type KillServerResponse = Message<"nethernode.v1.KillServerResponse"> & {
+};
+
+/**
+ * Describes the message nethernode.v1.KillServerResponse.
+ * Use `create(KillServerResponseSchema)` to create a new message.
+ */
+export const KillServerResponseSchema: GenMessage<KillServerResponse> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 19);
+
+/**
+ * One resource sample.
+ *
+ * @generated from message nethernode.v1.StatSample
+ */
+export type StatSample = Message<"nethernode.v1.StatSample"> & {
+  /**
+   * Unix ms.
+   *
+   * @generated from field: int64 at_ms = 1;
+   */
+  atMs: bigint;
+
+  /**
+   * 100 = one full CPU core.
+   *
+   * @generated from field: double cpu_percent = 2;
+   */
+  cpuPercent: number;
+
+  /**
+   * @generated from field: uint64 memory_bytes = 3;
+   */
+  memoryBytes: bigint;
+
+  /**
+   * @generated from field: uint64 memory_limit_bytes = 4;
+   */
+  memoryLimitBytes: bigint;
+
+  /**
+   * @generated from field: uint64 net_rx_bytes = 5;
+   */
+  netRxBytes: bigint;
+
+  /**
+   * @generated from field: uint64 net_tx_bytes = 6;
+   */
+  netTxBytes: bigint;
+};
+
+/**
+ * Describes the message nethernode.v1.StatSample.
+ * Use `create(StatSampleSchema)` to create a new message.
+ */
+export const StatSampleSchema: GenMessage<StatSample> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 20);
+
+/**
+ * @generated from message nethernode.v1.GetServerStatsRequest
+ */
+export type GetServerStatsRequest = Message<"nethernode.v1.GetServerStatsRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+};
+
+/**
+ * Describes the message nethernode.v1.GetServerStatsRequest.
+ * Use `create(GetServerStatsRequestSchema)` to create a new message.
+ */
+export const GetServerStatsRequestSchema: GenMessage<GetServerStatsRequest> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 21);
+
+/**
+ * @generated from message nethernode.v1.GetServerStatsResponse
+ */
+export type GetServerStatsResponse = Message<"nethernode.v1.GetServerStatsResponse"> & {
+  /**
+   * Oldest first.
+   *
+   * @generated from field: repeated nethernode.v1.StatSample samples = 1;
+   */
+  samples: StatSample[];
+};
+
+/**
+ * Describes the message nethernode.v1.GetServerStatsResponse.
+ * Use `create(GetServerStatsResponseSchema)` to create a new message.
+ */
+export const GetServerStatsResponseSchema: GenMessage<GetServerStatsResponse> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 22);
+
+/**
+ * @generated from message nethernode.v1.GetHostInfoRequest
+ */
+export type GetHostInfoRequest = Message<"nethernode.v1.GetHostInfoRequest"> & {
+};
+
+/**
+ * Describes the message nethernode.v1.GetHostInfoRequest.
+ * Use `create(GetHostInfoRequestSchema)` to create a new message.
+ */
+export const GetHostInfoRequestSchema: GenMessage<GetHostInfoRequest> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 23);
+
+/**
+ * @generated from message nethernode.v1.GetHostInfoResponse
+ */
+export type GetHostInfoResponse = Message<"nethernode.v1.GetHostInfoResponse"> & {
+  /**
+   * False when Docker can't be reached; see `error`.
+   *
+   * @generated from field: bool docker_available = 1;
+   */
+  dockerAvailable: boolean;
+
+  /**
+   * @generated from field: string error = 2;
+   */
+  error: string;
+
+  /**
+   * @generated from field: string hostname = 3;
+   */
+  hostname: string;
+
+  /**
+   * @generated from field: string operating_system = 4;
+   */
+  operatingSystem: string;
+
+  /**
+   * @generated from field: string docker_version = 5;
+   */
+  dockerVersion: string;
+
+  /**
+   * @generated from field: uint32 cpus = 6;
+   */
+  cpus: number;
+
+  /**
+   * @generated from field: uint64 memory_bytes = 7;
+   */
+  memoryBytes: bigint;
+};
+
+/**
+ * Describes the message nethernode.v1.GetHostInfoResponse.
+ * Use `create(GetHostInfoResponseSchema)` to create a new message.
+ */
+export const GetHostInfoResponseSchema: GenMessage<GetHostInfoResponse> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 24);
 
 /**
  * A server's lifecycle state.
@@ -156,8 +763,48 @@ export const ServerStatusSchema: GenEnum<ServerStatus> = /*@__PURE__*/
   enumDesc(file_nethernode_v1_servers, 0);
 
 /**
- * Minecraft servers. Read-only for now; lifecycle (create, start, stop)
- * arrives with the orchestrator.
+ * Card artwork. Presentation only; never affects the world.
+ *
+ * @generated from enum nethernode.v1.CardTheme
+ */
+export enum CardTheme {
+  /**
+   * @generated from enum value: CARD_THEME_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: CARD_THEME_NETHER = 1;
+   */
+  NETHER = 1,
+
+  /**
+   * @generated from enum value: CARD_THEME_OVERWORLD = 2;
+   */
+  OVERWORLD = 2,
+
+  /**
+   * @generated from enum value: CARD_THEME_END = 3;
+   */
+  END = 3,
+
+  /**
+   * @generated from enum value: CARD_THEME_SKY = 4;
+   */
+  SKY = 4,
+}
+
+/**
+ * Describes the enum nethernode.v1.CardTheme.
+ */
+export const CardThemeSchema: GenEnum<CardTheme> = /*@__PURE__*/
+  enumDesc(file_nethernode_v1_servers, 1);
+
+/**
+ * Minecraft servers: create, configure, start, stop, and delete them.
+ * Lifecycle calls return as soon as the operation is underway; watch
+ * /api/events (`server_status_changed`, `image_pull_progress`,
+ * `server_operation_failed`) for progress and results.
  *
  * @generated from service nethernode.v1.ServerService
  */
@@ -171,6 +818,103 @@ export const ServerService: GenService<{
     methodKind: "unary";
     input: typeof ListServersRequestSchema;
     output: typeof ListServersResponseSchema;
+  },
+  /**
+   * Gets one server.
+   *
+   * @generated from rpc nethernode.v1.ServerService.GetServer
+   */
+  getServer: {
+    methodKind: "unary";
+    input: typeof GetServerRequestSchema;
+    output: typeof GetServerResponseSchema;
+  },
+  /**
+   * Creates a server. Installation (image download, container creation)
+   * continues in the background with status INSTALLING.
+   *
+   * @generated from rpc nethernode.v1.ServerService.CreateServer
+   */
+  createServer: {
+    methodKind: "unary";
+    input: typeof CreateServerRequestSchema;
+    output: typeof CreateServerResponseSchema;
+  },
+  /**
+   * Changes settings. Some changes only apply after a restart.
+   *
+   * @generated from rpc nethernode.v1.ServerService.UpdateServer
+   */
+  updateServer: {
+    methodKind: "unary";
+    input: typeof UpdateServerRequestSchema;
+    output: typeof UpdateServerResponseSchema;
+  },
+  /**
+   * Deletes a server, optionally including its world and files.
+   *
+   * @generated from rpc nethernode.v1.ServerService.DeleteServer
+   */
+  deleteServer: {
+    methodKind: "unary";
+    input: typeof DeleteServerRequestSchema;
+    output: typeof DeleteServerResponseSchema;
+  },
+  /**
+   * @generated from rpc nethernode.v1.ServerService.StartServer
+   */
+  startServer: {
+    methodKind: "unary";
+    input: typeof StartServerRequestSchema;
+    output: typeof StartServerResponseSchema;
+  },
+  /**
+   * Saves the world and stops gracefully (up to 60 s, then forced).
+   *
+   * @generated from rpc nethernode.v1.ServerService.StopServer
+   */
+  stopServer: {
+    methodKind: "unary";
+    input: typeof StopServerRequestSchema;
+    output: typeof StopServerResponseSchema;
+  },
+  /**
+   * @generated from rpc nethernode.v1.ServerService.RestartServer
+   */
+  restartServer: {
+    methodKind: "unary";
+    input: typeof RestartServerRequestSchema;
+    output: typeof RestartServerResponseSchema;
+  },
+  /**
+   * Stops immediately without saving.
+   *
+   * @generated from rpc nethernode.v1.ServerService.KillServer
+   */
+  killServer: {
+    methodKind: "unary";
+    input: typeof KillServerRequestSchema;
+    output: typeof KillServerResponseSchema;
+  },
+  /**
+   * Up to an hour of per-second resource samples.
+   *
+   * @generated from rpc nethernode.v1.ServerService.GetServerStats
+   */
+  getServerStats: {
+    methodKind: "unary";
+    input: typeof GetServerStatsRequestSchema;
+    output: typeof GetServerStatsResponseSchema;
+  },
+  /**
+   * Facts about the Docker host servers run on.
+   *
+   * @generated from rpc nethernode.v1.ServerService.GetHostInfo
+   */
+  getHostInfo: {
+    methodKind: "unary";
+    input: typeof GetHostInfoRequestSchema;
+    output: typeof GetHostInfoResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_nethernode_v1_servers, 0);

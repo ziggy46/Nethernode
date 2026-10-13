@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Box, CircleAlert, CircleCheck, Settings } from "lucide-react";
-
 import { Logo, Wordmark } from "@/components/brand";
+import { serversQuery } from "@/features/servers/queries";
 import { healthQuery } from "@/lib/health";
 import { ROLE_LABELS, useCurrentUser } from "@/lib/session";
 import { cn } from "@/lib/utils";
@@ -84,6 +84,7 @@ function NavSection({
   items: NavItem[];
   onNavigate: () => void;
 }) {
+  const servers = useQuery(serversQuery);
   return (
     <>
       <p className="mb-[9px] px-[13px] font-[650] text-[10px] text-text-muted uppercase tracking-[1.5px]">
@@ -104,6 +105,12 @@ function NavSection({
           >
             <Icon className="size-[18px]" aria-hidden />
             {text}
+            {to === "/servers" && servers.data && servers.data.length > 0 && (
+              <span className="ml-auto rounded-xs bg-surface-elevated px-1.5 text-meta text-text-secondary">
+                {servers.data.length}
+                <span className="sr-only"> servers</span>
+              </span>
+            )}
           </Link>
         ))}
       </nav>
