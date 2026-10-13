@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT uuid, name, fetched_at FROM profile_cache WHERE name_key = ?1",
+  "describe": {
+    "columns": [
+      {
+        "name": "uuid",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "profile_cache",
+            "name": "uuid"
+          }
+        }
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "profile_cache",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "name": "fetched_at",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "profile_cache",
+            "name": "fetched_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "8c84ad1a0a7305def08c6ac1ff07f146dedc060c8422b629835763661c986cdb"
+}

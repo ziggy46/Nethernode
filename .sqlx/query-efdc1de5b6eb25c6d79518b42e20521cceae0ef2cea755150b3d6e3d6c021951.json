@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT notes FROM players WHERE uuid = ?1",
+  "describe": {
+    "columns": [
+      {
+        "name": "notes",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "notes"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "efdc1de5b6eb25c6d79518b42e20521cceae0ef2cea755150b3d6e3d6c021951"
+}

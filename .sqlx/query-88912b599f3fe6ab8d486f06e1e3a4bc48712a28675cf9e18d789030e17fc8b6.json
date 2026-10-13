@@ -1,0 +1,83 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT p.uuid AS \"uuid!\", p.last_username AS \"name!\",\n                      MIN(s.joined_at) AS \"first_seen!: i64\",\n                      MAX(COALESCE(s.left_at, ?2)) AS \"last_seen!: i64\",\n                      SUM(COALESCE(s.left_at, ?2) - s.joined_at) AS \"playtime_ms!: i64\",\n                      (SELECT s2.ip FROM player_sessions s2\n                        WHERE s2.uuid = p.uuid AND (?1 IS NULL OR s2.server_id = ?1)\n                        ORDER BY s2.joined_at DESC LIMIT 1) AS last_ip,\n                      p.notes\n               FROM players p\n               JOIN player_sessions s ON s.uuid = p.uuid AND (?1 IS NULL OR s.server_id = ?1)\n               GROUP BY p.uuid\n               ORDER BY 4 DESC",
+  "describe": {
+    "columns": [
+      {
+        "name": "uuid!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "uuid"
+          }
+        }
+      },
+      {
+        "name": "name!",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "last_username"
+          }
+        }
+      },
+      {
+        "name": "first_seen!: i64",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "last_seen!: i64",
+        "ordinal": 3,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "playtime_ms!: i64",
+        "ordinal": 4,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "last_ip",
+        "ordinal": 5,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "player_sessions",
+            "name": "ip"
+          }
+        }
+      },
+      {
+        "name": "notes",
+        "ordinal": 6,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "notes"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "88912b599f3fe6ab8d486f06e1e3a4bc48712a28675cf9e18d789030e17fc8b6"
+}

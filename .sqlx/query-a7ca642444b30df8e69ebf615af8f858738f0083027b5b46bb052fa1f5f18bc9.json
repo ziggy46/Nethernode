@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE players SET notes = ?1 WHERE uuid = ?2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "a7ca642444b30df8e69ebf615af8f858738f0083027b5b46bb052fa1f5f18bc9"
+}

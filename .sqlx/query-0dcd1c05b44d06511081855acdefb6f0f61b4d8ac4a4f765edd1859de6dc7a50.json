@@ -1,0 +1,134 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id AS \"id!\", server_id, uuid, name AS \"name!\", ip, reason, expires_at, created_by,\n                      created_at AS \"created_at!\", lifted_at\n               FROM player_bans\n               WHERE lifted_at IS NULL AND (expires_at IS NULL OR expires_at > ?2)\n                 AND (?1 IS NULL OR server_id IS NULL OR server_id = ?1)\n               ORDER BY created_at DESC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "player_bans",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "server_id",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "player_bans",
+            "name": "server_id"
+          }
+        }
+      },
+      {
+        "name": "uuid",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "player_bans",
+            "name": "uuid"
+          }
+        }
+      },
+      {
+        "name": "name!",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "player_bans",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "name": "ip",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "player_bans",
+            "name": "ip"
+          }
+        }
+      },
+      {
+        "name": "reason",
+        "ordinal": 5,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "player_bans",
+            "name": "reason"
+          }
+        }
+      },
+      {
+        "name": "expires_at",
+        "ordinal": 6,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "player_bans",
+            "name": "expires_at"
+          }
+        }
+      },
+      {
+        "name": "created_by",
+        "ordinal": 7,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "player_bans",
+            "name": "created_by"
+          }
+        }
+      },
+      {
+        "name": "created_at!",
+        "ordinal": 8,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "player_bans",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "name": "lifted_at",
+        "ordinal": 9,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "player_bans",
+            "name": "lifted_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "0dcd1c05b44d06511081855acdefb6f0f61b4d8ac4a4f765edd1859de6dc7a50"
+}

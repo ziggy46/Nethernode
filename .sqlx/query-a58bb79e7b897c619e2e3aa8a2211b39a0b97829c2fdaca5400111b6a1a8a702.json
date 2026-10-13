@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO profile_cache (name_key, uuid, name, fetched_at) VALUES (?1, ?2, ?3, ?4)\n               ON CONFLICT (name_key) DO UPDATE SET uuid = excluded.uuid, name = excluded.name,\n                                                   fetched_at = excluded.fetched_at",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "a58bb79e7b897c619e2e3aa8a2211b39a0b97829c2fdaca5400111b6a1a8a702"
+}

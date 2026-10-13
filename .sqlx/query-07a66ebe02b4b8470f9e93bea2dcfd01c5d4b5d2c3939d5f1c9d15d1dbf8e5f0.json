@@ -1,0 +1,98 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id AS \"id!\", server_id, uuid, username, ip, joined_at, left_at\n               FROM player_sessions\n               WHERE uuid = ?1 AND (?2 IS NULL OR server_id = ?2)\n               ORDER BY joined_at DESC LIMIT ?3",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "player_sessions",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "server_id",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "player_sessions",
+            "name": "server_id"
+          }
+        }
+      },
+      {
+        "name": "uuid",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "player_sessions",
+            "name": "uuid"
+          }
+        }
+      },
+      {
+        "name": "username",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "player_sessions",
+            "name": "username"
+          }
+        }
+      },
+      {
+        "name": "ip",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "player_sessions",
+            "name": "ip"
+          }
+        }
+      },
+      {
+        "name": "joined_at",
+        "ordinal": 5,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "player_sessions",
+            "name": "joined_at"
+          }
+        }
+      },
+      {
+        "name": "left_at",
+        "ordinal": 6,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "player_sessions",
+            "name": "left_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "07a66ebe02b4b8470f9e93bea2dcfd01c5d4b5d2c3939d5f1c9d15d1dbf8e5f0"
+}
