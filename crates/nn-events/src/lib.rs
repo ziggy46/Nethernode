@@ -14,7 +14,7 @@ pub const DEFAULT_CAPACITY: usize = 1024;
 ///
 /// New variants are added as later phases introduce servers, players, and
 /// the proxy.
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum Event {
@@ -67,6 +67,58 @@ pub enum Event {
     ProxyListenerChanged {
         /// Listener ID.
         listener_id: String,
+    },
+    /// A server was created, deleted, or changed lifecycle state.
+    ServerStatusChanged {
+        /// Server ID.
+        server_id: String,
+        /// New status (`installing`, `stopped`, `starting`, `running`,
+        /// `stopping`, `sleeping`, `crashed`), or `deleted`.
+        status: String,
+    },
+    /// A resource sample for a running server, about once per second.
+    ServerStats {
+        /// Server ID.
+        server_id: String,
+        /// CPU use, where 100 = one full core.
+        cpu_percent: f64,
+        /// Memory in use, excluding page cache.
+        memory_bytes: u64,
+        /// Container memory limit.
+        memory_limit_bytes: u64,
+        /// Total bytes received.
+        net_rx_bytes: u64,
+        /// Total bytes sent.
+        net_tx_bytes: u64,
+    },
+    /// Players online, from the server's status ping.
+    ServerPlayers {
+        /// Server ID.
+        server_id: String,
+        /// Players online.
+        online: u32,
+        /// Player limit.
+        max: u32,
+    },
+    /// Progress downloading a server's container image.
+    ImagePullProgress {
+        /// Server the image is for.
+        server_id: String,
+        /// Image reference.
+        image: String,
+        /// Overall progress, 0–100, once layer sizes are known.
+        percent: Option<u8>,
+        /// Latest status line from Docker.
+        status: String,
+    },
+    /// A lifecycle operation failed.
+    ServerOperationFailed {
+        /// Server ID.
+        server_id: String,
+        /// The operation (`create`, `start`, `stop`, …).
+        operation: String,
+        /// What went wrong, suitable for display.
+        message: String,
     },
 }
 

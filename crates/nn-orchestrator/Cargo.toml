@@ -11,3 +11,22 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+nn-auth.workspace = true
+nn-events.workspace = true
+nn-mcproto = { workspace = true, features = ["tokio"] }
+nn-players.workspace = true
+nn-store.workspace = true
+bollard.workspace = true
+futures-util.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+rand.workspace = true
+base64.workspace = true
+sha2.workspace = true
+hex.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
