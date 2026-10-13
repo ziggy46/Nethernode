@@ -139,6 +139,15 @@ async fn run(
     };
     let host = handshake.hostname();
     let resolution = shared.routes.load().resolve(&listener.id, &host);
+    tracing::debug!(
+        %peer,
+        address = ?handshake.server_address,
+        %host,
+        protocol = handshake.protocol_version,
+        next = ?handshake.next_state,
+        route = resolution.as_ref().map_or("-", |r| &*r.route),
+        "handshake"
+    );
 
     match handshake.next_state {
         NextState::Status => {
