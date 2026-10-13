@@ -12,10 +12,13 @@ backend. Latency is a 64-byte round trip, so it includes two proxy hops.
 
 | Metric | macOS (Apple Silicon) | Linux (OrbStack VM, 12 cores, kernel 7.2) | Target |
 |---|---|---|---|
-| Added p99 round-trip latency | 24–41 µs | 50 µs | < 1 ms |
+| Added p99 round-trip latency | 24–41 µs | 50–96 µs | < 1 ms |
 | Proxy RSS, 5,000 idle connections | 26 MB | 24 MB | < 100 MB |
 | Per idle connection | ~4.6 KB | ~4.3 KB | < 20 KB |
-| Echo throughput vs. direct | 45% (674 MiB/s) | 89% (3,630 MiB/s) | — |
+| Echo throughput vs. direct | 45% (674 MiB/s) | 89–114% (3,300–3,600 MiB/s) | — |
+
+Ranges are across runs; latency and throughput in the OrbStack VM vary
+by roughly 2× between runs. All runs were far inside the targets.
 
 Per-connection CPU before splicing (criterion, `benches/routing.rs`):
 parse handshake + normalize hostname + resolve in a 1,000-route table
