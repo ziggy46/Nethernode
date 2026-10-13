@@ -93,6 +93,7 @@ async fn finish(state: &AppState, upload: &Upload) -> Result<(), String> {
         upload_id: upload.id.clone(),
         path: path.to_string(),
         message,
+        skipped: matches!(adopted, Adopted::Skipped(_)),
         failed: false,
     });
 
@@ -141,6 +142,7 @@ async fn fail(state: &AppState, upload: &Upload, message: &str) {
         upload_id: upload.id.clone(),
         path: String::new(),
         message: message.to_owned(),
+        skipped: false,
         failed: true,
     });
 }

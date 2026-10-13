@@ -162,6 +162,8 @@ pub enum Event {
         path: String,
         /// What happened, suitable for display.
         message: String,
+        /// The name was taken and the upload was discarded, as asked.
+        skipped: bool,
         /// Whether it failed.
         failed: bool,
     },

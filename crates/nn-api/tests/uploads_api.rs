@@ -635,12 +635,15 @@ async fn conflicts_rename_overwrite_or_skip() {
         )
         .await;
     let Event::UploadFinished {
-        failed, message, ..
+        failed,
+        skipped,
+        message,
+        ..
     } = skip
     else {
         unreachable!()
     };
-    assert!(!failed && message.starts_with("Skipped"), "{message}");
+    assert!(!failed && skipped, "{message}");
     assert_eq!(
         std::fs::read(h.root.join("server.properties")).unwrap(),
         b"motd=hi\n"
