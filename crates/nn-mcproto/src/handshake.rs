@@ -110,6 +110,10 @@ impl Handshake {
 /// 2. drop a port suffix (`host:25565`, `[::1]:25565`)
 /// 3. drop trailing dots (some clients send the FQDN form `host.`)
 /// 4. lowercase
+///
+/// Anything that isn't then a plausible hostname (letters, digits, `-`,
+/// `_`, `.`) or IPv6 literal becomes the empty string, which matches no
+/// hostname route. Normalizing a normalized value returns it unchanged.
 pub fn normalize_hostname(address: &str) -> String {
     let host = address.split('\0').next().unwrap_or_default().trim();
     let host = if let Some(rest) = host.strip_prefix('[') {
@@ -121,7 +125,20 @@ pub fn normalize_hostname(address: &str) -> String {
         // No port, or a bare IPv6 literal (which can't carry one).
         host
     };
-    host.trim_end_matches('.').to_ascii_lowercase()
+    let host = host.trim_end_matches('.').to_ascii_lowercase();
+    if is_plausible_host(&host) {
+        host
+    } else {
+        String::new()
+    }
+}
+
+fn is_plausible_host(host: &str) -> bool {
+    if host.contains(':') {
+        return host.parse::<std::net::Ipv6Addr>().is_ok();
+    }
+    host.bytes()
+        .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.'))
 }
 
 #[cfg(test)]
@@ -206,6 +223,11 @@ mod tests {
             ("10.0.0.5", "10.0.0.5"),
             ("host\u{0}203.0.113.9\u{0}uuid", "host"),
             ("", ""),
+            // Found by the fuzzer: whitespace hiding before a trailing dot.
+            ("a\x0c.\0\0.com", ""),
+            ("bad host.com", ""),
+            ("[a:b]:25565", ""),
+            ("play.example.com\u{0}FML3\u{0}", "play.example.com"),
         ];
         for (input, expected) in cases {
             assert_eq!(normalize_hostname(input), expected, "{input:?}");
@@ -226,11 +248,11 @@ mod tests {
         }
 
         #[test]
-        fn normalized_hostnames_are_stable(address in "\\PC{0,64}") {
+        fn normalization_is_idempotent(address in "\\PC{0,64}") {
             let once = normalize_hostname(&address);
             prop_assert!(!once.contains('\0'));
             prop_assert!(!once.ends_with('.'));
-            prop_assert_eq!(once.to_ascii_lowercase(), once.clone());
+            prop_assert_eq!(normalize_hostname(&once), once);
         }
     }
 }
