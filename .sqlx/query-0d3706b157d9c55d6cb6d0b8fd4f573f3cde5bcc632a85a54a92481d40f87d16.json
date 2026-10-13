@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!\", name, slug, status, mc_version, loader, loader_version, image,\n                      java_version, memory_mb, cpu_limit, internal_port, public_port, hostname,\n                      auto_start AS \"auto_start: bool\", auto_stop_idle_minutes,\n                      sleep_when_empty AS \"sleep_when_empty: bool\", rcon_password_enc, env_json,\n                      created_at, updated_at\n               FROM servers WHERE id = ?1",
+  "query": "SELECT id AS \"id!\", name, slug, status, mc_version, loader, loader_version, image,\n                      java_version, memory_mb, cpu_limit, internal_port, public_port, hostname,\n                      auto_start AS \"auto_start: bool\", auto_stop_idle_minutes,\n                      sleep_when_empty AS \"sleep_when_empty: bool\", rcon_password_enc, env_json,\n                      created_at, updated_at, rcon_port, container_id, eula_accepted_at, card_theme,\n                      restart_on_crash AS \"restart_on_crash: bool\",\n                      use_aikar_flags AS \"use_aikar_flags: bool\", motd, max_players, last_started_at\n               FROM servers WHERE id = ?1",
   "describe": {
     "columns": [
       {
@@ -233,6 +233,105 @@
             "name": "updated_at"
           }
         }
+      },
+      {
+        "name": "rcon_port",
+        "ordinal": 21,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "rcon_port"
+          }
+        }
+      },
+      {
+        "name": "container_id",
+        "ordinal": 22,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "container_id"
+          }
+        }
+      },
+      {
+        "name": "eula_accepted_at",
+        "ordinal": 23,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "eula_accepted_at"
+          }
+        }
+      },
+      {
+        "name": "card_theme",
+        "ordinal": 24,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "card_theme"
+          }
+        }
+      },
+      {
+        "name": "restart_on_crash: bool",
+        "ordinal": 25,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "restart_on_crash"
+          }
+        }
+      },
+      {
+        "name": "use_aikar_flags: bool",
+        "ordinal": 26,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "use_aikar_flags"
+          }
+        }
+      },
+      {
+        "name": "motd",
+        "ordinal": 27,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "motd"
+          }
+        }
+      },
+      {
+        "name": "max_players",
+        "ordinal": 28,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "max_players"
+          }
+        }
+      },
+      {
+        "name": "last_started_at",
+        "ordinal": 29,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "last_started_at"
+          }
+        }
       }
     ],
     "parameters": {
@@ -259,8 +358,17 @@
       true,
       false,
       false,
-      false
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true
     ]
   },
-  "hash": "e01489e95c96f554e8e3be3ffc3e0607a8fb8f770d5f8a92e3d7ebc5a9a2ccca"
+  "hash": "0d3706b157d9c55d6cb6d0b8fd4f573f3cde5bcc632a85a54a92481d40f87d16"
 }

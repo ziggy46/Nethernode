@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE servers SET last_started_at = ?1 WHERE id = ?2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "fc41ac5fb1c5ae752304efd2d06dada4120090b33b7051108d290b26993087d3"
+}

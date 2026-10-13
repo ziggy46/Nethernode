@@ -26,7 +26,7 @@ pub mod users;
 pub use audit::NewAuditEntry;
 pub use players::{NewPlayerSession, PlayerSession};
 pub use proxy::{ListenerInput, ProxyListener, Route, RouteInput};
-pub use servers::{NewServer, Server};
+pub use servers::{NewServer, Server, ServerSettings};
 pub use sessions::{NewSession, Session};
 pub use users::{NewUser, User};
 

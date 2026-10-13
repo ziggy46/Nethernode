@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE servers SET container_id = ?1 WHERE id = ?2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "68bdefdca2a30fb5304ffbd0e1bd91393c895d93bb17c6f467a5aa77a11d2844"
+}
