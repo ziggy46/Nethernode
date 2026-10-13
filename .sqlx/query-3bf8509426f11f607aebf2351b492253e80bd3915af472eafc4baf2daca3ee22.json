@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE uploads SET status = ?3, message = COALESCE(?4, message), updated_at = ?5\n             WHERE id = ?1 AND status = ?2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "3bf8509426f11f607aebf2351b492253e80bd3915af472eafc4baf2daca3ee22"
+}

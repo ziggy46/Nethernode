@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM uploads\n             WHERE status IN ('done', 'failed', 'cancelled', 'expired') AND updated_at < ?1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "9b2b935390e885954caf3e6b62a49830b5ece4f0cfb915d7852686a12c5cd185"
+}

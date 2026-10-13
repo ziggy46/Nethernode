@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE uploads SET received = ?2, updated_at = ?3, expires_at = ?4\n             WHERE id = ?1 AND status = 'uploading'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "94a2c458225158c30369fc05270018a07df08f4b5375062acddbc8e35bde4b9b"
+}
