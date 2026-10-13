@@ -301,11 +301,12 @@ impl Store {
         Ok(result.rows_affected() > 0)
     }
 
-    /// Updates a server's lifecycle status. Returns `false` if it doesn't exist.
+    /// Updates a server's lifecycle status. Returns `false` if it doesn't
+    /// exist or already had that status.
     pub async fn set_server_status(&self, id: &str, status: &str) -> Result<bool> {
         let now = now_ms();
         let result = sqlx::query!(
-            "UPDATE servers SET status = ?1, updated_at = ?2 WHERE id = ?3",
+            "UPDATE servers SET status = ?1, updated_at = ?2 WHERE id = ?3 AND status <> ?1",
             status,
             now,
             id,
@@ -424,6 +425,10 @@ mod tests {
             .unwrap();
         assert_eq!(store.list_servers().await.unwrap().len(), 2);
         assert!(store.set_server_status(&a.id, "sleeping").await.unwrap());
+        assert!(
+            !store.set_server_status(&a.id, "sleeping").await.unwrap(),
+            "no change"
+        );
         assert_eq!(
             store.find_server(&a.id).await.unwrap().unwrap().status,
             "sleeping"
