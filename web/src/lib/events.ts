@@ -11,11 +11,12 @@ import { jobFinished, jobProgress } from "@/lib/jobs";
  * changed.
  */
 const INVALIDATES: Record<string, string[][]> = {
-  player_joined: [["proxy", "connections"]],
-  player_left: [["proxy", "connections"]],
+  player_joined: [["proxy", "connections"], ["players"]],
+  player_left: [["proxy", "connections"], ["players"]],
+  players_changed: [["players"]],
   proxy_connection_closed: [["proxy", "connections"]],
   proxy_listener_changed: [["proxy", "listeners"]],
-  server_status_changed: [["servers"], ["proxy", "routes"]],
+  server_status_changed: [["servers"], ["proxy", "routes"], ["players"]],
   server_players: [["servers"]],
   server_operation_failed: [["servers"]],
 };

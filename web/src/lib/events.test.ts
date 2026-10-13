@@ -17,8 +17,9 @@ describe("createInvalidator", () => {
     invalidator.note("something_else");
     expect(spy).not.toHaveBeenCalled();
     vi.advanceTimersByTime(400);
-    expect(spy).toHaveBeenCalledTimes(2);
+    expect(spy).toHaveBeenCalledTimes(3);
     expect(spy).toHaveBeenCalledWith({ queryKey: ["proxy", "connections"] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ["players"] });
     expect(spy).toHaveBeenCalledWith({ queryKey: ["proxy", "listeners"] });
   });
 

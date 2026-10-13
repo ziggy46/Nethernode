@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 
 import { ConsolePanel } from "../console/console-panel";
 import { FilesPanel } from "../files/files-panel";
+import { PlayersPanel } from "../players/players-panel";
 import { ConfigurationTab } from "./configuration-tab";
 import { useDockerAvailable } from "./docker-notice";
 import { formatBytes, gb, loaderName, memoryLimitBytes, versionLabel } from "./format";
@@ -105,6 +106,7 @@ export function ServerPage({ id }: { id: string }) {
         <Tabs.List aria-label="Server sections" className="mb-[22px] flex gap-5 border-divider border-b">
           {[
             ["console", "Console"],
+            ["players", "Players"],
             ["files", "Files"],
             ["configuration", "Configuration"],
             ["backups", "Backups"],
@@ -120,6 +122,9 @@ export function ServerPage({ id }: { id: string }) {
         </Tabs.List>
         <Tabs.Content value="console">
           <ConsoleTab server={s} />
+        </Tabs.Content>
+        <Tabs.Content value="players">
+          <PlayersPanel server={s} />
         </Tabs.Content>
         <Tabs.Content value="files" forceMount className="data-[state=inactive]:hidden">
           {filesVisited && <FilesPanel server={s} />}

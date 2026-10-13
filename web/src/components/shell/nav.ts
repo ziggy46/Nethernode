@@ -1,7 +1,17 @@
-import { Box, Cpu, History, LayoutGrid, type LucideIcon, Network, Server, Settings } from "lucide-react";
+import {
+  Box,
+  Cpu,
+  History,
+  LayoutGrid,
+  type LucideIcon,
+  Network,
+  Server,
+  Settings,
+  Users,
+} from "lucide-react";
 
 export interface NavItem {
-  to: "/" | "/servers" | "/proxy" | "/modpacks" | "/backups" | "/host" | "/settings";
+  to: "/" | "/servers" | "/players" | "/proxy" | "/modpacks" | "/backups" | "/host" | "/settings";
   label: string;
   icon: LucideIcon;
 }
@@ -9,6 +19,7 @@ export interface NavItem {
 export const WORKSPACE_NAV: NavItem[] = [
   { to: "/", label: "Overview", icon: LayoutGrid },
   { to: "/servers", label: "Servers", icon: Server },
+  { to: "/players", label: "Players", icon: Users },
   { to: "/proxy", label: "Proxy & routes", icon: Network },
   { to: "/modpacks", label: "Modpacks", icon: Box },
   { to: "/backups", label: "Backups", icon: History },

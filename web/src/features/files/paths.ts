@@ -84,17 +84,4 @@ export function formatSize(bytes: number | bigint): string {
   return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[unit]}`;
 }
 
-/** "5 min ago"-style times for listings. */
-export function ago(ms: number | bigint, now: number): string {
-  const then = Number(ms);
-  if (!then) return "";
-  const seconds = Math.max(0, Math.round((now - then) / 1000));
-  if (seconds < 60) return "just now";
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes} min ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours} h ago`;
-  const days = Math.round(hours / 24);
-  if (days < 30) return `${days} day${days === 1 ? "" : "s"} ago`;
-  return new Date(then).toLocaleDateString();
-}
+export { ago } from "@/lib/time";

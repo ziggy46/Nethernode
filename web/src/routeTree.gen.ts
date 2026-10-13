@@ -16,6 +16,7 @@ import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppBackupsRouteImport } from './routes/_app/backups'
 import { Route as AppHostRouteImport } from './routes/_app/host'
 import { Route as AppModpacksRouteImport } from './routes/_app/modpacks'
+import { Route as AppPlayersRouteImport } from './routes/_app/players'
 import { Route as AppProxyRouteImport } from './routes/_app/proxy'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppServersIndexRouteImport } from './routes/_app/servers/index'
@@ -55,6 +56,11 @@ const AppModpacksRoute = AppModpacksRouteImport.update({
   path: '/modpacks',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPlayersRoute = AppPlayersRouteImport.update({
+  id: '/players',
+  path: '/players',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppProxyRoute = AppProxyRouteImport.update({
   id: '/proxy',
   path: '/proxy',
@@ -83,6 +89,7 @@ export interface FileRoutesByFullPath {
   '/backups': typeof AppBackupsRoute
   '/host': typeof AppHostRoute
   '/modpacks': typeof AppModpacksRoute
+  '/players': typeof AppPlayersRoute
   '/proxy': typeof AppProxyRoute
   '/settings': typeof AppSettingsRoute
   '/servers/$serverId': typeof AppServersServerIdRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/backups': typeof AppBackupsRoute
   '/host': typeof AppHostRoute
   '/modpacks': typeof AppModpacksRoute
+  '/players': typeof AppPlayersRoute
   '/proxy': typeof AppProxyRoute
   '/settings': typeof AppSettingsRoute
   '/': typeof AppIndexRoute
@@ -108,6 +116,7 @@ export interface FileRoutesById {
   '/_app/backups': typeof AppBackupsRoute
   '/_app/host': typeof AppHostRoute
   '/_app/modpacks': typeof AppModpacksRoute
+  '/_app/players': typeof AppPlayersRoute
   '/_app/proxy': typeof AppProxyRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/': typeof AppIndexRoute
@@ -123,6 +132,7 @@ export interface FileRouteTypes {
     | '/backups'
     | '/host'
     | '/modpacks'
+    | '/players'
     | '/proxy'
     | '/settings'
     | '/servers/$serverId'
@@ -134,6 +144,7 @@ export interface FileRouteTypes {
     | '/backups'
     | '/host'
     | '/modpacks'
+    | '/players'
     | '/proxy'
     | '/settings'
     | '/'
@@ -147,6 +158,7 @@ export interface FileRouteTypes {
     | '/_app/backups'
     | '/_app/host'
     | '/_app/modpacks'
+    | '/_app/players'
     | '/_app/proxy'
     | '/_app/settings'
     | '/_app/'
@@ -211,6 +223,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppModpacksRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/players': {
+      id: '/_app/players'
+      path: '/players'
+      fullPath: '/players'
+      preLoaderRoute: typeof AppPlayersRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/proxy': {
       id: '/_app/proxy'
       path: '/proxy'
@@ -246,6 +265,7 @@ interface AppRouteChildren {
   AppBackupsRoute: typeof AppBackupsRoute
   AppHostRoute: typeof AppHostRoute
   AppModpacksRoute: typeof AppModpacksRoute
+  AppPlayersRoute: typeof AppPlayersRoute
   AppProxyRoute: typeof AppProxyRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -257,6 +277,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppBackupsRoute: AppBackupsRoute,
   AppHostRoute: AppHostRoute,
   AppModpacksRoute: AppModpacksRoute,
+  AppPlayersRoute: AppPlayersRoute,
   AppProxyRoute: AppProxyRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppIndexRoute: AppIndexRoute,
