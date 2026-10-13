@@ -144,6 +144,7 @@ struct Harness {
     proxy: Proxy,
     addr: SocketAddr,
     hooks: Arc<RecordingHooks>,
+    events: EventBus,
 }
 
 async fn start(
@@ -153,7 +154,8 @@ async fn start(
     proxy_protocol: bool,
 ) -> Harness {
     let hooks = Arc::new(RecordingHooks::default());
-    let proxy = Proxy::new(hooks.clone(), EventBus::default(), limits);
+    let events = EventBus::default();
+    let proxy = Proxy::new(hooks.clone(), events.clone(), limits);
     let listener = ListenerSpec {
         id: "main".into(),
         bind: "127.0.0.1:0".parse().unwrap(),
@@ -169,7 +171,7 @@ async fn start(
     let ListenerState::Listening(addr) = statuses[0].state.clone() else {
         panic!("listener failed: {statuses:?}")
     };
-    Harness { proxy, addr, hooks }
+    Harness { proxy, addr, hooks, events }
 }
 
 fn handshake(address: &str, next: NextState) -> Vec<u8> {
@@ -729,4 +731,23 @@ async fn listeners_report_bind_failures_independently() {
     };
     assert!(matches!(by_id("ok"), ListenerState::Listening(_)));
     assert!(matches!(by_id("clash"), ListenerState::Failed(_)));
+}
+
+#[tokio::test]
+async fn joined_players_are_listed_before_the_event_fires() {
+    let (addr, _rx) = fake_backend().await;
+    let h = start(vec![route("*", Some("a"))], vec![backend("a", addr, ServerState::Running)], Limits::default(), false).await;
+    let mut events = h.events.subscribe();
+    let mut client = connect(h.addr).await;
+    let mut sent = handshake("a.example.com", NextState::Login);
+    sent.extend(login_start("Steve"));
+    client.write_all(&sent).await.unwrap();
+    loop {
+        let event = tokio::time::timeout(Duration::from_secs(2), events.recv()).await.unwrap().unwrap();
+        if matches!(event, nn_events::Event::PlayerJoined { .. }) {
+            // A UI refetching on this event must see the player.
+            assert_eq!(h.proxy.active_connections().len(), 1);
+            break;
+        }
+    }
 }

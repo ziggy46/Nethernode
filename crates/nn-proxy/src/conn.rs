@@ -394,18 +394,9 @@ async fn forward_login(
         uuid: ls.uuid.map(|u| u.hyphenated().to_string()),
         ip: peer.ip(),
     });
-    let session = match &join {
-        Some(join) => {
-            shared.events.publish(Event::PlayerJoined {
-                server_id: join.server_id.clone(),
-                username: join.username.clone(),
-                uuid: join.uuid.clone(),
-            });
-            shared.hooks.player_joined(join).await
-        }
-        None => None,
-    };
 
+    // Register before announcing, so anyone reacting to PlayerJoined by
+    // listing connections sees this one.
     let joined = Instant::now();
     let _guard = shared.connections.register(ConnectionInfo {
         id: 0,
@@ -416,6 +407,19 @@ async fn forward_login(
         username: join.as_ref().map(|j| j.username.clone()),
         started_at: std::time::SystemTime::now(),
     });
+    let session = match &join {
+        Some(join) => {
+            let session = shared.hooks.player_joined(join).await;
+            shared.events.publish(Event::PlayerJoined {
+                server_id: join.server_id.clone(),
+                username: join.username.clone(),
+                uuid: join.uuid.clone(),
+            });
+            session
+        }
+        None => None,
+    };
+
     let mut summary = Summary::routed(Some(res), "spliced");
     (summary.bytes_up, summary.bytes_down) = splice(
         client,
