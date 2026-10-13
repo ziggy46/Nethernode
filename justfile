@@ -69,6 +69,11 @@ db-prepare:
 fuzz seconds="600":
     cd crates/nn-mcproto && cargo +nightly fuzz run pre_login -- -max_total_time={{seconds}}
 
+# Fuzz zip extraction: raw bytes and hostile entry names (needs nightly + cargo-fuzz)
+fuzz-zip seconds="600":
+    cd crates/nn-files && cargo +nightly fuzz run extract_entries -- -max_total_time={{seconds}}
+    cd crates/nn-files && cargo +nightly fuzz run extract_raw -- -max_total_time={{seconds}}
+
 # Proxy benchmarks: routing micro-benchmark plus latency, throughput, and idle-memory load tests
 bench-proxy:
     #!/usr/bin/env bash

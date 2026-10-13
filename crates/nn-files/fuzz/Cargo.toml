@@ -1,0 +1,33 @@
+[package]
+name = "nn-files-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+arbitrary = { version = "1", features = ["derive"] }
+libfuzzer-sys = "0.4"
+nn-files = { path = ".." }
+tempfile = "3"
+zip = { version = "8.6", default-features = false, features = ["deflate"] }
+
+# Fuzzing builds with nightly + sanitizers; keep it out of the main workspace.
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "extract_raw"
+path = "fuzz_targets/extract_raw.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "extract_entries"
+path = "fuzz_targets/extract_entries.rs"
+test = false
+doc = false
+bench = false
