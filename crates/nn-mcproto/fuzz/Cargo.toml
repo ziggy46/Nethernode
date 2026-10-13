@@ -1,0 +1,23 @@
+[package]
+name = "nn-mcproto-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+nn-mcproto = { path = ".." }
+
+# Fuzzing builds with nightly + sanitizers; keep it out of the main workspace.
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "pre_login"
+path = "fuzz_targets/pre_login.rs"
+test = false
+doc = false
+bench = false
