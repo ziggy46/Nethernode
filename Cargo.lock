@@ -1751,6 +1751,7 @@ dependencies = [
  "nn-api",
  "nn-auth",
  "nn-events",
+ "nn-proxy",
  "nn-store",
  "rand 0.10.3",
  "serde",
@@ -1776,12 +1777,15 @@ dependencies = [
  "mime_guess",
  "nn-auth",
  "nn-events",
+ "nn-mcproto",
+ "nn-proxy",
  "nn-store",
  "rust-embed",
  "serde",
  "serde_json",
  "thiserror",
  "tokio",
+ "tokio-stream",
  "tower",
  "tower-http",
  "tracing",
@@ -2962,6 +2966,7 @@ dependencies = [
  "futures-core",
  "pin-project-lite",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]

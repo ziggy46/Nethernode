@@ -9,9 +9,10 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use nn_api::{ApiConfig, AppState};
+use nn_api::{ApiConfig, AppState, ProxyRuntime, StoreProxyHooks};
 use nn_auth::{Auth, AuthConfig};
 use nn_events::EventBus;
+use nn_proxy::{Limits, ListenerState, Proxy};
 use nn_store::Store;
 use rand::Rng;
 use tracing_subscriber::EnvFilter;
@@ -90,12 +91,16 @@ async fn serve(config: Config) -> Result<()> {
         .context("installing metrics recorder")?;
 
     let store = open_store(&config).await?;
-    let auth = Arc::new(Auth::new(store, AuthConfig::default()));
+    let auth = Arc::new(Auth::new(store.clone(), AuthConfig::default()));
     spawn_session_pruner(auth.clone());
+
+    let events = EventBus::default();
+    let proxy = start_proxy(&config, &store, &events).await?;
 
     let state = AppState {
         auth: auth.clone(),
-        events: EventBus::default(),
+        proxy: proxy.clone(),
+        events,
         config: Arc::new(ApiConfig {
             secure_cookies: config.http.secure_cookies.into(),
             trust_proxy_headers: config.http.trust_proxy_headers,
@@ -128,6 +133,51 @@ async fn serve(config: Config) -> Result<()> {
     auth.store().close().await;
     tracing::info!("shut down cleanly");
     Ok(())
+}
+
+/// Seeds the default listener on first run, loads routes, and starts the
+/// Smart Proxy and its status cache refresher.
+async fn start_proxy(
+    config: &Config,
+    store: &Store,
+    events: &EventBus,
+) -> Result<Arc<ProxyRuntime>> {
+    let stale = store.close_stale_player_sessions().await?;
+    if stale > 0 {
+        tracing::info!(
+            sessions = stale,
+            "closed player sessions left open by the last shutdown"
+        );
+    }
+    if config.proxy.enabled {
+        let bind = config.proxy.default_listener;
+        if store
+            .ensure_default_listener(&bind.ip().to_string(), i64::from(bind.port()))
+            .await?
+        {
+            tracing::info!(%bind, "created the default proxy listener");
+        }
+    } else {
+        tracing::info!("Smart Proxy is disabled in the configuration");
+    }
+
+    let proxy = Proxy::new(
+        StoreProxyHooks::new(store.clone()),
+        events.clone(),
+        Limits::default(),
+    );
+    let runtime = Arc::new(ProxyRuntime::new(
+        proxy,
+        store.clone(),
+        config.proxy.enabled,
+    ));
+    for listener in runtime.reload().await? {
+        if let ListenerState::Failed(error) = &listener.state {
+            tracing::warn!(bind = %listener.spec.bind, %error, "proxy listener is not running; fix it in Proxy & routes");
+        }
+    }
+    runtime.proxy().spawn_status_refresher();
+    Ok(runtime)
 }
 
 async fn migrate(config: Config) -> Result<()> {

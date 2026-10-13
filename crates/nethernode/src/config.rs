@@ -121,11 +121,17 @@ impl Default for DockerConfig {
 pub struct ProxyConfig {
     /// Whether the Smart Proxy runs.
     pub enabled: bool,
+    /// Listener created on first run, when none exist yet. Listeners are
+    /// managed in the UI after that.
+    pub default_listener: SocketAddr,
 }
 
 impl Default for ProxyConfig {
     fn default() -> Self {
-        Self { enabled: true }
+        Self {
+            enabled: true,
+            default_listener: SocketAddr::from(([0, 0, 0, 0], 25565)),
+        }
     }
 }
 
@@ -157,6 +163,7 @@ mod tests {
         assert_eq!(config.data.dir, PathBuf::from("./data"));
         assert_eq!(config.docker.socket, "unix:///var/run/docker.sock");
         assert!(config.proxy.enabled);
+        assert_eq!(config.proxy.default_listener.to_string(), "0.0.0.0:25565");
     }
 
     #[test]
