@@ -28,6 +28,46 @@ pub enum Event {
         /// ID of the user.
         user_id: String,
     },
+    /// A player connected to a server through the Smart Proxy.
+    PlayerJoined {
+        /// Server joined.
+        server_id: String,
+        /// Username sent at login (verified later by the server, not the proxy).
+        username: String,
+        /// Player UUID, when the client's protocol version sends one.
+        uuid: Option<String>,
+    },
+    /// A player's proxied connection ended.
+    PlayerLeft {
+        /// Server left.
+        server_id: String,
+        /// Username sent at login.
+        username: String,
+        /// Player UUID, if known.
+        uuid: Option<String>,
+        /// How long the player was connected.
+        duration_ms: u64,
+    },
+    /// A proxied connection closed.
+    ProxyConnectionClosed {
+        /// Route pattern that matched, or `-` if none did.
+        route: String,
+        /// Destination server, if routed.
+        server_id: Option<String>,
+        /// How the connection ended (e.g. `spliced`, `unknown_host`).
+        outcome: String,
+        /// Bytes sent from the player to the server.
+        bytes_up: u64,
+        /// Bytes sent from the server to the player.
+        bytes_down: u64,
+        /// Connection lifetime.
+        duration_ms: u64,
+    },
+    /// A proxy listener started, stopped, or failed to bind.
+    ProxyListenerChanged {
+        /// Listener ID.
+        listener_id: String,
+    },
 }
 
 /// Cloneable handle to the process-wide event bus.
