@@ -38,6 +38,14 @@ service ServerService {
   rpc GetHostInfo(GetHostInfoRequest) returns (GetHostInfoResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+
+  // The server's server.properties as form fields. Changes apply at the
+  // next start.
+  rpc GetServerProperties(GetServerPropertiesRequest) returns (GetServerPropertiesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Changes values in server.properties, keeping the rest of the file.
+  rpc UpdateServerProperties(UpdateServerPropertiesRequest) returns (UpdateServerPropertiesResponse);
 }
 
 // A server's lifecycle state.
@@ -220,4 +228,59 @@ message GetHostInfoResponse {
   string docker_version = 5;
   uint32 cpus = 6;
   uint64 memory_bytes = 7;
+}
+
+message GetServerPropertiesRequest {
+  string id = 1;
+}
+
+message GetServerPropertiesResponse {
+  // False until the server has started once and written the file.
+  bool exists = 1;
+  // Known keys grouped and in display order, then unknown keys (group
+  // "Other"). Only keys present in the file are included.
+  repeated ServerProperty properties = 2;
+  // File version, for UpdateServerProperties.
+  string version = 3;
+}
+
+enum PropertyType {
+  PROPERTY_TYPE_UNSPECIFIED = 0;
+  PROPERTY_TYPE_BOOL = 1;
+  PROPERTY_TYPE_INT = 2;
+  PROPERTY_TYPE_CHOICE = 3;
+  PROPERTY_TYPE_TEXT = 4;
+}
+
+message ServerProperty {
+  string key = 1;
+  // Empty for secrets (see `secret`).
+  string value = 2;
+  string label = 3;
+  string help = 4;
+  // General, World, Players, Network, Advanced, or Other.
+  string group = 5;
+  PropertyType type = 6;
+  // For CHOICE.
+  repeated string options = 7;
+  // For INT.
+  optional int64 min = 8;
+  optional int64 max = 9;
+  // Non-empty when NetherNode controls this key; the field is read-only and
+  // this says why or where to change it.
+  string managed_reason = 10;
+  // The value is hidden.
+  bool secret = 11;
+}
+
+message UpdateServerPropertiesRequest {
+  string id = 1;
+  // Keys to change. Managed keys are rejected.
+  map<string, string> values = 2;
+  // From GetServerProperties; the update fails if the file changed since.
+  string version = 3;
+}
+
+message UpdateServerPropertiesResponse {
+  GetServerPropertiesResponse properties = 1;
 }

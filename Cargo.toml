@@ -25,7 +25,7 @@ nn-uploads = { path = "crates/nn-uploads" }
 
 # Runtime / HTTP
 tokio = { version = "1.53", features = ["full"] }
-axum = { version = "0.8", features = ["macros"] }
+axum = { version = "0.8", features = ["macros", "ws"] }
 tower = { version = "0.5", features = ["util"] }
 tower-http = { version = "0.7", features = ["compression-gzip", "compression-br", "trace", "set-header"] }
 http = "1.5"
@@ -60,6 +60,7 @@ figment = { version = "0.10", features = ["toml", "env"] }
 bytes = "1.12"
 uuid = "1.28"
 tokio-stream = { version = "0.1", features = ["sync"] }
+tokio-util = { version = "0.7", features = ["io"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 ulid = "3"

@@ -202,23 +202,30 @@ async fn start_proxy(
 /// Connects to Docker and starts the orchestrator. If Docker can't be
 /// reached, the panel still runs; server management reports why it's off.
 async fn start_orchestrator(config: &Config, store: &Store, events: &EventBus) -> ServerManager {
+    // Bind mounts need an absolute path.
+    let servers_dir = match fs::canonicalize(&config.data.dir) {
+        Ok(dir) => Some(dir.join("servers")),
+        Err(e) => {
+            tracing::warn!(error = %e, "data directory unavailable; server files can't be reached");
+            None
+        }
+    };
     let unavailable = |reason: String| {
         tracing::warn!(socket = %config.docker.socket, %reason, "Docker isn't available; server management is disabled");
         ServerManager {
             orchestrator: None,
             unavailable_reason: Some(Arc::from(reason)),
+            servers_dir: servers_dir.clone(),
         }
     };
     let secrets = match SecretBox::load(&config.data.secret_key_path()) {
         Ok(secrets) => Arc::new(secrets),
         Err(e) => return unavailable(e.to_string()),
     };
-    // Bind mounts need an absolute path.
-    let servers_dir = match fs::canonicalize(&config.data.dir) {
-        Ok(dir) => dir.join("servers"),
-        Err(e) => return unavailable(format!("data directory: {e}")),
+    let Some(dir) = servers_dir.clone() else {
+        return unavailable("the data directory isn't available".into());
     };
-    let mut orch_config = OrchestratorConfig::new(servers_dir);
+    let mut orch_config = OrchestratorConfig::new(dir);
     orch_config.port_range = config.docker.port_range_start..=config.docker.port_range_end;
     orch_config.memory_overhead_percent = config.docker.memory_overhead_percent;
     match Orchestrator::connect(
@@ -236,6 +243,7 @@ async fn start_orchestrator(config: &Config, store: &Store, events: &EventBus) -
             ServerManager {
                 orchestrator: Some(orchestrator),
                 unavailable_reason: None,
+                servers_dir,
             }
         }
         Err(e) => unavailable(e.to_string()),

@@ -6,11 +6,13 @@ use std::sync::Arc;
 use connectrpc::{ConnectError, RequestContext, Response, ServiceRequest, ServiceResult};
 use nn_auth::Permission;
 use nn_events::Event;
+use nn_files::{Expect, FileError, RelPath};
 use nn_orchestrator::{CreateServer, Orchestrator, OrchestratorError};
 use nn_store::{Server, ServerSettings};
 use serde_json::json;
 
 use crate::AppState;
+use crate::files::{blocking, file_error, open};
 use crate::proto::nethernode::v1 as pb;
 use crate::rpc::{audit, require, store_error};
 
@@ -137,12 +139,110 @@ impl Hostnames {
     }
 }
 
+const PROPERTIES_FILE: &str = "server.properties";
+
+/// Reads `server.properties` as form fields, plus the file version.
+async fn read_properties(
+    files: std::sync::Arc<nn_files::ServerFiles>,
+) -> Result<Option<(nn_files::Properties, String)>, ConnectError> {
+    let path = RelPath::parse(PROPERTIES_FILE).map_err(file_error)?;
+    let content = blocking(move || match files.read(&path, nn_files::EDITOR_LIMIT) {
+        Err(FileError::NotFound(_)) => Ok(None),
+        other => other.map(Some),
+    })
+    .await?;
+    Ok(content.map(|c| {
+        (
+            nn_files::Properties::parse(&String::from_utf8_lossy(&c.data)),
+            c.version,
+        )
+    }))
+}
+
+fn properties_response(
+    read: Option<(nn_files::Properties, String)>,
+) -> pb::GetServerPropertiesResponse {
+    use nn_orchestrator::properties::{self as schema, Group, Kind};
+    let Some((props, version)) = read else {
+        return pb::GetServerPropertiesResponse::default();
+    };
+    let entries = props.entries();
+    let value_of = |key: &str| entries.iter().find(|(k, _)| *k == key).map(|(_, v)| *v);
+    let mut out = Vec::new();
+    for group in Group::ALL {
+        for field in schema::FIELDS.iter().filter(|f| f.group == group) {
+            let Some(value) = value_of(field.key) else {
+                continue;
+            };
+            let (ty, options, min, max) = match field.kind {
+                Kind::Bool => (pb::PropertyType::PROPERTY_TYPE_BOOL, Vec::new(), None, None),
+                Kind::Int { min, max } => (
+                    pb::PropertyType::PROPERTY_TYPE_INT,
+                    Vec::new(),
+                    Some(min),
+                    Some(max),
+                ),
+                Kind::Choice(options) => (
+                    pb::PropertyType::PROPERTY_TYPE_CHOICE,
+                    options.iter().map(|o| (*o).to_owned()).collect(),
+                    None,
+                    None,
+                ),
+                Kind::Text => (pb::PropertyType::PROPERTY_TYPE_TEXT, Vec::new(), None, None),
+            };
+            let secret = schema::is_secret(field.key);
+            out.push(pb::ServerProperty {
+                key: field.key.to_owned(),
+                value: if secret {
+                    String::new()
+                } else {
+                    value.to_owned()
+                },
+                label: field.label.to_owned(),
+                help: field.help.to_owned(),
+                group: group.label().to_owned(),
+                r#type: ty.into(),
+                options,
+                min,
+                max,
+                managed_reason: schema::managed_reason(field.key)
+                    .unwrap_or_default()
+                    .to_owned(),
+                secret,
+                ..Default::default()
+            });
+        }
+    }
+    let mut other: Vec<_> = entries
+        .iter()
+        .filter(|(k, _)| schema::field(k).is_none())
+        .collect();
+    other.sort_by_key(|(k, _)| *k);
+    for (key, value) in other {
+        out.push(pb::ServerProperty {
+            key: (*key).to_owned(),
+            value: (*value).to_owned(),
+            label: (*key).to_owned(),
+            group: Group::Other.label().to_owned(),
+            r#type: pb::PropertyType::PROPERTY_TYPE_TEXT.into(),
+            ..Default::default()
+        });
+    }
+    pb::GetServerPropertiesResponse {
+        exists: true,
+        properties: out,
+        version,
+        ..Default::default()
+    }
+}
+
 pub(crate) fn orchestrator_error(err: OrchestratorError) -> ConnectError {
     match err {
         OrchestratorError::NotFound => ConnectError::not_found("server not found"),
         OrchestratorError::InvalidState(m) => ConnectError::failed_precondition(m),
         OrchestratorError::InvalidInput(m) => ConnectError::invalid_argument(m),
         OrchestratorError::NoPorts(_) => ConnectError::resource_exhausted(err.to_string()),
+        OrchestratorError::Command(_) => ConnectError::unavailable(err.to_string()),
         OrchestratorError::Docker(_) => {
             tracing::warn!(error = %err, "Docker error");
             ConnectError::unavailable(err.to_string())
@@ -532,5 +632,61 @@ impl pb::ServerService for ServerRpc {
             },
         };
         Response::ok(response)
+    }
+
+    async fn get_server_properties(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::GetServerPropertiesRequest>,
+    ) -> ServiceResult<pb::GetServerPropertiesResponse> {
+        require(&ctx, Permission::ManageServers)?;
+        let (_, files) = open(&self.state, request.id).await?;
+        Response::ok(properties_response(read_properties(files).await?))
+    }
+
+    async fn update_server_properties(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::UpdateServerPropertiesRequest>,
+    ) -> ServiceResult<pb::UpdateServerPropertiesResponse> {
+        let user = require(&ctx, Permission::ManageServers)?.clone();
+        let mut changes: Vec<(String, String)> = Vec::new();
+        for (key, value) in &request.values {
+            nn_orchestrator::properties::validate(key, value)
+                .map_err(ConnectError::invalid_argument)?;
+            changes.push(((*key).to_owned(), value.trim().to_owned()));
+        }
+        let (server, files) = open(&self.state, request.id).await?;
+        let Some((mut props, version)) = read_properties(files.clone()).await? else {
+            return Err(ConnectError::failed_precondition(
+                "server.properties doesn't exist yet; start the server once to create it",
+            ));
+        };
+        if version != request.version {
+            return Err(file_error(FileError::Conflict));
+        }
+        for (key, value) in &changes {
+            props.set(key, value);
+        }
+        let text = props.to_string();
+        let path = RelPath::parse(PROPERTIES_FILE).map_err(file_error)?;
+        let writer = files.clone();
+        blocking(move || writer.write(&path, text.as_bytes(), Expect::Version(version))).await?;
+        let details: serde_json::Map<String, serde_json::Value> = changes
+            .into_iter()
+            .map(|(k, v)| (k, serde_json::Value::String(v)))
+            .collect();
+        audit(
+            &self.state,
+            &user,
+            "server.properties",
+            ("server", &server.id),
+            json!({ "changes": details }),
+        )
+        .await;
+        Response::ok(pb::UpdateServerPropertiesResponse {
+            properties: properties_response(read_properties(files).await?).into(),
+            ..Default::default()
+        })
     }
 }

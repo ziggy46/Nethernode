@@ -1,0 +1,196 @@
+syntax = "proto3";
+
+package nethernode.v1;
+
+// Files in a server's folder. Paths are relative to that folder and use `/`
+// (`config/paper-global.yml`); the empty path is the folder itself.
+// Deleting moves items to a trash that can be restored for 30 days.
+// Extracting and compressing run in the background: watch /api/events for
+// `file_job_progress` and `file_job_finished`. Downloads and small uploads
+// use plain HTTP: GET /api/files/download and POST /api/files/upload.
+service FileService {
+  rpc ListFiles(ListFilesRequest) returns (ListFilesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Text and small files for the editor (up to 5 MB).
+  rpc ReadFile(ReadFileRequest) returns (ReadFileResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Creates or replaces a file atomically.
+  rpc WriteFile(WriteFileRequest) returns (WriteFileResponse);
+  // Creates a folder.
+  rpc MakeDirectory(MakeDirectoryRequest) returns (MakeDirectoryResponse);
+  // Moves or renames. Never overwrites.
+  rpc RenameFile(RenameFileRequest) returns (RenameFileResponse);
+  // Copies a file or folder. Never overwrites; symlinks are left out.
+  rpc CopyFile(CopyFileRequest) returns (CopyFileResponse);
+  // Moves items to the trash.
+  rpc DeleteFiles(DeleteFilesRequest) returns (DeleteFilesResponse);
+  rpc ListTrash(ListTrashRequest) returns (ListTrashResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Puts a trashed item back where it was.
+  rpc RestoreFile(RestoreFileRequest) returns (RestoreFileResponse);
+  // Permanently deletes one trashed item, or all of them.
+  rpc PurgeTrash(PurgeTrashRequest) returns (PurgeTrashResponse);
+  // Starts extracting a zip archive.
+  rpc ExtractArchive(ExtractArchiveRequest) returns (ExtractArchiveResponse);
+  // Starts zipping files and folders from one folder into a new archive.
+  rpc CompressFiles(CompressFilesRequest) returns (CompressFilesResponse);
+}
+
+enum FileKind {
+  FILE_KIND_UNSPECIFIED = 0;
+  FILE_KIND_FILE = 1;
+  FILE_KIND_DIRECTORY = 2;
+  FILE_KIND_SYMLINK = 3;
+  FILE_KIND_OTHER = 4;
+}
+
+message FileEntry {
+  string name = 1;
+  FileKind kind = 2;
+  // Bytes; 0 for folders.
+  uint64 size = 3;
+  // Unix milliseconds.
+  int64 modified_ms = 4;
+}
+
+message ListFilesRequest {
+  string server_id = 1;
+  string path = 2;
+}
+
+message ListFilesResponse {
+  // The normalized path that was listed.
+  string path = 1;
+  // Folders first, then files, by name.
+  repeated FileEntry entries = 2;
+}
+
+message ReadFileRequest {
+  string server_id = 1;
+  string path = 2;
+}
+
+message ReadFileResponse {
+  bytes content = 1;
+  // UTF-8 text without NUL bytes; anything else should be downloaded.
+  bool is_text = 2;
+  // Pass back to WriteFile so concurrent changes aren't overwritten.
+  string version = 3;
+  int64 modified_ms = 4;
+}
+
+message WriteFileRequest {
+  string server_id = 1;
+  string path = 2;
+  bytes content = 3;
+  // The version from ReadFile. Unset with create_only false replaces
+  // whatever is there.
+  optional string expected_version = 4;
+  // Fail if the file already exists.
+  bool create_only = 5;
+}
+
+message WriteFileResponse {
+  string version = 1;
+}
+
+message MakeDirectoryRequest {
+  string server_id = 1;
+  string path = 2;
+}
+
+message MakeDirectoryResponse {}
+
+message RenameFileRequest {
+  string server_id = 1;
+  string from = 2;
+  string to = 3;
+}
+
+message RenameFileResponse {}
+
+message CopyFileRequest {
+  string server_id = 1;
+  string from = 2;
+  string to = 3;
+}
+
+message CopyFileResponse {
+  uint64 files = 1;
+  uint64 skipped_links = 2;
+}
+
+message DeleteFilesRequest {
+  string server_id = 1;
+  repeated string paths = 2;
+}
+
+message DeleteFilesResponse {
+  repeated TrashItem items = 1;
+}
+
+message TrashItem {
+  string id = 1;
+  // Where it was.
+  string original_path = 2;
+  FileKind kind = 3;
+  // For files.
+  optional uint64 size = 4;
+  int64 deleted_ms = 5;
+}
+
+message ListTrashRequest {
+  string server_id = 1;
+}
+
+message ListTrashResponse {
+  // Newest first.
+  repeated TrashItem items = 1;
+  // How long items are kept before being purged automatically.
+  uint32 retention_days = 2;
+}
+
+message RestoreFileRequest {
+  string server_id = 1;
+  string trash_id = 2;
+}
+
+message RestoreFileResponse {
+  string path = 1;
+}
+
+message PurgeTrashRequest {
+  string server_id = 1;
+  // Unset empties the whole trash.
+  optional string trash_id = 2;
+}
+
+message PurgeTrashResponse {}
+
+message ExtractArchiveRequest {
+  string server_id = 1;
+  string archive = 2;
+  // Folder to extract into; created if missing.
+  string destination = 3;
+  // Replace existing files instead of failing.
+  bool overwrite = 4;
+}
+
+message ExtractArchiveResponse {
+  string job_id = 1;
+}
+
+message CompressFilesRequest {
+  string server_id = 1;
+  // Files and folders, all in the same folder.
+  repeated string paths = 2;
+  // The new archive's path, ending in .zip.
+  string destination = 3;
+}
+
+message CompressFilesResponse {
+  string job_id = 1;
+}

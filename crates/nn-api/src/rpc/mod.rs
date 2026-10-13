@@ -8,17 +8,30 @@ use nn_store::NewAuditEntry;
 
 use crate::AppState;
 use crate::middleware::CurrentUser;
-use crate::proto::nethernode::v1::{AuthServiceExt, ProxyServiceExt, ServerServiceExt};
+use crate::proto::nethernode::v1::{
+    AuthServiceExt, FileServiceExt, ProxyServiceExt, ServerServiceExt,
+};
 
 mod auth;
+mod files;
 mod proxy;
-mod servers;
+pub(crate) mod servers;
 
 /// Registers every service on `router`.
 pub(crate) fn register(router: ConnectRouter, state: &AppState) -> ConnectRouter {
     let router = Arc::new(auth::AuthRpc::new(state.clone())).register(router);
     let router = Arc::new(servers::ServerRpc::new(state.clone())).register(router);
-    Arc::new(proxy::ProxyRpc::new(state.clone())).register(router)
+    let router = Arc::new(files::FileRpc::new(state.clone())).register(router);
+    Arc::new(proxy::ProxyRpc::new(state.clone()))
+        .register(router)
+        // The editor saves files up to 5 MB, which is larger than the default
+        // message limit once encoded.
+        .with_route_limits(
+            "/nethernode.v1.FileService/WriteFile",
+            connectrpc::Limits::default()
+                .with_max_request_body_size(8 * 1024 * 1024)
+                .with_max_message_size(8 * 1024 * 1024),
+        )
 }
 
 /// The signed-in user, if they hold `permission`.

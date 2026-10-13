@@ -16,8 +16,9 @@
 use std::sync::Arc;
 
 use axum::Router;
+use axum::extract::DefaultBodyLimit;
 use axum::middleware::from_fn_with_state;
-use axum::routing::get;
+use axum::routing::{get, post};
 use connectrpc::Router as ConnectRouter;
 use http::HeaderValue;
 use http::header;
@@ -29,8 +30,11 @@ use tower_http::compression::CompressionLayer;
 use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::trace::TraceLayer;
 
+mod console;
 mod cookies;
 mod events;
+mod files;
+mod files_http;
 mod middleware;
 mod observability;
 pub mod proxy_runtime;
@@ -106,6 +110,9 @@ pub struct ServerManager {
     pub orchestrator: Option<Arc<nn_orchestrator::Orchestrator>>,
     /// Why Docker isn't available, for the UI.
     pub unavailable_reason: Option<Arc<str>>,
+    /// Absolute folder holding each server's files (`<data>/servers`).
+    /// Known even when Docker isn't, so files stay reachable.
+    pub servers_dir: Option<std::path::PathBuf>,
 }
 
 /// Builds the full application router.
@@ -126,6 +133,14 @@ pub fn router(state: AppState) -> Router {
             "/api/events",
             get(events::stream).layer(axum::middleware::from_fn(middleware::no_store)),
         )
+        .route("/api/files/download", get(files_http::download))
+        .route(
+            "/api/files/upload",
+            post(files_http::upload)
+                .layer(DefaultBodyLimit::max(files_http::UPLOAD_LIMIT))
+                .layer(axum::middleware::from_fn(middleware::no_store)),
+        )
+        .route("/ws/servers/{id}/console", get(console::console))
         .nest(RPC_PREFIX, rpc_routes)
         .fallback(spa::serve)
         .layer(from_fn_with_state(

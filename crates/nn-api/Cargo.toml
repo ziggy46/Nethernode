@@ -17,8 +17,11 @@ nn-store.workspace = true
 nn-proxy.workspace = true
 nn-orchestrator.workspace = true
 nn-mcproto.workspace = true
+nn-files.workspace = true
 axum.workspace = true
 tokio-stream.workspace = true
+tokio-util.workspace = true
+futures-util.workspace = true
 tower.workspace = true
 tower-http.workspace = true
 http.workspace = true
@@ -39,6 +42,8 @@ metrics-exporter-prometheus.workspace = true
 connectrpc-build.workspace = true
 
 [dev-dependencies]
+base64.workspace = true
+tempfile.workspace = true
 tower = { workspace = true, features = ["util"] }
 http-body-util = "0.1"
 serde_json.workspace = true

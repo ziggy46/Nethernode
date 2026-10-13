@@ -120,6 +120,30 @@ pub enum Event {
         /// What went wrong, suitable for display.
         message: String,
     },
+    /// A background file job (extract, compress) made progress.
+    FileJobProgress {
+        /// Server whose files are involved.
+        server_id: String,
+        /// Job ID returned when it started.
+        job_id: String,
+        /// `extract` or `compress`.
+        kind: String,
+        /// 0–100.
+        percent: u8,
+    },
+    /// A background file job finished.
+    FileJobFinished {
+        /// Server whose files are involved.
+        server_id: String,
+        /// Job ID returned when it started.
+        job_id: String,
+        /// `extract` or `compress`.
+        kind: String,
+        /// What happened, suitable for display.
+        message: String,
+        /// Whether it failed.
+        failed: bool,
+    },
 }
 
 /// Cloneable handle to the process-wide event bus.
