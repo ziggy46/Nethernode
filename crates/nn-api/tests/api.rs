@@ -20,9 +20,16 @@ const PASSWORD: &str = "correct horse battery";
 async fn app() -> Router {
     let store = Store::open_in_memory().await.unwrap();
     store.migrate().await.unwrap();
+    let events = EventBus::default();
+    let proxy = nn_proxy::Proxy::new(
+        Arc::new(nn_proxy::NoopHooks),
+        events.clone(),
+        nn_proxy::Limits::default(),
+    );
     nn_api::router(AppState {
+        proxy: Arc::new(nn_api::ProxyRuntime::new(proxy, store.clone(), false)),
         auth: Arc::new(Auth::new(store, AuthConfig::default())),
-        events: EventBus::default(),
+        events,
         config: Arc::new(ApiConfig::default()),
         metrics: None,
     })

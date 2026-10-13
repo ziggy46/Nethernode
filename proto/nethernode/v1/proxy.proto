@@ -1,0 +1,173 @@
+syntax = "proto3";
+
+package nethernode.v1;
+
+// The Smart Proxy: listeners players connect to and hostname routes that
+// send them to servers. Changes apply immediately without dropping players.
+service ProxyService {
+  // Lists listeners with their live state.
+  rpc ListListeners(ListListenersRequest) returns (ListListenersResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Creates a listener, or updates it when `id` is set.
+  rpc UpsertListener(UpsertListenerRequest) returns (UpsertListenerResponse);
+  // Deletes a listener and any routes limited to it.
+  rpc DeleteListener(DeleteListenerRequest) returns (DeleteListenerResponse);
+
+  // Lists hostname routes.
+  rpc ListRoutes(ListRoutesRequest) returns (ListRoutesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Creates a route, or updates it when `id` is set.
+  rpc UpsertRoute(UpsertRouteRequest) returns (UpsertRouteResponse);
+  // Deletes a route.
+  rpc DeleteRoute(DeleteRouteRequest) returns (DeleteRouteResponse);
+
+  // Resolves a hostname's A/AAAA records, to help set up DNS.
+  rpc CheckDns(CheckDnsRequest) returns (CheckDnsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // Lists players currently connected through the proxy.
+  rpc ListConnections(ListConnectionsRequest) returns (ListConnectionsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+enum ListenerState {
+  LISTENER_STATE_UNSPECIFIED = 0;
+  // Bound and accepting players.
+  LISTENER_STATE_LISTENING = 1;
+  // Couldn't bind; see `error`.
+  LISTENER_STATE_FAILED = 2;
+  // Turned off by an admin.
+  LISTENER_STATE_DISABLED = 3;
+  // The whole proxy is disabled in the NetherNode config.
+  LISTENER_STATE_PROXY_DISABLED = 4;
+}
+
+// A TCP port players connect to.
+message Listener {
+  string id = 1;
+  // IP to bind, e.g. "0.0.0.0" or "::".
+  string bind_addr = 2;
+  uint32 port = 3;
+  bool enabled = 4;
+  // Send a PROXY protocol v2 header to backends. Backends must be
+  // configured to expect it, or every connection fails.
+  bool proxy_protocol = 5;
+  ListenerState state = 6;
+  // Bind error when `state` is FAILED.
+  string error = 7;
+}
+
+message ListListenersRequest {}
+
+message ListListenersResponse {
+  repeated Listener listeners = 1;
+}
+
+message UpsertListenerRequest {
+  // Unset to create.
+  optional string id = 1;
+  string bind_addr = 2;
+  uint32 port = 3;
+  bool enabled = 4;
+  bool proxy_protocol = 5;
+}
+
+message UpsertListenerResponse {
+  Listener listener = 1;
+}
+
+message DeleteListenerRequest {
+  string id = 1;
+}
+
+message DeleteListenerResponse {}
+
+enum RouteKind {
+  ROUTE_KIND_UNSPECIFIED = 0;
+  // Matches one hostname exactly.
+  ROUTE_KIND_EXACT = 1;
+  // `*.example.com`: matches any subdomain.
+  ROUTE_KIND_WILDCARD = 2;
+  // `*`: matches anything no other route does.
+  ROUTE_KIND_DEFAULT = 3;
+}
+
+// A hostname route.
+message Route {
+  string id = 1;
+  // `play.example.com`, `*.example.com`, or `*`.
+  string hostname = 2;
+  RouteKind kind = 3;
+  // Destination. Unset on a wildcard means "the server whose slug is the
+  // subdomain" (e.g. smp.example.com → server `smp`).
+  optional string server_id = 4;
+  // Limits the route to one listener; unset means all.
+  optional string listener_id = 5;
+  int64 priority = 6;
+  // Destination server's name and slug, for display.
+  string server_name = 7;
+  string server_slug = 8;
+}
+
+message ListRoutesRequest {}
+
+message ListRoutesResponse {
+  repeated Route routes = 1;
+}
+
+message UpsertRouteRequest {
+  // Unset to create.
+  optional string id = 1;
+  string hostname = 2;
+  optional string server_id = 3;
+  optional string listener_id = 4;
+  int64 priority = 5;
+}
+
+message UpsertRouteResponse {
+  Route route = 1;
+}
+
+message DeleteRouteRequest {
+  string id = 1;
+}
+
+message DeleteRouteResponse {}
+
+message CheckDnsRequest {
+  // A hostname, or a wildcard pattern (a random subdomain is checked).
+  string hostname = 1;
+}
+
+message CheckDnsResponse {
+  // The name actually resolved.
+  string resolved_name = 1;
+  // A and AAAA records.
+  repeated string addresses = 2;
+  // Resolution error, if any (e.g. no such host).
+  string error = 3;
+}
+
+// A player connected through the proxy.
+message Connection {
+  string client_ip = 1;
+  // Hostname the player used.
+  string hostname = 2;
+  string server_id = 3;
+  string server_name = 4;
+  // From Login Start; unset for status pings.
+  optional string username = 5;
+  // Unix milliseconds.
+  int64 started_at_ms = 6;
+  string listener_id = 7;
+}
+
+message ListConnectionsRequest {}
+
+message ListConnectionsResponse {
+  repeated Connection connections = 1;
+}

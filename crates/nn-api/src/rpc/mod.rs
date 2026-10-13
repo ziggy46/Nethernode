@@ -2,17 +2,66 @@
 
 use std::sync::Arc;
 
-use connectrpc::{ConnectError, Router as ConnectRouter};
-use nn_auth::AuthError;
+use connectrpc::{ConnectError, RequestContext, Router as ConnectRouter};
+use nn_auth::{AuthError, AuthUser, Permission};
+use nn_store::NewAuditEntry;
 
 use crate::AppState;
-use crate::proto::nethernode::v1::AuthServiceExt;
+use crate::middleware::CurrentUser;
+use crate::proto::nethernode::v1::{AuthServiceExt, ProxyServiceExt, ServerServiceExt};
 
 mod auth;
+mod proxy;
+mod servers;
 
 /// Registers every service on `router`.
 pub(crate) fn register(router: ConnectRouter, state: &AppState) -> ConnectRouter {
-    Arc::new(auth::AuthRpc::new(state.clone())).register(router)
+    let router = Arc::new(auth::AuthRpc::new(state.clone())).register(router);
+    let router = Arc::new(servers::ServerRpc::new(state.clone())).register(router);
+    Arc::new(proxy::ProxyRpc::new(state.clone())).register(router)
+}
+
+/// The signed-in user, if they hold `permission`.
+pub(crate) fn require(
+    ctx: &RequestContext,
+    permission: Permission,
+) -> Result<&AuthUser, ConnectError> {
+    let CurrentUser(authed) = ctx
+        .extensions()
+        .get::<CurrentUser>()
+        .ok_or_else(|| ConnectError::unauthenticated("sign in required"))?;
+    if !authed.user.role.can(permission) {
+        return Err(ConnectError::permission_denied(
+            "your role doesn't allow this action",
+        ));
+    }
+    Ok(&authed.user)
+}
+
+/// Logs and hides a storage error.
+pub(crate) fn store_error(err: nn_store::Error) -> ConnectError {
+    tracing::error!(error = %err, "storage operation failed");
+    ConnectError::internal("internal error")
+}
+
+/// Records a mutating action in the audit log. Failures are logged only.
+pub(crate) async fn audit(
+    state: &AppState,
+    user: &AuthUser,
+    action: &str,
+    target: (&str, &str),
+    details: serde_json::Value,
+) {
+    let entry = NewAuditEntry {
+        user_id: Some(&user.id),
+        action,
+        target_type: Some(target.0),
+        target_id: Some(target.1),
+        details: Some(details),
+    };
+    if let Err(e) = state.auth.store().insert_audit(entry).await {
+        tracing::warn!(error = %e, action, "failed to write audit log entry");
+    }
 }
 
 /// Maps auth errors onto Connect codes, hiding internal details from clients.

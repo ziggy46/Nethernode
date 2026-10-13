@@ -47,6 +47,13 @@ pub enum Error {
     Json(#[from] serde_json::Error),
 }
 
+impl Error {
+    /// Whether this is a UNIQUE constraint violation (e.g. a duplicate hostname).
+    pub fn is_unique_violation(&self) -> bool {
+        matches!(self, Error::Database(sqlx::Error::Database(e)) if e.is_unique_violation())
+    }
+}
+
 /// Result alias for storage operations.
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 

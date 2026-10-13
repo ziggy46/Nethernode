@@ -4,7 +4,11 @@
 fn main() {
     let proto_root = "../../proto";
     connectrpc_build::Config::new()
-        .files(&[format!("{proto_root}/nethernode/v1/auth.proto")])
+        .files(&[
+            format!("{proto_root}/nethernode/v1/auth.proto"),
+            format!("{proto_root}/nethernode/v1/servers.proto"),
+            format!("{proto_root}/nethernode/v1/proxy.proto"),
+        ])
         .includes(&[proto_root])
         .include_file("_connectrpc.rs")
         .compile()

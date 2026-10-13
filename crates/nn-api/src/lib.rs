@@ -3,6 +3,7 @@
 //! One axum router serves everything on the panel port:
 //!
 //! - `/api/rpc/*`: ConnectRPC services (see `proto/`)
+//! - `/api/events`: the event bus as Server-Sent Events (signed-in users)
 //! - `/healthz`: liveness probe
 //! - `/metrics`: Prometheus metrics (owner only)
 //! - everything else: the embedded web UI, with SPA fallback
@@ -29,13 +30,16 @@ use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::trace::TraceLayer;
 
 mod cookies;
+mod events;
 mod middleware;
 mod observability;
+pub mod proxy_runtime;
 mod request_meta;
 mod rpc;
 mod spa;
 
 pub use middleware::{CurrentUser, PUBLIC_PROCEDURES, SETUP_REQUIRED_HEADER};
+pub use proxy_runtime::{ProxyRuntime, StoreProxyHooks};
 pub use request_meta::RequestMeta;
 
 /// Generated protobuf messages and ConnectRPC service traits.
@@ -86,6 +90,8 @@ pub struct AppState {
     pub config: Arc<ApiConfig>,
     /// Prometheus renderer, if a recorder is installed.
     pub metrics: Option<PrometheusHandle>,
+    /// The Smart Proxy and its database-backed configuration.
+    pub proxy: Arc<ProxyRuntime>,
 }
 
 /// Builds the full application router.
@@ -101,6 +107,7 @@ pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/healthz", get(observability::healthz))
         .route("/metrics", get(observability::metrics))
+        .route("/api/events", get(events::stream))
         .nest(RPC_PREFIX, rpc_routes)
         .fallback(spa::serve)
         .layer(from_fn_with_state(

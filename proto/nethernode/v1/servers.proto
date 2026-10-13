@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package nethernode.v1;
+
+// Minecraft servers. Read-only for now; lifecycle (create, start, stop)
+// arrives with the orchestrator.
+service ServerService {
+  // Lists all servers.
+  rpc ListServers(ListServersRequest) returns (ListServersResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+// A server's lifecycle state.
+enum ServerStatus {
+  SERVER_STATUS_UNSPECIFIED = 0;
+  SERVER_STATUS_INSTALLING = 1;
+  SERVER_STATUS_STOPPED = 2;
+  SERVER_STATUS_STARTING = 3;
+  SERVER_STATUS_RUNNING = 4;
+  SERVER_STATUS_STOPPING = 5;
+  SERVER_STATUS_SLEEPING = 6;
+  SERVER_STATUS_CRASHED = 7;
+}
+
+// A managed Minecraft server.
+message Server {
+  string id = 1;
+  string name = 2;
+  string slug = 3;
+  ServerStatus status = 4;
+  string mc_version = 5;
+  // Server software or mod loader, e.g. "paper", "forge".
+  string loader = 6;
+  // Port the server listens on at 127.0.0.1, behind the proxy.
+  uint32 internal_port = 7;
+  // Sleeps when empty and wakes when a player connects.
+  bool sleep_when_empty = 8;
+}
+
+message ListServersRequest {}
+
+message ListServersResponse {
+  repeated Server servers = 1;
+}
