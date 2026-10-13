@@ -230,8 +230,8 @@ function ConsoleStatus({ server }: { server: Server }) {
           <p className="font-semibold">Starting…</p>
           <p className="max-w-[46ch] text-label text-text-muted">
             The first start downloads the server files
-            {server.loader !== "vanilla" ? " and installs the mod loader" : ""}, which can take a few minutes.
-            The server is marked Running once it answers players.
+            {server.loader !== "vanilla" ? ` and sets up ${loaderName(server.loader)}` : ""}, which can take a
+            few minutes. The server is marked Running once it answers players.
           </p>
         </>
       );
