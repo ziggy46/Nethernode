@@ -1871,10 +1871,12 @@ version = "0.1.0"
 name = "nn-mcproto"
 version = "0.1.0"
 dependencies = [
+ "bytes",
  "proptest",
  "serde",
  "serde_json",
  "thiserror",
+ "tokio",
  "uuid",
 ]
 

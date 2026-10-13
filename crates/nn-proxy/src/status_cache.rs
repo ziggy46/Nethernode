@@ -6,19 +6,9 @@ use std::net::SocketAddr;
 use std::sync::RwLock;
 use std::time::{Duration, Instant};
 
-use nn_mcproto::codec::frame;
-use nn_mcproto::handshake::{Handshake, NextState};
-use nn_mcproto::status::{decode_status_response, encode_status_request};
-use nn_mcproto::{MAX_STATUS_RESPONSE_FRAME, StatusResponse};
-use tokio::io::AsyncWriteExt;
-use tokio::net::TcpStream;
+use nn_mcproto::StatusResponse;
 
-use crate::io::{FrameBuffer, ReadError};
 use crate::proxy_protocol;
-
-/// Protocol version sent when pinging backends. Servers answer status pings
-/// for any version; 47 (1.8) is the conventional choice for probes.
-const PING_PROTOCOL: i32 = 47;
 
 /// A cached status response.
 #[derive(Debug, Clone)]
@@ -66,22 +56,7 @@ impl StatusCache {
     }
 }
 
-/// Why a status ping failed.
-#[derive(Debug, thiserror::Error)]
-pub enum PingError {
-    /// The backend didn't answer in time.
-    #[error("timed out")]
-    Timeout,
-    /// Reading the response failed.
-    #[error(transparent)]
-    Read(#[from] ReadError),
-    /// The response wasn't valid status JSON.
-    #[error(transparent)]
-    Decode(#[from] nn_mcproto::DecodeError),
-    /// Socket error.
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
-}
+pub use nn_mcproto::client::PingError;
 
 /// Asks a backend for its status, as a client would.
 ///
@@ -92,30 +67,10 @@ pub async fn ping_backend(
     proxy_protocol: bool,
     timeout: Duration,
 ) -> Result<StatusResponse, PingError> {
-    tokio::time::timeout(timeout, async {
-        let mut stream = TcpStream::connect(addr).await?;
-        stream.set_nodelay(true)?;
-        let mut out = Vec::with_capacity(64);
-        if proxy_protocol {
-            out.extend_from_slice(&proxy_protocol::local());
-        }
-        let handshake = Handshake {
-            protocol_version: PING_PROTOCOL,
-            server_address: addr.ip().to_string(),
-            server_port: addr.port(),
-            next_state: NextState::Status,
-        };
-        out.extend_from_slice(&frame(&handshake.encode()));
-        out.extend_from_slice(&frame(&encode_status_request()));
-        stream.write_all(&out).await?;
-
-        let mut buf = FrameBuffer::new();
-        let range = buf
-            .next_frame(&mut stream, MAX_STATUS_RESPONSE_FRAME)
-            .await?;
-        let json = decode_status_response(buf.payload(range))?;
-        Ok(StatusResponse::from_json(&json)?)
-    })
-    .await
-    .map_err(|_| PingError::Timeout)?
+    let prelude = if proxy_protocol {
+        proxy_protocol::local()
+    } else {
+        Vec::new()
+    };
+    nn_mcproto::client::ping(addr, &prelude, timeout).await
 }

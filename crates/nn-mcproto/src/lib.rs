@@ -7,10 +7,14 @@
 //!
 //! Primary reference: <https://minecraft.wiki/w/Java_Edition_protocol>
 
+#[cfg(feature = "tokio")]
+pub mod client;
 pub mod codec;
 pub mod error;
 pub mod frame;
 pub mod handshake;
+#[cfg(feature = "tokio")]
+pub mod io;
 pub mod legacy;
 pub mod login;
 pub mod status;

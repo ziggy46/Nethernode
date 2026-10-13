@@ -12,7 +12,7 @@ workspace = true
 
 [dependencies]
 nn-events.workspace = true
-nn-mcproto.workspace = true
+nn-mcproto = { workspace = true, features = ["tokio"] }
 arc-swap.workspace = true
 bytes.workspace = true
 metrics.workspace = true
