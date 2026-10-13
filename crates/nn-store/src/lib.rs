@@ -16,11 +16,17 @@ use sqlx::sqlite::{
 };
 
 pub mod audit;
+pub mod players;
+pub mod proxy;
+pub mod servers;
 pub mod sessions;
 pub mod settings;
 pub mod users;
 
 pub use audit::NewAuditEntry;
+pub use players::{NewPlayerSession, PlayerSession};
+pub use proxy::{ListenerInput, ProxyListener, Route, RouteInput};
+pub use servers::{NewServer, Server};
 pub use sessions::{NewSession, Session};
 pub use users::{NewUser, User};
 

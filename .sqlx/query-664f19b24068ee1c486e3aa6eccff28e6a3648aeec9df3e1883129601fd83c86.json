@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE player_sessions SET left_at = ?1 WHERE id = ?2 AND left_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "664f19b24068ee1c486e3aa6eccff28e6a3648aeec9df3e1883129601fd83c86"
+}

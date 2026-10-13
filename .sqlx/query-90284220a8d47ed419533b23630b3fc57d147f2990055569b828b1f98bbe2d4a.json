@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO routes (id, server_id, hostname, listener_id, priority)\n                       VALUES (?1, ?2, ?3, ?4, ?5)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "90284220a8d47ed419533b23630b3fc57d147f2990055569b828b1f98bbe2d4a"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO proxy_listeners (id, bind_addr, port, enabled, proxy_protocol)\n               SELECT ?1, ?2, ?3, 1, 0 WHERE NOT EXISTS (SELECT 1 FROM proxy_listeners)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "9085cffeed7e5493af20687675ed0175eacf411a14fa1c63b38fa9c73a5694d8"
+}

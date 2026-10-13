@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE proxy_listeners SET bind_addr = ?1, port = ?2, enabled = ?3, proxy_protocol = ?4\n                       WHERE id = ?5",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "b5287987c472a9e7f7671032d2223f4f9432b7ddf2d5048e91a730b0bd35a0b8"
+}

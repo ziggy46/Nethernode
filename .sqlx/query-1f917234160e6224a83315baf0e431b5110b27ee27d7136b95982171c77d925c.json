@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO servers (id, name, slug, status, mc_version, loader, image, memory_mb,\n                                    internal_port, sleep_when_empty, created_at, updated_at)\n               VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?11)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 11
+    },
+    "nullable": []
+  },
+  "hash": "1f917234160e6224a83315baf0e431b5110b27ee27d7136b95982171c77d925c"
+}

@@ -1,0 +1,266 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id AS \"id!\", name, slug, status, mc_version, loader, loader_version, image,\n                      java_version, memory_mb, cpu_limit, internal_port, public_port, hostname,\n                      auto_start AS \"auto_start: bool\", auto_stop_idle_minutes,\n                      sleep_when_empty AS \"sleep_when_empty: bool\", rcon_password_enc, env_json,\n                      created_at, updated_at\n               FROM servers WHERE id = ?1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "name": "slug",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "slug"
+          }
+        }
+      },
+      {
+        "name": "status",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "name": "mc_version",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "mc_version"
+          }
+        }
+      },
+      {
+        "name": "loader",
+        "ordinal": 5,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "loader"
+          }
+        }
+      },
+      {
+        "name": "loader_version",
+        "ordinal": 6,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "loader_version"
+          }
+        }
+      },
+      {
+        "name": "image",
+        "ordinal": 7,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "image"
+          }
+        }
+      },
+      {
+        "name": "java_version",
+        "ordinal": 8,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "java_version"
+          }
+        }
+      },
+      {
+        "name": "memory_mb",
+        "ordinal": 9,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "memory_mb"
+          }
+        }
+      },
+      {
+        "name": "cpu_limit",
+        "ordinal": 10,
+        "type_info": "Float",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "cpu_limit"
+          }
+        }
+      },
+      {
+        "name": "internal_port",
+        "ordinal": 11,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "internal_port"
+          }
+        }
+      },
+      {
+        "name": "public_port",
+        "ordinal": 12,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "public_port"
+          }
+        }
+      },
+      {
+        "name": "hostname",
+        "ordinal": 13,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "hostname"
+          }
+        }
+      },
+      {
+        "name": "auto_start: bool",
+        "ordinal": 14,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "auto_start"
+          }
+        }
+      },
+      {
+        "name": "auto_stop_idle_minutes",
+        "ordinal": 15,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "auto_stop_idle_minutes"
+          }
+        }
+      },
+      {
+        "name": "sleep_when_empty: bool",
+        "ordinal": 16,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "sleep_when_empty"
+          }
+        }
+      },
+      {
+        "name": "rcon_password_enc",
+        "ordinal": 17,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "rcon_password_enc"
+          }
+        }
+      },
+      {
+        "name": "env_json",
+        "ordinal": 18,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "env_json"
+          }
+        }
+      },
+      {
+        "name": "created_at",
+        "ordinal": 19,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 20,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e01489e95c96f554e8e3be3ffc3e0607a8fb8f770d5f8a92e3d7ebc5a9a2ccca"
+}

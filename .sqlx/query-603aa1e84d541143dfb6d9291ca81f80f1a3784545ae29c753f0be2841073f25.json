@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO proxy_listeners (id, bind_addr, port, enabled, proxy_protocol)\n                       VALUES (?1, ?2, ?3, ?4, ?5)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "603aa1e84d541143dfb6d9291ca81f80f1a3784545ae29c753f0be2841073f25"
+}

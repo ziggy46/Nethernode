@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO player_sessions (id, server_id, uuid, username, ip, joined_at)\n               VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "df56b841ec2496bb20bfa1b87088b5e780d091644b493c37655aa42b138223df"
+}

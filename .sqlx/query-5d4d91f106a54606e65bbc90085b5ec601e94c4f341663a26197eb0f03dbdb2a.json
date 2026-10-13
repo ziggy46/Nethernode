@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE routes SET server_id = ?1, hostname = ?2, listener_id = ?3, priority = ?4\n                       WHERE id = ?5",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "5d4d91f106a54606e65bbc90085b5ec601e94c4f341663a26197eb0f03dbdb2a"
+}

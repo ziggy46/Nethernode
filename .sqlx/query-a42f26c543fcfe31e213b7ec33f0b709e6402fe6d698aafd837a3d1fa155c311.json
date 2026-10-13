@@ -1,0 +1,74 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id AS \"id!\", bind_addr, port, enabled AS \"enabled: bool\",\n                      proxy_protocol AS \"proxy_protocol: bool\"\n               FROM proxy_listeners ORDER BY port, bind_addr",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "proxy_listeners",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "bind_addr",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "proxy_listeners",
+            "name": "bind_addr"
+          }
+        }
+      },
+      {
+        "name": "port",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "proxy_listeners",
+            "name": "port"
+          }
+        }
+      },
+      {
+        "name": "enabled: bool",
+        "ordinal": 3,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "proxy_listeners",
+            "name": "enabled"
+          }
+        }
+      },
+      {
+        "name": "proxy_protocol: bool",
+        "ordinal": 4,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "proxy_listeners",
+            "name": "proxy_protocol"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "a42f26c543fcfe31e213b7ec33f0b709e6402fe6d698aafd837a3d1fa155c311"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO players (uuid, last_username, first_seen, last_seen)\n                   VALUES (?1, ?2, ?3, ?3)\n                   ON CONFLICT (uuid) DO UPDATE\n                   SET last_username = excluded.last_username, last_seen = excluded.last_seen",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "c968c5b8b74582c3397a6fdad953f2fc4209303f1ecf754ae3ce91d6b8433751"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE players SET last_seen = ?1\n               WHERE uuid = (SELECT uuid FROM player_sessions WHERE id = ?2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "7403f6ecc0231b6a9d082eeb6041792ac6ab75d6fe074fccaa8d23d5cc195e78"
+}
