@@ -97,6 +97,7 @@ async fn serve(config: Config) -> Result<()> {
     let events = EventBus::default();
     let proxy = start_proxy(&config, &store, &events).await?;
 
+    let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
     let state = AppState {
         auth: auth.clone(),
         proxy: proxy.clone(),
@@ -106,6 +107,7 @@ async fn serve(config: Config) -> Result<()> {
             trust_proxy_headers: config.http.trust_proxy_headers,
         }),
         metrics: Some(metrics),
+        shutdown: shutdown_rx.clone(),
     };
     let app = nn_api::router(state);
 
@@ -124,12 +126,24 @@ async fn serve(config: Config) -> Result<()> {
         );
     }
 
-    axum::serve(
+    let mut stopping = shutdown_rx;
+    let server = axum::serve(
         listener,
         app.into_make_service_with_connect_info::<SocketAddr>(),
     )
-    .with_graceful_shutdown(shutdown_signal())
-    .await?;
+    .with_graceful_shutdown(async move {
+        shutdown_signal().await;
+        let _ = shutdown_tx.send(true);
+    });
+    // Give in-flight requests a few seconds, then stop regardless.
+    tokio::select! {
+        result = server => result?,
+        () = async {
+            let _ = stopping.wait_for(|stop| *stop).await;
+            tokio::time::sleep(Duration::from_secs(10)).await;
+        } => tracing::warn!("requests still open after 10 s; shutting down anyway"),
+    }
+    proxy.proxy().shutdown().await;
     auth.store().close().await;
     tracing::info!("shut down cleanly");
     Ok(())

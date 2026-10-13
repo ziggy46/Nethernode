@@ -32,6 +32,7 @@ async fn app() -> Router {
         events,
         config: Arc::new(ApiConfig::default()),
         metrics: None,
+        shutdown: tokio::sync::watch::channel(false).1,
     })
 }
 

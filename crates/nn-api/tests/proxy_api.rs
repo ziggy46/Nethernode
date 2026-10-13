@@ -29,6 +29,7 @@ struct Harness {
     store: Store,
     events: EventBus,
     owner: String,
+    shutdown: tokio::sync::watch::Sender<bool>,
 }
 
 async fn harness() -> Harness {
@@ -41,12 +42,14 @@ async fn harness() -> Harness {
         nn_proxy::Limits::default(),
     );
     let auth = Arc::new(Auth::new(store.clone(), AuthConfig::default()));
+    let (shutdown, shutdown_rx) = tokio::sync::watch::channel(false);
     let app = nn_api::router(AppState {
         proxy: Arc::new(ProxyRuntime::new(proxy, store.clone(), true)),
         auth: auth.clone(),
         events: events.clone(),
         config: Arc::new(ApiConfig::default()),
         metrics: None,
+        shutdown: shutdown_rx,
     });
     let owner = auth
         .setup("owner", PASSWORD, Default::default())
@@ -58,6 +61,7 @@ async fn harness() -> Harness {
         store,
         events,
         owner,
+        shutdown,
     }
 }
 
@@ -384,4 +388,20 @@ async fn event_stream_requires_a_session_and_delivers_events() {
     let text = String::from_utf8(frame.into_data().unwrap().to_vec()).unwrap();
     assert!(text.contains("event: proxy_listener_changed"), "{text}");
     assert!(text.contains(r#""listener_id":"abc""#), "{text}");
+}
+
+#[tokio::test]
+async fn event_stream_ends_when_the_server_shuts_down() {
+    let h = harness().await;
+    let req = Request::get("/api/events")
+        .header(header::COOKIE, format!("nn_session={}", h.owner))
+        .body(Body::empty())
+        .unwrap();
+    let mut body = h.app.clone().oneshot(req).await.unwrap().into_body();
+    h.shutdown.send(true).unwrap();
+    // Otherwise this would wait forever (until a keep-alive) and block graceful shutdown.
+    let end = tokio::time::timeout(Duration::from_secs(2), body.frame())
+        .await
+        .expect("stream ended");
+    assert!(end.is_none(), "stream should be finished, got {end:?}");
 }

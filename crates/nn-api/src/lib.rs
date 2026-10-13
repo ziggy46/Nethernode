@@ -92,6 +92,9 @@ pub struct AppState {
     pub metrics: Option<PrometheusHandle>,
     /// The Smart Proxy and its database-backed configuration.
     pub proxy: Arc<ProxyRuntime>,
+    /// Flips to `true` when the server begins shutting down, so long-lived
+    /// responses (the event stream) end and graceful shutdown can finish.
+    pub shutdown: tokio::sync::watch::Receiver<bool>,
 }
 
 /// Builds the full application router.
