@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Save, Settings, Trash2, TriangleAlert } from "lucide-react";
-import { type FormEvent, useEffect, useId, useState } from "react";
+import { type FormEvent, lazy, Suspense, useEffect, useId, useState } from "react";
 import { toast } from "sonner";
 
 import { Panel, PanelHeader } from "@/components/page";
@@ -23,6 +23,8 @@ import { useCanManage } from "@/lib/session";
 
 import { LOADERS, loaderName } from "./format";
 import { THEME_NAMES } from "./world-banner";
+
+const GameSettings = lazy(() => import("./game-settings"));
 
 interface FormState {
   name: string;
@@ -313,6 +315,11 @@ export function ConfigurationTab({ server }: { server: Server }) {
           </fieldset>
         </Panel>
       </form>
+      {canManage && (
+        <Suspense fallback={<div className="h-48 animate-pulse rounded-lg bg-surface-subtle" aria-busy />}>
+          <GameSettings server={server} />
+        </Suspense>
+      )}
       {canManage && <DangerZone server={server} />}
     </div>
   );

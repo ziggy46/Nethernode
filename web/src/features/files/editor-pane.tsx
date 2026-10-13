@@ -78,6 +78,7 @@ export function EditorPane({
         old ? { ...old, version, content: new TextEncoder().encode(text) } : old,
       );
       void client.invalidateQueries({ queryKey: [...filesKey(server.id), "list"] });
+      void client.invalidateQueries({ queryKey: [...filesKey(server.id), "properties"] });
       toast.success(`Saved ${baseName(path)}.`);
     },
     onError: (err) => {
