@@ -183,17 +183,23 @@ async fn follow_events(orch: &Arc<Orchestrator>) {
 
 /// A container started (by us, or by someone using the Docker CLI).
 fn on_start(orch: &Arc<Orchestrator>, server_id: &str, container: &str) {
-    let rt = orch.runtime(server_id);
-    {
-        let state = rt.state();
-        if state.monitored() || state.launching {
-            return;
-        }
-    }
     let orch = orch.clone();
     let server_id = server_id.to_owned();
     let container = container.to_owned();
     tokio::spawn(async move {
+        // Another NetherNode (a test instance, say) may share this Docker
+        // host; its containers carry IDs this database doesn't know.
+        if orch.load(&server_id).await.is_err() {
+            tracing::debug!(server = %server_id, "ignoring a container start for an unknown server");
+            return;
+        }
+        let rt = orch.runtime(&server_id);
+        {
+            let state = rt.state();
+            if state.monitored() || state.launching {
+                return;
+            }
+        }
         tracing::info!(server = %server_id, "container started outside NetherNode; monitoring it");
         orch.set_status(&server_id, "starting").await;
         monitor::spawn(&orch, &server_id, &container, &rt, true);
