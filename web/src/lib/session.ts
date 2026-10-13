@@ -51,3 +51,9 @@ export const ROLE_LABELS: Record<Role, string> = {
   [Role.ADMIN]: "Administrator",
   [Role.OWNER]: "Owner",
 };
+
+/** Whether the signed-in user can change servers, the proxy, and settings. */
+export function useCanManage(): boolean {
+  const user = useCurrentUser();
+  return user.role === Role.ADMIN || user.role === Role.OWNER;
+}

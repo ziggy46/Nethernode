@@ -150,6 +150,9 @@ export function requiredPairs(): Pair[] {
   // Interactive boundaries (WCAG 1.4.11): control outlines and focus rings.
   add(["border-strong", "primary"], [...SURFACES, "field"], "boundary");
   add(["border-strong"], ["button-quiet"], "boundary");
+  // Switch: thumb against its track, off (border-strong) and on (primary).
+  add(["text-primary"], ["border-strong"], "boundary");
+  add(["primary-foreground"], ["primary"], "boundary");
 
   // Decorative only; reported, never enforced.
   add(["border", "crimson", "meter-memory", "meter-storage"], SURFACES, "decorative");

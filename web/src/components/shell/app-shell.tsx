@@ -4,9 +4,8 @@ import { Bell, ChevronRight, Menu, Search, X } from "lucide-react";
 import type * as React from "react";
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 
-import { EmptyState } from "@/components/page";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useServerEvents } from "@/lib/events";
 import { healthQuery } from "@/lib/health";
 import { useCurrentUser } from "@/lib/session";
 import { cn } from "@/lib/utils";
@@ -17,9 +16,11 @@ import { navItemFor } from "./nav";
 import { Sidebar } from "./sidebar";
 
 const CommandPalette = lazy(() => import("./command-palette"));
+const NotificationsDialog = lazy(() => import("./notifications-dialog"));
 
 /** Fixed sidebar, top bar, and scrolling content, per the UI reference. */
 export function AppShell({ children }: { children: React.ReactNode }) {
+  useServerEvents();
   const [navOpen, setNavOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   // The palette's code is fetched the first time it's opened.
@@ -100,6 +101,7 @@ function TopBar({
   const page = navItemFor(pathname)?.label ?? "Overview";
   const health = useQuery(healthQuery);
   const [activityOpen, setActivityOpen] = useState(false);
+  const [activityLoaded, setActivityLoaded] = useState(false);
 
   return (
     <header className="flex h-(--nn-topbar-height) items-center gap-3 border-divider border-b bg-background px-(--nn-main-padding-x)">
@@ -150,7 +152,10 @@ function TopBar({
           size="icon"
           className="border-divider"
           aria-label="View notifications"
-          onClick={() => setActivityOpen(true)}
+          onClick={() => {
+            setActivityLoaded(true);
+            setActivityOpen(true);
+          }}
         >
           <Bell />
         </Button>
@@ -160,17 +165,11 @@ function TopBar({
           </button>
         </AccountMenu>
       </div>
-      <Dialog open={activityOpen} onOpenChange={setActivityOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Recent activity</DialogTitle>
-            <DialogDescription>Your workspace, at a glance.</DialogDescription>
-          </DialogHeader>
-          <EmptyState compact icon={<Bell />} title="Nothing to show yet">
-            Server, player, and backup activity will appear here once those features are available.
-          </EmptyState>
-        </DialogContent>
-      </Dialog>
+      {activityLoaded && (
+        <Suspense fallback={null}>
+          <NotificationsDialog open={activityOpen} onOpenChange={setActivityOpen} />
+        </Suspense>
+      )}
     </header>
   );
 }

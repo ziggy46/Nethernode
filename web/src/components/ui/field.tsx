@@ -53,6 +53,23 @@ export function Field({
   );
 }
 
+/** A native select styled like the inputs (keeps platform keyboard behavior). */
+export function Select({ className, ...props }: React.ComponentProps<"select">) {
+  return (
+    <select
+      data-slot="select"
+      className={cn(
+        "block h-10 w-full rounded-md border border-border-strong bg-sidebar px-3 text-nav text-text-primary",
+        "transition-colors duration-(--nn-transition) hover:border-text-muted",
+        "focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2",
+        "disabled:cursor-not-allowed disabled:opacity-50",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
 /** Inline error message for a failed operation. Stays until the user acts. */
 export function ErrorAlert({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
