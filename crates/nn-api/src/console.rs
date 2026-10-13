@@ -268,16 +268,16 @@ mod tests {
     #[test]
     fn origin_must_match_host() {
         let ok = headers(&[
-            ("origin", "http://10.0.0.5:8080"),
-            ("host", "10.0.0.5:8080"),
+            ("origin", "http://192.0.2.10:8080"),
+            ("host", "192.0.2.10:8080"),
         ]);
         assert!(same_origin(&ok, false));
         let other_port = headers(&[
-            ("origin", "http://10.0.0.5:9000"),
-            ("host", "10.0.0.5:8080"),
+            ("origin", "http://192.0.2.10:9000"),
+            ("host", "192.0.2.10:8080"),
         ]);
         assert!(!same_origin(&other_port, false));
-        let missing = headers(&[("host", "10.0.0.5:8080")]);
+        let missing = headers(&[("host", "192.0.2.10:8080")]);
         assert!(!same_origin(&missing, false));
         let proxied = headers(&[
             ("origin", "https://panel.example.com"),
