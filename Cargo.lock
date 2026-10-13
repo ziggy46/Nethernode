@@ -2345,6 +2345,18 @@ dependencies = [
 [[package]]
 name = "nn-uploads"
 version = "0.1.0"
+dependencies = [
+ "base64 0.23.1",
+ "bytes",
+ "futures-util",
+ "hex",
+ "jiff",
+ "rustix",
+ "sha2 0.11.1",
+ "tempfile",
+ "thiserror",
+ "tokio",
+]
 
 [[package]]
 name = "nu-ansi-term"
