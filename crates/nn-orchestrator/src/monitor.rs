@@ -42,6 +42,7 @@ pub(crate) fn spawn(
 ) {
     let mut state = rt.state();
     state.stop_tasks();
+    state.launching = false;
     state.tasks.push(tokio::spawn(watch_health(
         orch.clone(),
         id.to_owned(),

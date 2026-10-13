@@ -184,8 +184,11 @@ async fn follow_events(orch: &Arc<Orchestrator>) {
 /// A container started (by us, or by someone using the Docker CLI).
 fn on_start(orch: &Arc<Orchestrator>, server_id: &str, container: &str) {
     let rt = orch.runtime(server_id);
-    if rt.state().monitored() {
-        return;
+    {
+        let state = rt.state();
+        if state.monitored() || state.launching {
+            return;
+        }
     }
     let orch = orch.clone();
     let server_id = server_id.to_owned();

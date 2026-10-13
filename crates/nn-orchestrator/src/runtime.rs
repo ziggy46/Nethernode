@@ -87,6 +87,9 @@ pub(crate) struct State {
     pub tasks: Vec<JoinHandle<()>>,
     pub players: Option<Players>,
     pub crash_restarts: VecDeque<Instant>,
+    /// NetherNode is starting the container itself, so Docker's `start`
+    /// event shouldn't be treated as an outside start.
+    pub launching: bool,
 }
 
 impl State {

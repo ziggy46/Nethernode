@@ -581,10 +581,19 @@ impl Orchestrator {
         self.set_status(id, "starting").await;
         let result = async {
             let container = self.ensure_container(&server).await?;
-            rt.state().expected_exit = None;
-            self.docker
+            {
+                let mut state = rt.state();
+                state.expected_exit = None;
+                state.launching = true;
+            }
+            let started = self
+                .docker
                 .start_container(&container, None::<StartContainerOptions>)
-                .await?;
+                .await;
+            if started.is_err() {
+                rt.state().launching = false;
+            }
+            started?;
             Ok::<_, OrchestratorError>(container)
         }
         .await;
