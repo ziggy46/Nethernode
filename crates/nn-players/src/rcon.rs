@@ -4,9 +4,11 @@
 //! little-endian, where `length` counts everything after itself. Types:
 //! 3 = login, 2 = command (also the login reply), 0 = response. A failed
 //! login replies with request ID -1. Long responses arrive in several
-//! packets; to find the end, each command is followed by a sentinel packet
-//! with an unknown type, whose reply (same ID as the sentinel) marks that
-//! everything before it has been received.
+//! packets of up to 4096 bytes. When a reply fills a whole packet, more may
+//! follow, so a sentinel packet with an unknown type is sent; its reply
+//! (same ID as the sentinel) marks that everything before it has arrived.
+//! The sentinel goes out only after the first reply: vanilla servers read
+//! one packet per `read()` and drop the connection if two arrive together.
 //! Source: <https://minecraft.wiki/w/RCON>
 
 use std::time::Duration;
@@ -21,8 +23,10 @@ const TYPE_COMMAND: i32 = 2;
 const TYPE_SENTINEL: i32 = 200;
 /// Client→server payload limit.
 pub const MAX_COMMAND_BYTES: usize = 1446;
-/// Largest packet the server sends (4096-byte payload + header).
-const MAX_PACKET: usize = 4096 + 14;
+/// Largest payload in one server packet; a full one may be continued.
+const MAX_PAYLOAD: usize = 4096;
+/// Largest packet the server sends (payload + header).
+const MAX_PACKET: usize = MAX_PAYLOAD + 14;
 
 /// RCON failures.
 #[derive(Debug, thiserror::Error)]
@@ -96,20 +100,38 @@ impl Rcon {
             return Err(RconError::CommandTooLong(command.len()));
         }
         let id = self.take_id();
-        let sentinel = self.take_id();
         self.send(id, TYPE_COMMAND, command).await?;
-        self.send(sentinel, TYPE_SENTINEL, "").await?;
-        let mut output = Vec::new();
+        let mut output = self.recv_reply(id).await?;
+        if output.len() >= MAX_PAYLOAD {
+            // Possibly fragmented: the server answers the sentinel only
+            // after sending every fragment.
+            let sentinel = self.take_id();
+            self.send(sentinel, TYPE_SENTINEL, "").await?;
+            loop {
+                let (reply_id, _, payload) = self.recv().await?;
+                if reply_id == -1 {
+                    return Err(RconError::AuthFailed);
+                }
+                if reply_id == sentinel {
+                    break;
+                }
+                if reply_id == id {
+                    output.extend_from_slice(&payload);
+                }
+            }
+        }
+        Ok(String::from_utf8_lossy(&output).into_owned())
+    }
+
+    /// The first reply to request `id`.
+    async fn recv_reply(&mut self, id: i32) -> Result<Vec<u8>, RconError> {
         loop {
             let (reply_id, _, payload) = self.recv().await?;
             if reply_id == -1 {
                 return Err(RconError::AuthFailed);
             }
-            if reply_id == sentinel {
-                return Ok(String::from_utf8_lossy(&output).into_owned());
-            }
             if reply_id == id {
-                output.extend_from_slice(&payload);
+                return Ok(payload);
             }
         }
     }
@@ -172,10 +194,22 @@ mod tests {
 
     const T: Duration = Duration::from_secs(2);
 
+    /// Reads like vanilla's RCON thread: one `read()` must hold exactly one
+    /// packet, or the connection is dropped. The pause lets anything else
+    /// the client sent arrive first, so sending two packets at once fails
+    /// here the way it does against a real server.
     async fn read_packet(stream: &mut TcpStream) -> Option<(i32, i32, String)> {
-        let len = stream.read_i32_le().await.ok()? as usize;
-        let mut body = vec![0; len];
-        stream.read_exact(&mut body).await.ok()?;
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        let mut buf = vec![0; 1460];
+        let n = stream.read(&mut buf).await.ok()?;
+        if n < 14 {
+            return None;
+        }
+        let len = i32::from_le_bytes(buf[0..4].try_into().unwrap()) as usize;
+        if len != n - 4 {
+            return None;
+        }
+        let body = &buf[4..n];
         let id = i32::from_le_bytes(body[0..4].try_into().unwrap());
         let kind = i32::from_le_bytes(body[4..8].try_into().unwrap());
         Some((
