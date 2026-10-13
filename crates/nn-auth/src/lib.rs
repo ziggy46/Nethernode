@@ -13,10 +13,12 @@ use serde_json::json;
 pub mod password;
 pub mod rate_limit;
 pub mod rbac;
+pub mod secrets;
 pub mod token;
 
 pub use rate_limit::LoginRateLimiter;
 pub use rbac::{Permission, Role};
+pub use secrets::SecretBox;
 
 /// Minimum username length.
 pub const MIN_USERNAME_LEN: usize = 3;

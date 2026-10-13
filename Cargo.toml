@@ -36,11 +36,16 @@ connectrpc-build = "0.9"
 buffa = { version = "0.9", features = ["json"] }
 buffa-types = { version = "0.9", features = ["json"] }
 
+# Docker
+bollard = "0.21"
+futures-util = "0.3"
+
 # Storage
 sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "sqlite-bundled", "macros", "migrate"] }
 
 # Auth / crypto
 argon2 = "0.6"
+chacha20poly1305 = "0.11"
 rand = "0.10"
 sha2 = "0.11"
 subtle = "2.6"
