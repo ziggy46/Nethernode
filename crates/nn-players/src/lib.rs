@@ -1,8 +1,11 @@
-//! Player management over RCON and the server management protocol.
-//!
-//! Phase 3 adds the RCON client (used for graceful stops); player actions
-//! build on it in Phase 5.
+//! Player management: reaching a server through its management protocol
+//! (1.21.9+) or RCON, Minecraft's own player lists on disk, and player data.
 
+pub mod commands;
+pub mod mgmt;
+pub mod profile;
 pub mod rcon;
 
+pub use mgmt::{MgmtClient, MgmtError};
+pub use profile::{Profile, offline_uuid, valid_name};
 pub use rcon::{Rcon, RconError};
