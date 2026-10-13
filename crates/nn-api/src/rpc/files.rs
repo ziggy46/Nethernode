@@ -3,9 +3,7 @@
 
 use connectrpc::{ConnectError, RequestContext, Response, ServiceRequest, ServiceResult};
 use nn_auth::{AuthUser, Permission};
-use nn_files::{
-    EDITOR_LIMIT, Entry, EntryKind, Expect, Limits, RelPath, TRASH_RETENTION, TrashItem,
-};
+use nn_files::{EDITOR_LIMIT, Entry, EntryKind, Expect, RelPath, TRASH_RETENTION, TrashItem};
 use serde_json::json;
 
 use crate::AppState;
@@ -304,17 +302,8 @@ impl pb::FileService for FileRpc {
         let overwrite = request.overwrite;
         let (server, files) = open(&self.state, request.server_id).await?;
         let details = json!({ "archive": archive.as_str(), "destination": dest.as_str() });
-        let job_id = spawn_job(&self.state, &server.id, "extract", move |progress| {
-            let report = files.extract(&archive, &dest, overwrite, Limits::default(), progress)?;
-            let mut message = format!(
-                "Extracted {} files from {archive} into {dest}",
-                report.files
-            );
-            if report.skipped_links > 0 {
-                message.push_str(&format!(" ({} links left out)", report.skipped_links));
-            }
-            Ok(message)
-        });
+        let job_id =
+            crate::files::start_extract(&self.state, &server.id, files, archive, dest, overwrite);
         self.record(&user, "file.extract", &server.id, details)
             .await;
         Response::ok(pb::ExtractArchiveResponse {

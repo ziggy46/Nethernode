@@ -16,9 +16,8 @@
 use std::sync::Arc;
 
 use axum::Router;
-use axum::extract::DefaultBodyLimit;
 use axum::middleware::from_fn_with_state;
-use axum::routing::{get, post};
+use axum::routing::{get, head, post};
 use connectrpc::Router as ConnectRouter;
 use http::HeaderValue;
 use http::header;
@@ -42,6 +41,7 @@ pub mod proxy_runtime;
 mod request_meta;
 mod rpc;
 mod spa;
+pub mod uploads;
 
 pub use middleware::{CurrentUser, PUBLIC_PROCEDURES, SETUP_REQUIRED_HEADER};
 pub use proxy_runtime::{ProxyRuntime, StoreProxyHooks};
@@ -104,6 +104,8 @@ pub struct AppState {
     pub servers: ServerManager,
     /// Player management.
     pub players: Arc<players::PlayerManager>,
+    /// Resumable uploads.
+    pub uploads: Arc<uploads::Uploads>,
 }
 
 /// Server lifecycle management, which needs Docker.
@@ -138,10 +140,16 @@ pub fn router(state: AppState) -> Router {
         )
         .route("/api/files/download", get(files_http::download))
         .route(
-            "/api/files/upload",
-            post(files_http::upload)
-                .layer(DefaultBodyLimit::max(files_http::UPLOAD_LIMIT))
-                .layer(axum::middleware::from_fn(middleware::no_store)),
+            "/api/uploads",
+            post(uploads::create)
+                .options(uploads::describe)
+                .get(uploads::list),
+        )
+        .route(
+            "/api/uploads/{id}",
+            head(uploads::offset)
+                .patch(uploads::patch)
+                .delete(uploads::cancel),
         )
         .route("/ws/servers/{id}/console", get(console::console))
         .route("/api/players/{uuid}/head", get(players::heads::head))

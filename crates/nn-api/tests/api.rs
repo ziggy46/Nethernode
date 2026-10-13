@@ -34,6 +34,7 @@ async fn app() -> Router {
         metrics: None,
         shutdown: tokio::sync::watch::channel(false).1,
         players: Default::default(),
+        uploads: Default::default(),
         servers: Default::default(),
     })
 }

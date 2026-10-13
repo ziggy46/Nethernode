@@ -2162,6 +2162,7 @@ dependencies = [
  "nn-orchestrator",
  "nn-proxy",
  "nn-store",
+ "nn-uploads",
  "rand 0.10.3",
  "serde",
  "tempfile",
@@ -2181,6 +2182,7 @@ dependencies = [
  "connectrpc",
  "connectrpc-build",
  "futures-util",
+ "hex",
  "http",
  "http-body-util",
  "jiff",
@@ -2195,9 +2197,11 @@ dependencies = [
  "nn-players",
  "nn-proxy",
  "nn-store",
+ "nn-uploads",
  "rust-embed",
  "serde",
  "serde_json",
+ "sha2 0.11.1",
  "tempfile",
  "thiserror",
  "tokio",
@@ -2206,6 +2210,7 @@ dependencies = [
  "tower",
  "tower-http 0.7.1",
  "tracing",
+ "zip",
 ]
 
 [[package]]

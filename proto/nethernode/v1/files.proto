@@ -6,8 +6,8 @@ package nethernode.v1;
 // (`config/paper-global.yml`); the empty path is the folder itself.
 // Deleting moves items to a trash that can be restored for 30 days.
 // Extracting and compressing run in the background: watch /api/events for
-// `file_job_progress` and `file_job_finished`. Downloads and small uploads
-// use plain HTTP: GET /api/files/download and POST /api/files/upload.
+// `file_job_progress` and `file_job_finished`. Downloads use plain HTTP
+// (GET /api/files/download); uploads use tus at /api/uploads.
 service FileService {
   rpc ListFiles(ListFilesRequest) returns (ListFilesResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;

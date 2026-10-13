@@ -678,8 +678,8 @@ export const FileKindSchema: GenEnum<FileKind> = /*@__PURE__*/
  * (`config/paper-global.yml`); the empty path is the folder itself.
  * Deleting moves items to a trash that can be restored for 30 days.
  * Extracting and compressing run in the background: watch /api/events for
- * `file_job_progress` and `file_job_finished`. Downloads and small uploads
- * use plain HTTP: GET /api/files/download and POST /api/files/upload.
+ * `file_job_progress` and `file_job_finished`. Downloads use plain HTTP
+ * (GET /api/files/download); uploads use tus at /api/uploads.
  *
  * @generated from service nethernode.v1.FileService
  */

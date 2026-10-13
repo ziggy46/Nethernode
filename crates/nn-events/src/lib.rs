@@ -150,6 +150,21 @@ pub enum Event {
         /// Whether it failed.
         failed: bool,
     },
+    /// A resumable upload finished: it's in place, was skipped because the
+    /// name was taken, or couldn't be placed.
+    UploadFinished {
+        /// Destination server.
+        server_id: String,
+        /// Upload ID.
+        upload_id: String,
+        /// Where the file ended up, relative to the server root (empty if
+        /// it wasn't placed).
+        path: String,
+        /// What happened, suitable for display.
+        message: String,
+        /// Whether it failed.
+        failed: bool,
+    },
 }
 
 /// Cloneable handle to the process-wide event bus.

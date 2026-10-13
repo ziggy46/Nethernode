@@ -2,44 +2,34 @@
 //!
 //! - `GET /api/files/download?server=<id>&path=<path>` streams a file, with
 //!   single-range support so interrupted downloads can resume.
-//! - `POST /api/files/upload?server=<id>&path=<path>[&overwrite=true]` takes
-//!   the raw file as the body, up to [`UPLOAD_LIMIT`]. Resumable uploads for
-//!   large files arrive with tus.
 //!
-//! Both need a session with permission to manage servers; uploads also need
-//! the CSRF header like any other POST.
+//! Uploads use tus (see [`crate::uploads`]). Downloads need a session with
+//! permission to manage servers.
 
 use std::io::SeekFrom;
 
 use axum::Extension;
-use axum::body::{Body, Bytes};
+use axum::body::Body;
 use axum::extract::{Query, State};
 use axum::response::{IntoResponse, Response};
 use connectrpc::ConnectError;
 use http::{HeaderMap, HeaderValue, StatusCode, header};
 use nn_auth::{AuthUser, Permission};
-use nn_files::{Expect, RelPath};
-use serde_json::json;
+use nn_files::RelPath;
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
 use tokio_util::io::ReaderStream;
 
 use crate::AppState;
 use crate::files::{blocking, file_error, open};
 use crate::middleware::CurrentUser;
-use crate::rpc::audit;
-
-/// Largest file accepted by the simple upload endpoint.
-pub const UPLOAD_LIMIT: usize = 25 * 1024 * 1024;
 
 #[derive(serde::Deserialize)]
 pub(crate) struct FileQuery {
     server: String,
     path: String,
-    #[serde(default)]
-    overwrite: bool,
 }
 
-fn authorize(user: Option<Extension<CurrentUser>>) -> Result<AuthUser, ConnectError> {
+pub(crate) fn authorize(user: Option<Extension<CurrentUser>>) -> Result<AuthUser, ConnectError> {
     let Some(Extension(CurrentUser(authed))) = user else {
         return Err(ConnectError::unauthenticated("sign in required"));
     };
@@ -126,47 +116,6 @@ pub(crate) async fn download(
         h.insert(header::CONTENT_RANGE, v);
     }
     response
-}
-
-pub(crate) async fn upload(
-    State(state): State<AppState>,
-    user: Option<Extension<CurrentUser>>,
-    Query(query): Query<FileQuery>,
-    body: Bytes,
-) -> Response {
-    let user = match authorize(user) {
-        Ok(user) => user,
-        Err(e) => return e.into_response(),
-    };
-    let path = match RelPath::parse(&query.path) {
-        Ok(path) => path,
-        Err(e) => return file_error(e).into_response(),
-    };
-    let (server, files) = match open(&state, &query.server).await {
-        Ok(opened) => opened,
-        Err(e) => return e.into_response(),
-    };
-    let expect = if query.overwrite {
-        Expect::Any
-    } else {
-        Expect::New
-    };
-    let size = body.len();
-    let written = path.clone();
-    match blocking(move || files.write(&written, &body, expect)).await {
-        Ok(version) => {
-            audit(
-                &state,
-                &user,
-                "file.upload",
-                ("server", &server.id),
-                json!({ "path": path.as_str(), "size": size }),
-            )
-            .await;
-            axum::Json(json!({ "version": version })).into_response()
-        }
-        Err(e) => e.into_response(),
-    }
 }
 
 /// Parses a single `bytes=` range against a file of `size` bytes.

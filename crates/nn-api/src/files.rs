@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use connectrpc::ConnectError;
 use nn_events::Event;
-use nn_files::{FileError, ServerFiles};
+use nn_files::{FileError, Limits, RelPath, ServerFiles};
 use nn_store::Server;
 
 use crate::AppState;
@@ -120,4 +120,26 @@ where
         });
     });
     job_id
+}
+
+/// Extracts `archive` into `dest` as a background job. Returns the job ID.
+pub(crate) fn start_extract(
+    state: &AppState,
+    server_id: &str,
+    files: Arc<ServerFiles>,
+    archive: RelPath,
+    dest: RelPath,
+    overwrite: bool,
+) -> String {
+    spawn_job(state, server_id, "extract", move |progress| {
+        let report = files.extract(&archive, &dest, overwrite, Limits::default(), progress)?;
+        let mut message = format!(
+            "Extracted {} files from {archive} into {dest}",
+            report.files
+        );
+        if report.skipped_links > 0 {
+            message.push_str(&format!(" ({} links left out)", report.skipped_links));
+        }
+        Ok(message)
+    })
 }

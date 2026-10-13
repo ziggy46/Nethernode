@@ -1,4 +1,4 @@
-//! FileService, server.properties, downloads, uploads, and the console
+//! FileService, server.properties, downloads, and the console
 //! endpoint's access checks, against a real server folder on disk.
 
 use std::path::PathBuf;
@@ -51,6 +51,7 @@ async fn harness() -> Harness {
         metrics: None,
         shutdown: shutdown_rx,
         players: Default::default(),
+        uploads: Default::default(),
         servers: ServerManager {
             servers_dir: Some(servers_dir.clone()),
             ..Default::default()
@@ -293,60 +294,6 @@ async fn downloads_support_ranges() {
         .body(Body::empty())
         .unwrap();
     assert_eq!(send(&h.app, req).await.0, StatusCode::BAD_REQUEST);
-}
-
-#[tokio::test]
-async fn uploads_need_csrf_and_respect_overwrite() {
-    let h = harness().await;
-    let url = |extra: &str| {
-        format!(
-            "/api/files/upload?server={}&path=plugins.jar{extra}",
-            h.server_id
-        )
-    };
-    let post = |url: String, csrf: bool| {
-        let mut req = Request::post(url).header(
-            header::COOKIE,
-            format!("nn_csrf={CSRF}; nn_session={}", h.owner),
-        );
-        if csrf {
-            req = req.header("x-csrf-token", CSRF);
-        }
-        req.body(Body::from(vec![1u8; 1000])).unwrap()
-    };
-    assert_eq!(
-        send(&h.app, post(url(""), false)).await.0,
-        StatusCode::FORBIDDEN
-    );
-    let (status, body) = send(&h.app, post(url(""), true)).await;
-    assert_eq!(status, StatusCode::OK, "{body}");
-    assert_eq!(
-        std::fs::read(h.root.join("plugins.jar")).unwrap().len(),
-        1000
-    );
-    assert_eq!(
-        send(&h.app, post(url(""), true)).await.0,
-        StatusCode::CONFLICT,
-        "no silent overwrite"
-    );
-    assert_eq!(
-        send(&h.app, post(url("&overwrite=true"), true)).await.0,
-        StatusCode::OK
-    );
-
-    let too_big = Request::post(url(""))
-        .header(
-            header::COOKIE,
-            format!("nn_csrf={CSRF}; nn_session={}", h.owner),
-        )
-        .header("x-csrf-token", CSRF)
-        .body(Body::from(vec![0u8; nn_api_upload_limit() + 1]))
-        .unwrap();
-    assert_eq!(send(&h.app, too_big).await.0, StatusCode::PAYLOAD_TOO_LARGE);
-}
-
-fn nn_api_upload_limit() -> usize {
-    25 * 1024 * 1024
 }
 
 #[tokio::test]

@@ -23,6 +23,8 @@ pub struct Config {
     pub docker: DockerConfig,
     /// Smart Proxy.
     pub proxy: ProxyConfig,
+    /// Resumable uploads.
+    pub uploads: UploadsConfig,
 }
 
 /// `[http]`
@@ -147,6 +149,53 @@ impl Default for ProxyConfig {
     }
 }
 
+/// `[uploads]`
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(default, deny_unknown_fields)]
+pub struct UploadsConfig {
+    /// Largest chunk (one request), in MiB. Keep it well under Cloudflare's
+    /// 100 MB request limit; at most 64.
+    pub chunk_limit_mb: u32,
+    /// Largest file, in GiB.
+    pub max_file_gb: u32,
+    /// Most data one user may have in unfinished uploads at once (the sum of
+    /// their sizes), in GiB.
+    pub quota_gb: u32,
+    /// Hours an unfinished upload may go without progress before it's
+    /// discarded.
+    pub expiry_hours: u32,
+}
+
+impl Default for UploadsConfig {
+    fn default() -> Self {
+        Self {
+            chunk_limit_mb: 16,
+            max_file_gb: 50,
+            quota_gb: 100,
+            expiry_hours: 24,
+        }
+    }
+}
+
+impl UploadsConfig {
+    /// The settings uploads run with, or why these values can't work.
+    pub fn settings(&self) -> Result<nn_api::uploads::UploadSettings, String> {
+        if !(1..=64).contains(&self.chunk_limit_mb) {
+            return Err("uploads.chunk_limit_mb must be between 1 and 64".into());
+        }
+        if self.max_file_gb == 0 || self.quota_gb == 0 || self.expiry_hours == 0 {
+            return Err("uploads.max_file_gb, quota_gb, and expiry_hours must be above 0".into());
+        }
+        const GIB: u64 = 1024 * 1024 * 1024;
+        Ok(nn_api::uploads::UploadSettings {
+            chunk_limit: u64::from(self.chunk_limit_mb) * 1024 * 1024,
+            max_file: u64::from(self.max_file_gb) * GIB,
+            quota: u64::from(self.quota_gb) * GIB,
+            expiry: std::time::Duration::from_secs(u64::from(self.expiry_hours) * 3600),
+        })
+    }
+}
+
 impl Config {
     /// Loads configuration. A missing config file is fine; defaults apply.
     pub fn load(path: &Path) -> Result<Self, Box<figment::Error>> {
@@ -176,6 +225,20 @@ mod tests {
         assert_eq!(config.docker.socket, "unix:///var/run/docker.sock");
         assert!(config.proxy.enabled);
         assert_eq!(config.proxy.default_listener.to_string(), "0.0.0.0:25565");
+        let uploads = config.uploads.settings().unwrap();
+        assert_eq!(uploads.chunk_limit, 16 * 1024 * 1024);
+        assert_eq!(uploads.expiry.as_secs(), 24 * 3600);
+    }
+
+    #[test]
+    fn upload_chunks_stay_under_cloudflare_limits() {
+        for chunk_limit_mb in [0, 65, 100] {
+            let uploads = UploadsConfig {
+                chunk_limit_mb,
+                ..UploadsConfig::default()
+            };
+            assert!(uploads.settings().is_err());
+        }
     }
 
     #[test]

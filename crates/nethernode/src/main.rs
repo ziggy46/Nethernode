@@ -104,6 +104,12 @@ async fn serve(config: Config) -> Result<()> {
     }
     spawn_proxy_reloader(proxy.clone(), &events);
 
+    let upload_settings = config.uploads.settings().map_err(|e| anyhow::anyhow!(e))?;
+    let upload_dir = config.data.dir.join("tmp").join("uploads");
+    let temp = nn_uploads::TempStore::open(&upload_dir)
+        .with_context(|| format!("creating {}", upload_dir.display()))?;
+    let uploads = nn_api::uploads::Uploads::new(upload_settings, temp);
+
     let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
     let state = AppState {
         auth: auth.clone(),
@@ -117,8 +123,10 @@ async fn serve(config: Config) -> Result<()> {
         shutdown: shutdown_rx.clone(),
         servers,
         players: Arc::new(nn_api::players::PlayerManager::new(hooks.bans())),
+        uploads: Arc::new(uploads),
     };
     nn_api::players::tasks::spawn(state.clone());
+    nn_api::uploads::tasks::spawn(state.clone());
     let app = nn_api::router(state);
 
     let listener = tokio::net::TcpListener::bind(config.http.bind)

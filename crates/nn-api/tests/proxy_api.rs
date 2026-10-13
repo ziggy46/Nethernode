@@ -51,6 +51,7 @@ async fn harness() -> Harness {
         metrics: None,
         shutdown: shutdown_rx,
         players: Default::default(),
+        uploads: Default::default(),
         servers: Default::default(),
     });
     let owner = auth
