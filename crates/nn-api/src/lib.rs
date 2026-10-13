@@ -102,12 +102,16 @@ pub fn router(state: AppState) -> Router {
         .layer(from_fn_with_state(
             state.clone(),
             middleware::require_session_for_rpc,
-        ));
+        ))
+        .layer(axum::middleware::from_fn(middleware::no_store));
 
     Router::new()
         .route("/healthz", get(observability::healthz))
         .route("/metrics", get(observability::metrics))
-        .route("/api/events", get(events::stream))
+        .route(
+            "/api/events",
+            get(events::stream).layer(axum::middleware::from_fn(middleware::no_store)),
+        )
         .nest(RPC_PREFIX, rpc_routes)
         .fallback(spa::serve)
         .layer(from_fn_with_state(

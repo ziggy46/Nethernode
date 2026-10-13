@@ -103,6 +103,16 @@ pub(crate) async fn resolve_session(
     response
 }
 
+/// Marks API responses uncacheable: they carry per-user data, and RPC reads
+/// use GET.
+pub(crate) async fn no_store(req: Request, next: Next) -> Response {
+    let mut response = next.run(req).await;
+    response
+        .headers_mut()
+        .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+    response
+}
+
 /// Default-deny for RPCs: anything outside [`PUBLIC_PROCEDURES`] needs a session.
 pub(crate) async fn require_session_for_rpc(
     State(state): State<AppState>,

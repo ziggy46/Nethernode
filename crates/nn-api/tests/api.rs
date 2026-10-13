@@ -155,6 +155,7 @@ async fn setup_login_me_logout_flow() {
 
     let me = rpc(&app, "Me", json!({}), Some(&session), true).await;
     assert_eq!(me.status, StatusCode::OK);
+    assert_eq!(me.headers.get(header::CACHE_CONTROL).unwrap(), "no-store");
     assert_eq!(me.body["user"]["username"], "admin");
     assert_eq!(me.body["user"]["role"], "ROLE_OWNER");
 
