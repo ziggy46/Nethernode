@@ -62,3 +62,25 @@ db-prepare:
     mkdir -p tmp
     DATABASE_URL=sqlite://tmp/sqlx-prepare.db sqlx database setup --source crates/nn-store/migrations
     DATABASE_URL=sqlite://tmp/sqlx-prepare.db cargo sqlx prepare --workspace
+
+# Fuzz the pre-login protocol parser (needs nightly + cargo-fuzz)
+fuzz seconds="600":
+    cd crates/nn-mcproto && cargo +nightly fuzz run pre_login -- -max_total_time={{seconds}}
+
+# Proxy benchmarks: routing micro-benchmark plus latency, throughput, and idle-memory load tests
+bench-proxy:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cargo bench -p nn-proxy --bench routing
+    cargo build --release -p nn-proxy --examples
+    T=target/release/examples
+    $T/loadgen echo 127.0.0.1:25601 >/dev/null 2>&1 & echo_pid=$!
+    $T/standalone 127.0.0.1:25600 127.0.0.1:25601 >/dev/null 2>&1 & proxy_pid=$!
+    trap 'kill $proxy_pid $echo_pid 2>/dev/null' EXIT
+    sleep 1
+    $T/loadgen latency 127.0.0.1:25600 127.0.0.1:25601
+    $T/loadgen throughput 127.0.0.1:25600 127.0.0.1:25601 1024
+    $T/loadgen idle 127.0.0.1:25600 5000 8 & idle_pid=$!
+    sleep 6
+    echo "proxy RSS with 5000 idle connections: $(ps -o rss= -p $proxy_pid) KB"
+    wait $idle_pid
