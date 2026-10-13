@@ -246,16 +246,42 @@ async fn stream_logs(orch: Arc<Orchestrator>, rt: Arc<Runtime>, container: Strin
         partial.push_str(&String::from_utf8_lossy(&chunk));
         while let Some(pos) = partial.find('\n') {
             let line: String = partial.drain(..=pos).collect();
-            rt.logs.push(line.trim_end_matches(['\n', '\r']));
+            rt.logs.push(visible(&line));
         }
     }
     if !partial.is_empty() {
-        rt.logs.push(&partial);
+        rt.logs.push(visible(&partial));
     }
+}
+
+/// What a terminal would show for a raw output line. Servers attached to a
+/// TTY redraw their `>` prompt before each log line with a carriage return
+/// and an erase-line code (`>....\r\x1b[K[12:00:00 INFO]: …`); keep only
+/// the text after the last carriage return, without the erase code. Colors
+/// stay for the console to render.
+pub(crate) fn visible(raw: &str) -> &str {
+    let line = raw.trim_end_matches(['\n', '\r']);
+    let line = line.rsplit('\r').next().unwrap_or(line);
+    line.trim_start_matches("\x1b[K")
 }
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn prompt_redraws_are_removed() {
+        use super::visible;
+        assert_eq!(
+            visible(">....\r\x1b[K[18:37:07 INFO]: Done (3.1s)!\r\n"),
+            "[18:37:07 INFO]: Done (3.1s)!"
+        );
+        assert_eq!(visible("[INFO] plain\n"), "[INFO] plain");
+        assert_eq!(
+            visible("\x1b[33mwarn\x1b[0m"),
+            "\x1b[33mwarn\x1b[0m",
+            "colors kept"
+        );
+    }
+
     use std::collections::HashMap;
 
     use bollard::models::{
