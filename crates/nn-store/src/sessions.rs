@@ -165,27 +165,59 @@ mod tests {
 
     async fn user(store: &Store) -> User {
         store
-            .create_user(NewUser { username: "alpha", password_hash: "h", role: "owner" })
+            .create_user(NewUser {
+                username: "alpha",
+                password_hash: "h",
+                role: "owner",
+            })
             .await
             .unwrap()
     }
 
     fn new_session<'a>(user_id: &'a str, hash: &'a str, expires_at: i64) -> NewSession<'a> {
-        NewSession { user_id, token_hash: hash, user_agent: Some("ua"), ip: None, expires_at }
+        NewSession {
+            user_id,
+            token_hash: hash,
+            user_agent: Some("ua"),
+            ip: None,
+            expires_at,
+        }
     }
 
     #[tokio::test]
     async fn active_sessions_resolve_and_expired_do_not() {
         let store = test_store().await;
         let user = user(&store).await;
-        store.create_session(new_session(&user.id, "live", 2_000)).await.unwrap();
-        store.create_session(new_session(&user.id, "dead", 500)).await.unwrap();
+        store
+            .create_session(new_session(&user.id, "live", 2_000))
+            .await
+            .unwrap();
+        store
+            .create_session(new_session(&user.id, "dead", 500))
+            .await
+            .unwrap();
 
-        let (session, found) = store.find_active_session("live", 1_000).await.unwrap().unwrap();
+        let (session, found) = store
+            .find_active_session("live", 1_000)
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(found.id, user.id);
         assert_eq!(session.user_agent.as_deref(), Some("ua"));
-        assert!(store.find_active_session("dead", 1_000).await.unwrap().is_none());
-        assert!(store.find_active_session("nope", 1_000).await.unwrap().is_none());
+        assert!(
+            store
+                .find_active_session("dead", 1_000)
+                .await
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            store
+                .find_active_session("nope", 1_000)
+                .await
+                .unwrap()
+                .is_none()
+        );
 
         assert_eq!(store.delete_expired_sessions(1_000).await.unwrap(), 1);
     }
@@ -194,15 +226,30 @@ mod tests {
     async fn sessions_can_be_extended_and_deleted() {
         let store = test_store().await;
         let user = user(&store).await;
-        let session = store.create_session(new_session(&user.id, "t", 1_000)).await.unwrap();
+        let session = store
+            .create_session(new_session(&user.id, "t", 1_000))
+            .await
+            .unwrap();
         store.extend_session(&session.id, 5_000).await.unwrap();
-        assert!(store.find_active_session("t", 4_000).await.unwrap().is_some());
+        assert!(
+            store
+                .find_active_session("t", 4_000)
+                .await
+                .unwrap()
+                .is_some()
+        );
 
         assert!(store.delete_session_by_token_hash("t").await.unwrap());
         assert!(!store.delete_session_by_token_hash("t").await.unwrap());
 
-        store.create_session(new_session(&user.id, "a", 9_000)).await.unwrap();
-        store.create_session(new_session(&user.id, "b", 9_000)).await.unwrap();
+        store
+            .create_session(new_session(&user.id, "a", 9_000))
+            .await
+            .unwrap();
+        store
+            .create_session(new_session(&user.id, "b", 9_000))
+            .await
+            .unwrap();
         assert_eq!(store.delete_sessions_for_user(&user.id).await.unwrap(), 2);
     }
 }

@@ -11,3 +11,30 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+nn-auth.workspace = true
+nn-events.workspace = true
+nn-store.workspace = true
+axum.workspace = true
+tower.workspace = true
+tower-http.workspace = true
+http.workspace = true
+tokio.workspace = true
+connectrpc.workspace = true
+buffa.workspace = true
+buffa-types.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+rust-embed.workspace = true
+mime_guess.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+metrics.workspace = true
+metrics-exporter-prometheus.workspace = true
+
+[build-dependencies]
+connectrpc-build.workspace = true
+
+[dev-dependencies]
+tower = { workspace = true, features = ["util"] }
+http-body-util = "0.1"
+serde_json.workspace = true

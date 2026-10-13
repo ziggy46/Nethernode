@@ -68,7 +68,10 @@ struct Bucket {
 
 impl Bucket {
     fn new(policy: BackoffPolicy) -> Self {
-        Self { policy, entries: Mutex::new(HashMap::new()) }
+        Self {
+            policy,
+            entries: Mutex::new(HashMap::new()),
+        }
     }
 
     fn retry_after(&self, key: &str, now: Instant) -> Option<Duration> {
@@ -97,7 +100,10 @@ impl Bucket {
     }
 
     fn clear(&self, key: &str) {
-        self.entries.lock().unwrap_or_else(|e| e.into_inner()).remove(key);
+        self.entries
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(key);
     }
 }
 
@@ -117,7 +123,10 @@ impl Default for LoginRateLimiter {
 impl LoginRateLimiter {
     /// Creates a limiter with the given per-IP and per-username policies.
     pub fn new(ip: BackoffPolicy, username: BackoffPolicy) -> Self {
-        Self { by_ip: Bucket::new(ip), by_username: Bucket::new(username) }
+        Self {
+            by_ip: Bucket::new(ip),
+            by_username: Bucket::new(username),
+        }
     }
 
     /// Returns how long the caller must wait before trying again, if locked out.
@@ -169,8 +178,22 @@ mod tests {
 
     #[test]
     fn delay_grows_exponentially_and_caps() {
-        let delays: Vec<_> = (1..=8).map(|n| POLICY.delay_for(n).map(|d| d.as_secs())).collect();
-        assert_eq!(delays, [None, None, None, Some(1), Some(2), Some(4), Some(8), Some(8)]);
+        let delays: Vec<_> = (1..=8)
+            .map(|n| POLICY.delay_for(n).map(|d| d.as_secs()))
+            .collect();
+        assert_eq!(
+            delays,
+            [
+                None,
+                None,
+                None,
+                Some(1),
+                Some(2),
+                Some(4),
+                Some(8),
+                Some(8)
+            ]
+        );
         assert_eq!(POLICY.delay_for(u32::MAX), Some(Duration::from_secs(8)));
     }
 
@@ -184,8 +207,14 @@ mod tests {
         }
         // Fourth failure triggers a 1 s lock, case-insensitively.
         limiter.record_failure_at(None, "alice", t0);
-        assert_eq!(limiter.check_at(None, "ALICE", t0), Some(Duration::from_secs(1)));
-        assert_eq!(limiter.check_at(None, "alice", t0 + Duration::from_secs(1)), None);
+        assert_eq!(
+            limiter.check_at(None, "ALICE", t0),
+            Some(Duration::from_secs(1))
+        );
+        assert_eq!(
+            limiter.check_at(None, "alice", t0 + Duration::from_secs(1)),
+            None
+        );
         // Other usernames are unaffected.
         assert_eq!(limiter.check_at(None, "bob", t0), None);
     }
@@ -195,7 +224,11 @@ mod tests {
         let limiter = LoginRateLimiter::new(POLICY, USERNAME_POLICY);
         let t0 = Instant::now();
         for (i, name) in ["a", "b", "c", "d"].iter().enumerate() {
-            assert_eq!(limiter.check_at(Some("10.0.0.1"), name, t0), None, "attempt {i}");
+            assert_eq!(
+                limiter.check_at(Some("10.0.0.1"), name, t0),
+                None,
+                "attempt {i}"
+            );
             limiter.record_failure_at(Some("10.0.0.1"), name, t0);
         }
         assert!(limiter.check_at(Some("10.0.0.1"), "e", t0).is_some());

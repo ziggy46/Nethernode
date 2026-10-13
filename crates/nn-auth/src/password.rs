@@ -16,7 +16,9 @@ pub const MAX_PASSWORD_BYTES: usize = 1024;
 ///
 /// This is CPU- and memory-intensive; call it from a blocking task.
 pub fn hash_password(password: &str) -> Result<String, argon2::password_hash::Error> {
-    Ok(Argon2::default().hash_password(password.as_bytes())?.to_string())
+    Ok(Argon2::default()
+        .hash_password(password.as_bytes())?
+        .to_string())
 }
 
 /// Checks `password` against a PHC string produced by [`hash_password`].
@@ -27,7 +29,9 @@ pub fn verify_password(password: &str, phc: &str) -> bool {
     let Ok(parsed) = PasswordHash::new(phc) else {
         return false;
     };
-    Argon2::default().verify_password(password.as_bytes(), &parsed).is_ok()
+    Argon2::default()
+        .verify_password(password.as_bytes(), &parsed)
+        .is_ok()
 }
 
 /// Spends the same time as a real verification without matching anything.
@@ -44,10 +48,14 @@ pub fn verify_dummy(password: &str) {
 /// Checks password length rules. Returns a user-facing message on failure.
 pub fn validate_password(password: &str) -> Result<(), String> {
     if password.chars().count() < MIN_PASSWORD_LEN {
-        return Err(format!("Password must be at least {MIN_PASSWORD_LEN} characters."));
+        return Err(format!(
+            "Password must be at least {MIN_PASSWORD_LEN} characters."
+        ));
     }
     if password.len() > MAX_PASSWORD_BYTES {
-        return Err(format!("Password must be at most {MAX_PASSWORD_BYTES} bytes."));
+        return Err(format!(
+            "Password must be at most {MAX_PASSWORD_BYTES} bytes."
+        ));
     }
     Ok(())
 }
@@ -66,7 +74,10 @@ mod tests {
 
     #[test]
     fn salts_differ() {
-        assert_ne!(hash_password("same").unwrap(), hash_password("same").unwrap());
+        assert_ne!(
+            hash_password("same").unwrap(),
+            hash_password("same").unwrap()
+        );
     }
 
     #[test]

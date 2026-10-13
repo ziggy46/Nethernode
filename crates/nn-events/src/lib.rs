@@ -71,7 +71,9 @@ mod tests {
     async fn subscribers_receive_published_events() {
         let bus = EventBus::default();
         let mut rx = bus.subscribe();
-        let event = Event::UserLoggedIn { user_id: "u1".into() };
+        let event = Event::UserLoggedIn {
+            user_id: "u1".into(),
+        };
         assert_eq!(bus.publish(event.clone()), 1);
         assert_eq!(rx.recv().await.unwrap(), event);
     }
@@ -79,6 +81,11 @@ mod tests {
     #[test]
     fn publishing_without_subscribers_is_ok() {
         let bus = EventBus::default();
-        assert_eq!(bus.publish(Event::UserLoggedOut { user_id: "u1".into() }), 0);
+        assert_eq!(
+            bus.publish(Event::UserLoggedOut {
+                user_id: "u1".into()
+            }),
+            0
+        );
     }
 }

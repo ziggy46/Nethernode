@@ -64,7 +64,9 @@ pub struct AuthConfig {
 
 impl Default for AuthConfig {
     fn default() -> Self {
-        Self { session_ttl: Duration::from_secs(7 * 24 * 60 * 60) }
+        Self {
+            session_ttl: Duration::from_secs(7 * 24 * 60 * 60),
+        }
     }
 }
 
@@ -96,7 +98,10 @@ impl TryFrom<nn_store::User> for AuthUser {
     type Error = AuthError;
 
     fn try_from(user: nn_store::User) -> Result<Self> {
-        let role = user.role.parse().map_err(|e| AuthError::Internal(format!("{e}")))?;
+        let role = user
+            .role
+            .parse()
+            .map_err(|e| AuthError::Internal(format!("{e}")))?;
         Ok(Self {
             id: user.id,
             username: user.username,
@@ -148,7 +153,12 @@ impl Auth {
 
     /// Creates the service with a custom rate limiter.
     pub fn with_limiter(store: Store, config: AuthConfig, limiter: LoginRateLimiter) -> Self {
-        Self { store, limiter, config, setup_complete: AtomicBool::new(false) }
+        Self {
+            store,
+            limiter,
+            config,
+            setup_complete: AtomicBool::new(false),
+        }
     }
 
     /// The underlying store.
@@ -201,7 +211,8 @@ impl Auth {
         self.setup_complete.store(true, Ordering::Release);
 
         let user = AuthUser::try_from(created)?;
-        self.audit(Some(&user.id), "auth.setup", Some(&user.id), client, None).await;
+        self.audit(Some(&user.id), "auth.setup", Some(&user.id), client, None)
+            .await;
         self.issue_session(user, client).await
     }
 
@@ -237,7 +248,8 @@ impl Auth {
         let Some(user) = user.filter(|_| verified) else {
             self.limiter.record_failure(client.ip, username);
             let details = json!({ "username": username });
-            self.audit(None, "auth.login_failed", None, client, Some(details)).await;
+            self.audit(None, "auth.login_failed", None, client, Some(details))
+                .await;
             return Err(AuthError::InvalidCredentials);
         };
 
@@ -246,7 +258,8 @@ impl Auth {
         let now = now_ms();
         self.store.touch_last_login(&user.id, now).await?;
         user.last_login_at = Some(now);
-        self.audit(Some(&user.id), "auth.login", Some(&user.id), client, None).await;
+        self.audit(Some(&user.id), "auth.login", Some(&user.id), client, None)
+            .await;
         self.issue_session(user, client).await
     }
 
@@ -257,8 +270,10 @@ impl Auth {
             return Ok(None);
         }
         let now = now_ms();
-        let Some((session, user)) =
-            self.store.find_active_session(&token::hash_token(token), now).await?
+        let Some((session, user)) = self
+            .store
+            .find_active_session(&token::hash_token(token), now)
+            .await?
         else {
             return Ok(None);
         };
@@ -268,7 +283,9 @@ impl Auth {
         let renewed = expires_at_ms - now < ttl / 2;
         if renewed {
             expires_at_ms = now + ttl;
-            self.store.extend_session(&session.id, expires_at_ms).await?;
+            self.store
+                .extend_session(&session.id, expires_at_ms)
+                .await?;
         }
         Ok(Some(Authenticated {
             user: AuthUser::try_from(user)?,
@@ -284,7 +301,8 @@ impl Auth {
         let session = self.store.find_active_session(&hash, now_ms()).await?;
         self.store.delete_session_by_token_hash(&hash).await?;
         if let Some((_, user)) = session {
-            self.audit(Some(&user.id), "auth.logout", Some(&user.id), client, None).await;
+            self.audit(Some(&user.id), "auth.logout", Some(&user.id), client, None)
+                .await;
         }
         Ok(())
     }
@@ -308,8 +326,14 @@ impl Auth {
         self.store.delete_sessions_for_user(&user.id).await?;
         self.limiter.record_success(&user.username);
         let details = json!({ "via": "cli" });
-        self.audit(None, "auth.reset_password", Some(&user.id), ClientInfo::default(), Some(details))
-            .await;
+        self.audit(
+            None,
+            "auth.reset_password",
+            Some(&user.id),
+            ClientInfo::default(),
+            Some(details),
+        )
+        .await;
         Ok((user, new_password))
     }
 
@@ -330,7 +354,11 @@ impl Auth {
                 expires_at: expires_at_ms,
             })
             .await?;
-        Ok(IssuedSession { user, token, expires_at_ms })
+        Ok(IssuedSession {
+            user,
+            token,
+            expires_at_ms,
+        })
     }
 
     /// Writes an audit row. Failures are logged, not returned: an audit write
@@ -374,7 +402,10 @@ pub fn validate_username(username: &str) -> Result<&str> {
             "Username must be {MIN_USERNAME_LEN}–{MAX_USERNAME_LEN} characters."
         )));
     }
-    if !username.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '.' | '-')) {
+    if !username
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '.' | '-'))
+    {
         return Err(AuthError::InvalidInput(
             "Username may only contain letters, numbers, '_', '.', and '-'.".into(),
         ));
@@ -401,7 +432,10 @@ mod tests {
     use super::*;
 
     const PASSWORD: &str = "correct horse battery";
-    const CLIENT: ClientInfo<'static> = ClientInfo { ip: Some("127.0.0.1"), user_agent: Some("test") };
+    const CLIENT: ClientInfo<'static> = ClientInfo {
+        ip: Some("127.0.0.1"),
+        user_agent: Some("test"),
+    };
 
     async fn auth() -> Auth {
         let store = Store::open_in_memory().await.unwrap();
@@ -420,20 +454,32 @@ mod tests {
             auth.setup("other", PASSWORD, CLIENT).await,
             Err(AuthError::SetupAlreadyComplete)
         ));
-        let actions: Vec<_> =
-            auth.store().recent_audit(10).await.unwrap().into_iter().map(|e| e.action).collect();
+        let actions: Vec<_> = auth
+            .store()
+            .recent_audit(10)
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|e| e.action)
+            .collect();
         assert_eq!(actions, ["auth.setup"]);
     }
 
     #[tokio::test]
     async fn setup_validates_input() {
         let auth = auth().await;
-        assert!(matches!(auth.setup("a", PASSWORD, CLIENT).await, Err(AuthError::InvalidInput(_))));
+        assert!(matches!(
+            auth.setup("a", PASSWORD, CLIENT).await,
+            Err(AuthError::InvalidInput(_))
+        ));
         assert!(matches!(
             auth.setup("bad name!", PASSWORD, CLIENT).await,
             Err(AuthError::InvalidInput(_))
         ));
-        assert!(matches!(auth.setup("admin", "short", CLIENT).await, Err(AuthError::InvalidInput(_))));
+        assert!(matches!(
+            auth.setup("admin", "short", CLIENT).await,
+            Err(AuthError::InvalidInput(_))
+        ));
         assert!(auth.needs_setup().await.unwrap());
     }
 
@@ -458,7 +504,10 @@ mod tests {
     async fn wrong_password_and_unknown_user_are_indistinguishable() {
         let auth = auth().await;
         auth.setup("admin", PASSWORD, CLIENT).await.unwrap();
-        let wrong = auth.login("admin", "wrong password!", CLIENT).await.unwrap_err();
+        let wrong = auth
+            .login("admin", "wrong password!", CLIENT)
+            .await
+            .unwrap_err();
         let unknown = auth.login("nobody", PASSWORD, CLIENT).await.unwrap_err();
         assert_eq!(wrong.to_string(), unknown.to_string());
     }
@@ -480,11 +529,19 @@ mod tests {
     async fn sessions_renew_past_halfway() {
         let store = Store::open_in_memory().await.unwrap();
         store.migrate().await.unwrap();
-        let auth = Auth::new(store, AuthConfig { session_ttl: Duration::from_secs(60) });
+        let auth = Auth::new(
+            store,
+            AuthConfig {
+                session_ttl: Duration::from_secs(60),
+            },
+        );
         let issued = auth.setup("admin", PASSWORD, CLIENT).await.unwrap();
         // Pull the expiry close so the session is past its halfway point.
         let authed = auth.authenticate(&issued.token).await.unwrap().unwrap();
-        auth.store().extend_session(&authed.session_id, now_ms() + 10_000).await.unwrap();
+        auth.store()
+            .extend_session(&authed.session_id, now_ms() + 10_000)
+            .await
+            .unwrap();
         let renewed = auth.authenticate(&issued.token).await.unwrap().unwrap();
         assert!(renewed.renewed);
         assert!(renewed.expires_at_ms > now_ms() + 50_000);

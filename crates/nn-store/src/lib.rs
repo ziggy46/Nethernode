@@ -55,7 +55,11 @@ impl Store {
     ///
     /// Migrations are not applied; call [`Store::migrate`].
     pub async fn open(path: &Path) -> Result<Self> {
-        let options = base_options(SqliteConnectOptions::new().filename(path).create_if_missing(true));
+        let options = base_options(
+            SqliteConnectOptions::new()
+                .filename(path)
+                .create_if_missing(true),
+        );
         let pool = SqlitePoolOptions::new()
             .max_connections(8)
             .connect_with(options)

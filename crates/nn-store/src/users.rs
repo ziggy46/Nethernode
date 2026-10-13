@@ -177,7 +177,11 @@ mod tests {
     use super::*;
 
     fn owner(name: &str) -> NewUser<'_> {
-        NewUser { username: name, password_hash: "hash", role: "owner" }
+        NewUser {
+            username: name,
+            password_hash: "hash",
+            role: "owner",
+        }
     }
 
     #[tokio::test]
@@ -187,7 +191,13 @@ mod tests {
 
         let first = store.create_first_user(owner("alpha")).await.unwrap();
         assert_eq!(first.unwrap().username, "alpha");
-        assert!(store.create_first_user(owner("beta")).await.unwrap().is_none());
+        assert!(
+            store
+                .create_first_user(owner("beta"))
+                .await
+                .unwrap()
+                .is_none()
+        );
         assert_eq!(store.count_users().await.unwrap(), 1);
     }
 

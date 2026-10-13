@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package nethernode.v1;
+
+// Panel authentication. Sessions are carried in an HttpOnly cookie that the
+// server sets on Setup and Login; every mutating call must also send the
+// CSRF token from the `nn_csrf` cookie in the `x-csrf-token` header.
+service AuthService {
+  // Creates the owner account on first run and signs it in.
+  // Fails with FAILED_PRECONDITION once any user exists.
+  rpc Setup(SetupRequest) returns (SetupResponse);
+
+  // Signs in with a username and password.
+  // Fails with UNAUTHENTICATED on bad credentials and RESOURCE_EXHAUSTED
+  // when rate limited.
+  rpc Login(LoginRequest) returns (LoginResponse);
+
+  // Ends the current session.
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+
+  // Returns the signed-in user.
+  rpc Me(MeRequest) returns (MeResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+// A panel user's role. Each role includes the permissions of those below it.
+enum Role {
+  ROLE_UNSPECIFIED = 0;
+  ROLE_VIEWER = 1;
+  ROLE_MODERATOR = 2;
+  ROLE_ADMIN = 3;
+  ROLE_OWNER = 4;
+}
+
+// A panel user.
+message User {
+  string id = 1;
+  string username = 2;
+  Role role = 3;
+  // Unix milliseconds.
+  int64 created_at_ms = 4;
+  // Unix milliseconds; unset if the user has never signed in.
+  optional int64 last_login_at_ms = 5;
+}
+
+message SetupRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message SetupResponse {
+  User user = 1;
+}
+
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  User user = 1;
+}
+
+message LogoutRequest {}
+
+message LogoutResponse {}
+
+message MeRequest {}
+
+message MeResponse {
+  User user = 1;
+}
