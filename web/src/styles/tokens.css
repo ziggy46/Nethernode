@@ -101,6 +101,38 @@
 }
 
 /*
+ * Console colors. `static` keeps them as CSS variables even when no utility
+ * uses them: the terminal reads them at runtime. The ANSI palette maps the
+ * colors servers print (and Minecraft's § codes) onto NetherNode's palette;
+ * the terminal also raises any color below 4.5:1 against the background.
+ */
+@theme static {
+  --color-console-text: #bdb0c8;
+  --color-console-dim: #8f819b;
+  --color-console-success: #7bdda3;
+  --color-console-warning: #ffba5b;
+  --color-console-danger: #ff8597;
+  --color-console-selection: #3d2e4d;
+
+  --color-ansi-black: #2b2039;
+  --color-ansi-red: #ff647c;
+  --color-ansi-green: #4ade80;
+  --color-ansi-yellow: #fbbf24;
+  --color-ansi-blue: #8fa8ff;
+  --color-ansi-magenta: #d39bff;
+  --color-ansi-cyan: #5fd7e6;
+  --color-ansi-white: #bdb0c8;
+  --color-ansi-bright-black: #94869f;
+  --color-ansi-bright-red: #ff8597;
+  --color-ansi-bright-green: #7bdda3;
+  --color-ansi-bright-yellow: #ffd479;
+  --color-ansi-bright-blue: #b0c2ff;
+  --color-ansi-bright-magenta: #e4b8ff;
+  --color-ansi-bright-cyan: #8ee8f2;
+  --color-ansi-bright-white: #f5f1f7;
+}
+
+/*
  * Breakpoints from the UI reference. Inclusive (max-width), unlike Tailwind's
  * built-in max-[…] variants, so layouts flip at exactly the reference widths.
  */

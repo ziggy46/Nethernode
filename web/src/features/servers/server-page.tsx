@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
-  CircleAlert,
   History,
   Loader,
   Play,
@@ -29,9 +28,10 @@ import { useDocumentTitle } from "@/lib/use-document-title";
 import { useNow } from "@/lib/use-now";
 import { cn } from "@/lib/utils";
 
+import { ConsolePanel } from "../console/console-panel";
 import { ConfigurationTab } from "./configuration-tab";
 import { useDockerAvailable } from "./docker-notice";
-import { formatBytes, gb, loaderName, versionLabel } from "./format";
+import { formatBytes, gb, loaderName, memoryLimitBytes, versionLabel } from "./format";
 import { type PullProgress, pullKey, serverQuery } from "./queries";
 import { subtitle, useLiveStats } from "./server-card";
 import { Sparkline, useStatsSeries } from "./sparkline";
@@ -135,18 +135,22 @@ function ConsoleTab({ server }: { server: Server }) {
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_260px] gap-5 below-lg:grid-cols-1">
       <div className="flex min-w-0 flex-col gap-5">
-        <section className="overflow-hidden rounded-[9px] border border-border bg-console">
-          <div className="flex items-center gap-3 border-border border-b bg-surface px-[17px] py-[13px] text-meta">
-            <SquareTerminal className="size-4" aria-hidden />
-            Server console
-            <span className="ml-auto">
-              <ServerStatusBadge status={server.status} />
-            </span>
-          </div>
-          <div className="flex min-h-[220px] flex-col items-center justify-center gap-3 p-8 text-center">
-            <ConsoleStatus server={server} />
-          </div>
-        </section>
+        {server.status === ServerStatus.INSTALLING ? (
+          <section className="overflow-hidden rounded-[9px] border border-border bg-console">
+            <div className="flex items-center gap-3 border-border border-b bg-surface px-[17px] py-[13px] text-meta">
+              <SquareTerminal className="size-4" aria-hidden />
+              Server console
+              <span className="ml-auto">
+                <ServerStatusBadge status={server.status} />
+              </span>
+            </div>
+            <div className="flex min-h-[220px] flex-col items-center justify-center gap-3 p-8 text-center">
+              <InstallProgress server={server} />
+            </div>
+          </section>
+        ) : (
+          <ConsolePanel server={server} />
+        )}
 
         <Panel>
           <PanelHeader title="Performance" icon={<Zap />} />
@@ -195,68 +199,37 @@ function ConsoleTab({ server }: { server: Server }) {
   );
 }
 
-function ConsoleStatus({ server }: { server: Server }) {
+function InstallProgress({ server }: { server: Server }) {
   const pull = useQuery<PullProgress | null>({
     queryKey: pullKey(server.id),
     queryFn: () => null,
     enabled: false,
   }).data;
 
-  switch (server.status) {
-    case ServerStatus.INSTALLING:
-      return (
-        <>
-          <Loader className="size-6 animate-spin text-primary motion-reduce:animate-none" aria-hidden />
-          <p className="font-semibold">Installing {server.name}</p>
-          <p className="max-w-[46ch] text-label text-text-muted" role="status">
-            {pull
-              ? `${pull.status}${pull.percent !== null ? ` · ${pull.percent}%` : ""}`
-              : "Preparing the server…"}
-          </p>
-          {pull?.percent !== null && pull?.percent !== undefined && (
-            <div className="h-1 w-64 overflow-hidden rounded-full bg-meter-track" aria-hidden>
-              <div
-                className="h-full bg-primary transition-[width] duration-500"
-                style={{ width: `${pull.percent}%` }}
-              />
-            </div>
-          )}
-        </>
-      );
-    case ServerStatus.STARTING:
-      return (
-        <>
-          <Loader className="size-6 animate-spin text-warning motion-reduce:animate-none" aria-hidden />
-          <p className="font-semibold">Starting…</p>
-          <p className="max-w-[46ch] text-label text-text-muted">
-            The first start downloads the server files
-            {server.loader !== "vanilla" ? ` and sets up ${loaderName(server.loader)}` : ""}, which can take a
-            few minutes. The server is marked Running once it answers players.
-          </p>
-        </>
-      );
-    case ServerStatus.CRASHED:
-      return (
-        <>
-          <CircleAlert className="size-6 text-danger" aria-hidden />
-          <p className="font-semibold">The server crashed</p>
-          <p className="max-w-[46ch] text-label text-text-muted">
-            Its output will be visible here once the live console arrives. Starting it again often helps; if
-            it keeps crashing, try more memory or check the server version.
-          </p>
-        </>
-      );
-    default:
-      return (
-        <>
-          <SquareTerminal className="size-6 text-text-muted opacity-60" aria-hidden />
-          <p className="font-semibold">The live console arrives in the next update</p>
-          <p className="max-w-[46ch] text-label text-text-muted">
-            You'll be able to read the server's output and send commands here.
-          </p>
-        </>
-      );
-  }
+  return (
+    <>
+      <Loader className="size-6 animate-spin text-primary motion-reduce:animate-none" aria-hidden />
+      <p className="font-semibold">Installing {server.name}</p>
+      <p className="max-w-[46ch] text-label text-text-muted" role="status">
+        {pull
+          ? `${pull.status}${pull.percent !== null ? ` · ${pull.percent}%` : ""}`
+          : "Preparing the server…"}
+      </p>
+      {pull?.percent !== null && pull?.percent !== undefined && (
+        <div className="h-1 w-64 overflow-hidden rounded-full bg-meter-track" aria-hidden>
+          <div
+            className="h-full bg-primary transition-[width] duration-500"
+            style={{ width: `${pull.percent}%` }}
+          />
+        </div>
+      )}
+      <p className="max-w-[46ch] text-meta text-text-muted">
+        The console appears once the server's container exists. The first start also downloads the server
+        files
+        {server.loader !== "vanilla" ? ` and sets up ${loaderName(server.loader)}` : ""}.
+      </p>
+    </>
+  );
 }
 
 function Controls({ server }: { server: Server }) {
@@ -270,7 +243,7 @@ function Controls({ server }: { server: Server }) {
   const up = server.status === ServerStatus.RUNNING || server.status === ServerStatus.STARTING;
   const busy = action.isPending || [ServerStatus.INSTALLING, ServerStatus.STOPPING].includes(server.status);
   const disabled = busy || !docker || !canManage;
-  const limitBytes = (server.settings?.memoryMb ?? 0) * 1024 * 1024 * 1.25;
+  const limitBytes = memoryLimitBytes(server.settings?.memoryMb ?? 0);
 
   return (
     <Panel>

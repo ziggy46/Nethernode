@@ -52,6 +52,12 @@ export const ROLE_LABELS: Record<Role, string> = {
   [Role.OWNER]: "Owner",
 };
 
+/** Whether the signed-in user can use the console and manage players. */
+export function useCanModerate(): boolean {
+  const user = useCurrentUser();
+  return user.role === Role.MODERATOR || user.role === Role.ADMIN || user.role === Role.OWNER;
+}
+
 /** Whether the signed-in user can change servers, the proxy, and settings. */
 export function useCanManage(): boolean {
   const user = useCurrentUser();

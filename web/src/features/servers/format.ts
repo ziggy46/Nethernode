@@ -44,3 +44,11 @@ export function versionLabel(version: string): string {
   if (version === "SNAPSHOT") return "Latest snapshot";
   return version;
 }
+
+/**
+ * Container memory limit for a Java heap of `heapMb`: the heap plus 25%, at
+ * least 1 GiB more (NetherNode's defaults; Java needs room beyond the heap).
+ */
+export function memoryLimitBytes(heapMb: number): number {
+  return (heapMb + Math.max(heapMb * 0.25, 1024)) * 1024 * 1024;
+}

@@ -22,12 +22,15 @@ function readCookie(name: string): string | undefined {
  * The server hands out the CSRF cookie on any response. If the page was
  * served by the Vite dev server, we may not have one yet, so fetch it.
  */
-async function csrfToken(): Promise<string | undefined> {
+export async function csrfToken(): Promise<string | undefined> {
   const existing = readCookie(CSRF_COOKIE);
   if (existing) return existing;
   await fetch("/healthz", { credentials: "same-origin" }).catch(() => undefined);
   return readCookie(CSRF_COOKIE);
 }
+
+/** Header name for the CSRF token on plain `fetch` requests with side effects. */
+export const CSRF_HEADER_NAME = CSRF_HEADER;
 
 /** Echoes the CSRF cookie in a header on requests with side effects. */
 const csrf: Interceptor = (next) => async (req) => {

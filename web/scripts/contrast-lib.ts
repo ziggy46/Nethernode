@@ -128,6 +128,25 @@ export function requiredPairs(): Pair[] {
   ];
   add(textColors, SURFACES, "text");
   add(["text-primary", "text-secondary", "text-muted"], ["field", "console", "button-quiet"], "text");
+  // Console output and the ANSI colors servers print. Black is a background
+  // color in practice; the terminal lifts anything darker to 4.5:1.
+  add(
+    [
+      "console-text",
+      "console-dim",
+      "console-success",
+      "console-warning",
+      "console-danger",
+      ...["red", "green", "yellow", "blue", "magenta", "cyan", "white"].flatMap((c) => [
+        `ansi-${c}`,
+        `ansi-bright-${c}`,
+      ]),
+      "ansi-bright-black",
+    ],
+    ["console"],
+    "text",
+  );
+  add(["console-text"], ["console-selection"], "text");
   add(["text-primary", "text-secondary"], ["nav-hover", "button-quiet-hover", "nav-active"], "text");
 
   // Filled buttons and chips carry dark text.

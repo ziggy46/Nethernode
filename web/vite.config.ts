@@ -18,6 +18,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/api": backend,
+      "/ws": { target: backend, ws: true },
       "/healthz": backend,
       "/metrics": backend,
     },
