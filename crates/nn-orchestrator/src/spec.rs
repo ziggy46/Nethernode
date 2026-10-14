@@ -484,8 +484,8 @@ mod tests {
         );
         assert_eq!(
             host.memory,
-            Some(4096 * 1024 * 1024 * 125 / 100),
-            "heap + 25%"
+            Some((4096 + 2048) * 1024 * 1024),
+            "a modded (Forge) server: heap + 2 GB"
         );
         assert_eq!(host.nano_cpus, Some(2_000_000_000));
         let game = &host.port_bindings.as_ref().unwrap()[CONTAINER_GAME_PORT]
