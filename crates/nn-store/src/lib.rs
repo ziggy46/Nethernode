@@ -16,6 +16,7 @@ use sqlx::sqlite::{
 };
 
 pub mod audit;
+pub mod backups;
 pub mod player_admin;
 pub mod players;
 pub mod proxy;
@@ -26,6 +27,7 @@ pub mod uploads;
 pub mod users;
 
 pub use audit::NewAuditEntry;
+pub use backups::{Backup, Schedule, ScheduleInput};
 pub use player_admin::{CachedProfile, NewPlayerBan, PlayerBan, PlayerSummary};
 pub use players::{NewPlayerSession, PlayerSession};
 pub use proxy::{ListenerInput, ProxyListener, Route, RouteInput};

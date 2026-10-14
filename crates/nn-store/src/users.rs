@@ -103,6 +103,19 @@ impl Store {
         Ok(created)
     }
 
+    /// All users, by username.
+    pub async fn list_users(&self) -> Result<Vec<User>> {
+        let users = sqlx::query_as!(
+            User,
+            r#"SELECT id AS "id!", username, password_hash, role, totp_secret, created_at,
+                      last_login_at
+               FROM users ORDER BY username COLLATE NOCASE"#,
+        )
+        .fetch_all(self.pool())
+        .await?;
+        Ok(users)
+    }
+
     /// Looks up a user by ID.
     pub async fn find_user_by_id(&self, id: &str) -> Result<Option<User>> {
         let user = sqlx::query_as!(

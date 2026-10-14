@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO backups (id, server_id, server_name, file_name, kind, status, created_by, created_at)\n             VALUES (?1, ?2, ?3, ?4, ?5, 'creating', ?6, ?7)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": []
+  },
+  "hash": "d3879a6611132036229b86b43ab77a3ff7e609ddde7c6c99cac1a174d98bff1e"
+}

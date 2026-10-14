@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE backups SET status = 'failed', message = 'NetherNode stopped while it was being made.',\n                                finished_at = ?1\n             WHERE status = 'creating'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "a0cca8bc51a9e5185e3fae89b04bbfaed6c0126e9729b041897b9622482911ff"
+}
