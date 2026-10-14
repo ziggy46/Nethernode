@@ -1,0 +1,44 @@
+---
+title: Overview
+description: Run Minecraft servers on your own machine, with a web panel and a proxy that sends each player to the right world.
+---
+
+NetherNode runs Minecraft servers on a machine you own. Each server is a
+Docker container, and a built-in **Smart Proxy** listens on port 25565 and
+sends players to the right one by the address they type, so
+`smp.example.com` and `creative.example.com` can share one IP and one port.
+
+From the web panel you can:
+
+- create Vanilla, Paper, Fabric, Forge, NeoForge and Quilt servers, or
+  install Modrinth and CurseForge modpacks;
+- watch the console, edit files, upload worlds of any size, manage mods;
+- manage players: operators, allowlist, bans (including across every server),
+  inventories;
+- back up and restore worlds, and schedule backups, restarts and messages;
+- let servers sleep when nobody's playing and wake them when someone joins;
+- add other people with roles, two-factor sign-in, and an audit log;
+- get Discord notifications when servers start, stop or crash.
+
+## Quick start
+
+With Docker installed on a Linux machine:
+
+```sh
+git clone <this repository> nethernode
+cd nethernode/deploy
+docker compose up -d
+```
+
+Open `http://<machine>:8080`, create the owner account, and create a server.
+Then [point a domain at the machine](/guides/dns/) and add a route on the
+**Proxy & routes** page. The [Docker install guide](/install/docker/) has the
+details, and [Running the binary](/install/binary/) covers installing without
+a container.
+
+:::caution[The panel controls Docker]
+Anything that can start containers can take over the machine, so treat
+panel accounts like administrator accounts. Read the
+[security notes](/security/threat-model/) before exposing the panel beyond
+your network.
+:::
