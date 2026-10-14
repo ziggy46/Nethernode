@@ -66,10 +66,14 @@ export default function UploadTray({ items }: { items: UploadItem[] }) {
   const total = running.reduce((n, i) => n + i.size, 0);
   const sent = running.reduce((n, i) => n + i.sent, 0);
   const percent = total > 0 ? Math.floor((sent / total) * 100) : 100;
+  const sending = running.filter((i) => i.status !== "paused").length;
+  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
   const title =
-    running.length > 0
-      ? `Uploading ${running.length} file${running.length === 1 ? "" : "s"} · ${percent}%`
-      : `${items.length} upload${items.length === 1 ? "" : "s"} finished`;
+    sending > 0
+      ? `Uploading ${plural(sending, "file")} · ${percent}%`
+      : running.length > 0
+        ? `${plural(running.length, "upload")} paused · ${percent}%`
+        : "No uploads in progress";
 
   return (
     <section

@@ -134,7 +134,9 @@ function pump() {
 
 async function start(entry: Entry) {
   set(entry, { status: "uploading", message: undefined });
-  entry.samples = [[performance.now(), entry.item.sent]];
+  // The first progress report sets the baseline: a resumed upload starts
+  // partway, and those bytes weren't sent just now.
+  entry.samples = [];
   try {
     const [{ startUpload }, csrf] = await Promise.all([loadTus(), csrfToken()]);
     if (entry.item.status !== "uploading") return;
@@ -171,6 +173,11 @@ async function start(entry: Entry) {
 function progress(entry: Entry, sent: number) {
   if (entry.item.status !== "uploading") return;
   const now = performance.now();
+  if (entry.samples.length === 0) {
+    entry.samples.push([now, sent]);
+    set(entry, { sent }, false);
+    return;
+  }
   entry.samples.push([now, sent]);
   // Speed over the last five seconds.
   while (entry.samples.length > 2 && now - (entry.samples[0]?.[0] ?? now) > 5000) entry.samples.shift();

@@ -13,11 +13,20 @@ import {
 
 import type { Conflict } from "./store";
 
-const CHOICES: [Conflict, string, string][] = [
-  ["overwrite", "Replace them", "The uploaded files take their place."],
-  ["rename", "Keep both", "Uploads get a number added, like world (1).zip."],
-  ["skip", "Skip them", "Only files with new names are uploaded."],
-];
+/** The choices, worded for one file or several. */
+function choices(one: boolean): [Conflict, string, string][] {
+  return one
+    ? [
+        ["overwrite", "Replace it", "The uploaded file takes its place."],
+        ["rename", "Keep both", "The upload gets a number added, like world (1).zip."],
+        ["skip", "Skip it", "The existing file stays as it is."],
+      ]
+    : [
+        ["overwrite", "Replace them", "The uploaded files take their place."],
+        ["rename", "Keep both", "Uploads get a number added, like world (1).zip."],
+        ["skip", "Skip them", "Only files with new names are uploaded."],
+      ];
+}
 
 /**
  * Asked before uploading when names are already taken or there are zip
@@ -71,7 +80,7 @@ export function UploadOptionsDialog({
                 {single ? "What should happen to it?" : taken.join(", ")}
               </p>
               <div className="flex flex-col gap-2">
-                {CHOICES.map(([value, label, hint]) => (
+                {choices(taken.length === 1).map(([value, label, hint]) => (
                   <label
                     key={value}
                     className="flex cursor-pointer items-start gap-2.5 rounded-md border border-divider px-3 py-2.5 has-checked:border-primary"
