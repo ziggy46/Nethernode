@@ -125,6 +125,24 @@ pub fn available_space(_dir: &Path) -> Option<u64> {
     None
 }
 
+/// Total and free space on the filesystem holding `dir`, where the
+/// platform reports it.
+#[cfg(target_os = "linux")]
+pub fn disk_space(dir: &Path) -> Option<(u64, u64)> {
+    let stat = rustix::fs::statvfs(dir).ok()?;
+    Some((
+        stat.f_blocks.saturating_mul(stat.f_frsize),
+        stat.f_bavail.saturating_mul(stat.f_frsize),
+    ))
+}
+
+/// Total and free space on the filesystem holding `dir`, where the
+/// platform reports it.
+#[cfg(not(target_os = "linux"))]
+pub fn disk_space(_dir: &Path) -> Option<(u64, u64)> {
+    None
+}
+
 /// The result of one `PATCH`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Chunk {

@@ -655,7 +655,13 @@ impl pb::ServerService for ServerRpc {
         _request: ServiceRequest<'_, pb::GetHostInfoRequest>,
     ) -> ServiceResult<pb::GetHostInfoResponse> {
         require(&ctx, Permission::View)?;
-        let response = match &self.state.servers.orchestrator {
+        let disk = self
+            .state
+            .servers
+            .servers_dir
+            .as_deref()
+            .and_then(|d| nn_uploads::disk_space(d.parent().unwrap_or(d)));
+        let mut response = match &self.state.servers.orchestrator {
             None => pb::GetHostInfoResponse {
                 docker_available: false,
                 error: self
@@ -684,6 +690,10 @@ impl pb::ServerService for ServerRpc {
                 },
             },
         };
+        if let Some((total, free)) = disk {
+            response.disk_total_bytes = Some(total);
+            response.disk_free_bytes = Some(free);
+        }
         Response::ok(response)
     }
 

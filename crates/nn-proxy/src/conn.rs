@@ -426,6 +426,7 @@ async fn forward_login(
         client: peer,
         hostname: host.to_owned(),
         server_id: spec.server_id.clone(),
+        route: res.route.to_string(),
         username: join.as_ref().map(|j| j.username.clone()),
         started_at: std::time::SystemTime::now(),
     });

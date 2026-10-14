@@ -9,4 +9,6 @@
 pub mod protocol;
 pub mod temp;
 
-pub use temp::{Chunk, ChunkError, TempStore, available_space, sha256_file, write_chunk};
+pub use temp::{
+    Chunk, ChunkError, TempStore, available_space, disk_space, sha256_file, write_chunk,
+};

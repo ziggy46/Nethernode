@@ -164,6 +164,8 @@ message Connection {
   // Unix milliseconds.
   int64 started_at_ms = 6;
   string listener_id = 7;
+  // The route pattern that matched, as in Route.hostname.
+  string route = 8;
 }
 
 message ListConnectionsRequest {}

@@ -19,6 +19,8 @@ pub struct ConnectionInfo {
     pub hostname: String,
     /// Destination server.
     pub server_id: String,
+    /// The route pattern that matched (`play.example.com`, `*.example.com`, `*`).
+    pub route: String,
     /// Username, for logins.
     pub username: Option<String>,
     /// When splicing started.

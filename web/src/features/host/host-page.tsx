@@ -48,6 +48,12 @@ export function HostPage() {
                 ["Container runtime", info?.dockerAvailable ? `Docker ${info.dockerVersion}` : "Unavailable"],
                 ["CPU", info?.cpus ? `${info.cpus} logical cores` : "—"],
                 ["Total memory", info?.memoryBytes ? formatBytes(Number(info.memoryBytes)) : "—"],
+                [
+                  "Data disk",
+                  info?.diskTotalBytes !== undefined && info.diskFreeBytes !== undefined
+                    ? `${formatBytes(Number(info.diskFreeBytes))} free of ${formatBytes(Number(info.diskTotalBytes))}`
+                    : "—",
+                ],
               ].map(([label, value]) => (
                 <div
                   key={label}

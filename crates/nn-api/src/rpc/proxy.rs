@@ -450,6 +450,7 @@ impl pb::ProxyService for ProxyRpc {
                     .map(|d| i64::try_from(d.as_millis()).unwrap_or(i64::MAX))
                     .unwrap_or_default(),
                 listener_id: c.listener_id,
+                route: c.route,
                 ..Default::default()
             })
             .collect();

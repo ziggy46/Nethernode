@@ -301,12 +301,25 @@ export function HostPanel({ totals }: { totals: { memory: number; cpu: number; r
               value={`${gb(totals.memory)} / ${gb(Number(info.memoryBytes))} GB`}
               percent={(totals.memory / Math.max(1, Number(info.memoryBytes))) * 100}
             />
+            {info.diskTotalBytes !== undefined && info.diskFreeBytes !== undefined && (
+              <ResourceMeter
+                size="md"
+                tone="storage"
+                label="Disk for worlds and backups"
+                value={`${gb(Number(info.diskTotalBytes - info.diskFreeBytes))} / ${gb(Number(info.diskTotalBytes))} GB`}
+                percent={(1 - Number(info.diskFreeBytes) / Math.max(1, Number(info.diskTotalBytes))) * 100}
+              />
+            )}
           </div>
           <div className="mt-[18px] flex justify-between border-divider border-t pt-[13px] text-meta text-text-muted">
             <span>
               Running <b className="font-normal text-text-secondary">{totals.running}</b>
             </span>
-            <span>Storage not measured yet</span>
+            <span>
+              {info.diskFreeBytes !== undefined
+                ? `${gb(Number(info.diskFreeBytes))} GB free`
+                : "Disk space not reported"}
+            </span>
           </div>
         </>
       )}

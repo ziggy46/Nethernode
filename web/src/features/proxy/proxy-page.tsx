@@ -26,6 +26,7 @@ import { useCanManage } from "@/lib/session";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { cn } from "@/lib/utils";
 
+import { dnsRecords, MINECRAFT_PORT, wildcardNeedsPort } from "./dns";
 import { ListenerDialog, PROXY_PROTOCOL_WARNING } from "./listener-dialog";
 import { connectionsQuery, listenersQuery, routesQuery, serversQuery } from "./queries";
 import { RouteDialog } from "./route-dialog";
@@ -57,6 +58,7 @@ export function ProxyPage() {
         <ListenersPanel canManage={canManage} />
         <ConnectionsPanel />
       </div>
+      <DnsPanel />
       <RouteDialog
         open={routeDialog.open}
         route={routeDialog.route}
@@ -133,8 +135,14 @@ function ProxyHealth() {
 function RoutesSection({ onEdit, canManage }: { onEdit: (route: Route) => void; canManage: boolean }) {
   const routes = useQuery(routesQuery);
   const servers = useQuery(serversQuery);
+  const connections = useQuery(connectionsQuery);
   const byId = new Map(servers.data?.map((s) => [s.id, s]));
   const bySlug = new Map(servers.data?.map((s) => [s.slug, s]));
+  // Players (not status pings) on each route right now.
+  const playing = new Map<string, number>();
+  for (const c of connections.data ?? []) {
+    if (c.username) playing.set(c.route, (playing.get(c.route) ?? 0) + 1);
+  }
 
   return (
     <section aria-labelledby="routes-heading">
@@ -169,6 +177,7 @@ function RoutesSection({ onEdit, canManage }: { onEdit: (route: Route) => void; 
             <RouteCard
               key={route.id}
               route={route}
+              players={connections.data ? (playing.get(route.hostname) ?? 0) : undefined}
               server={route.serverId ? byId.get(route.serverId) : undefined}
               slugTargets={route.serverId ? undefined : bySlug.size}
               canManage={canManage}
@@ -190,12 +199,14 @@ const KIND_LABEL: Record<RouteKind, string> = {
 
 function RouteCard({
   route,
+  players,
   server,
   slugTargets,
   canManage,
   onEdit,
 }: {
   route: Route;
+  players: number | undefined;
   server: Server | undefined;
   slugTargets: number | undefined;
   canManage: boolean;
@@ -229,7 +240,12 @@ function RouteCard({
         </IconTile>
         <div className="min-w-0">
           <p className="truncate font-mono font-semibold text-[13px]">{route.hostname}</p>
-          <p className="mt-1 text-meta text-text-muted">{KIND_LABEL[route.kind]}</p>
+          <p className="mt-1 text-meta text-text-muted">
+            {KIND_LABEL[route.kind]}
+            {players !== undefined && players > 0 && (
+              <span className="text-success"> · {players} playing now</span>
+            )}
+          </p>
         </div>
         <ArrowRight className="size-[18px] text-primary below-md:hidden" aria-label="routes to" />
         <div className="min-w-0 below-md:col-span-2 below-md:col-start-2 below-md:row-start-2">
@@ -534,6 +550,54 @@ function ConnectionsPanel() {
             </li>
           ))}
         </ul>
+      )}
+    </Panel>
+  );
+}
+
+/** The DNS records players need, so the routes above can be reached. */
+function DnsPanel() {
+  const routes = useQuery(routesQuery);
+  const listeners = useQuery(listenersQuery);
+  if (!routes.data || !listeners.data) return null;
+  const records = dnsRecords(routes.data, listeners.data);
+  if (records.length === 0) return null;
+  return (
+    <Panel className="mt-6">
+      <PanelHeader title="DNS records to create" icon={<Globe />} />
+      <p className="mb-3 text-meta text-text-muted">
+        Add these at your domain's DNS provider. Use this machine's public address (or your router's, with
+        port {MINECRAFT_PORT} forwarded here), then use a route's DNS button to check it.
+      </p>
+      <div className="overflow-x-auto rounded-md border border-divider">
+        <table className="w-full min-w-[480px] text-meta">
+          <thead className="bg-surface text-left text-text-muted">
+            <tr>
+              {["Type", "Name", "Value"].map((h) => (
+                <th key={h} scope="col" className="border-divider border-b px-3 py-2 font-medium">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {records.map((r) => (
+              <tr key={`${r.type}-${r.name}-${r.value}`} className="border-divider border-b last:border-b-0">
+                <td className="px-3 py-2 font-mono">{r.type === "A" ? "A / AAAA" : r.type}</td>
+                <td className="px-3 py-2 font-mono">{r.name}</td>
+                <td className={cn("px-3 py-2", r.type === "SRV" ? "font-mono" : "text-text-secondary")}>
+                  {r.value}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {wildcardNeedsPort(routes.data, listeners.data) && (
+        <p className="mt-3 text-meta text-warning">
+          Wildcard names can't have SRV records, so players joining through a wildcard route need to type the
+          port too.
+        </p>
       )}
     </Panel>
   );

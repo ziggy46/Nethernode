@@ -238,6 +238,10 @@ message GetHostInfoResponse {
   string docker_version = 5;
   uint32 cpus = 6;
   uint64 memory_bytes = 7;
+  // The disk holding NetherNode's data folder (servers, backups), when the
+  // platform reports it.
+  optional uint64 disk_total_bytes = 8;
+  optional uint64 disk_free_bytes = 9;
 }
 
 message GetServerPropertiesRequest {
