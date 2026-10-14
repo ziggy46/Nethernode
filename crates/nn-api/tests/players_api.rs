@@ -150,12 +150,15 @@ impl Harness {
                 username: name,
                 password_hash: &hash,
                 role,
+                must_change_password: false,
             })
             .await
             .unwrap();
         self.auth
             .login(name, PASSWORD, Default::default())
             .await
+            .unwrap()
+            .session()
             .unwrap()
             .token
     }

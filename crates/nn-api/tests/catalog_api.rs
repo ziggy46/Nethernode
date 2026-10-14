@@ -51,12 +51,15 @@ async fn harness() -> (Router, String, String) {
             username: "mod",
             password_hash: &hash,
             role: "moderator",
+            must_change_password: false,
         })
         .await
         .unwrap();
     let moderator = auth
         .login("mod", PASSWORD, Default::default())
         .await
+        .unwrap()
+        .session()
         .unwrap()
         .token;
     (app, owner, moderator)

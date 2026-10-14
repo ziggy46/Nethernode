@@ -10,7 +10,7 @@ use crate::AppState;
 use crate::middleware::CurrentUser;
 use crate::proto::nethernode::v1::{
     AuthServiceExt, BackupServiceExt, CatalogServiceExt, FileServiceExt, ModServiceExt,
-    PlayerServiceExt, ProxyServiceExt, ScheduleServiceExt, ServerServiceExt,
+    PlayerServiceExt, ProxyServiceExt, ScheduleServiceExt, ServerServiceExt, UserServiceExt,
 };
 
 mod auth;
@@ -22,6 +22,7 @@ mod players;
 mod proxy;
 pub(crate) mod schedules;
 pub(crate) mod servers;
+mod users;
 
 /// Registers every service on `router`.
 pub(crate) fn register(router: ConnectRouter, state: &AppState) -> ConnectRouter {
@@ -33,6 +34,7 @@ pub(crate) fn register(router: ConnectRouter, state: &AppState) -> ConnectRouter
     let router = Arc::new(mods::ModRpc::new(state.clone())).register(router);
     let router = Arc::new(backups::BackupRpc::new(state.clone())).register(router);
     let router = Arc::new(schedules::ScheduleRpc::new(state.clone())).register(router);
+    let router = Arc::new(users::UserRpc::new(state.clone())).register(router);
     Arc::new(proxy::ProxyRpc::new(state.clone()))
         .register(router)
         // The editor saves files up to 5 MB, which is larger than the default
@@ -103,6 +105,11 @@ pub(crate) fn auth_error(err: AuthError) -> ConnectError {
         AuthError::SetupAlreadyComplete => ConnectError::failed_precondition(err.to_string()),
         AuthError::InvalidInput(msg) => ConnectError::invalid_argument(msg),
         AuthError::UserNotFound => ConnectError::not_found(err.to_string()),
+        AuthError::LastOwner | AuthError::NoDataKey => {
+            ConnectError::failed_precondition(err.to_string())
+        }
+        AuthError::UsernameTaken => ConnectError::already_exists(err.to_string()),
+        AuthError::SecondFactor(msg) => ConnectError::invalid_argument(msg),
         AuthError::Store(_) | AuthError::Internal(_) => {
             tracing::error!(error = %err, "auth operation failed");
             ConnectError::internal("internal error")

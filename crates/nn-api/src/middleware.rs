@@ -14,7 +14,20 @@ use crate::{AppState, RPC_PREFIX, cookies};
 pub const PUBLIC_PROCEDURES: &[&str] = &[
     "/nethernode.v1.AuthService/Setup",
     "/nethernode.v1.AuthService/Login",
+    "/nethernode.v1.AuthService/FinishSignIn",
 ];
+
+/// What a user whose password must be changed can still call.
+pub const PASSWORD_CHANGE_PROCEDURES: &[&str] = &[
+    "/nethernode.v1.AuthService/Me",
+    "/nethernode.v1.AuthService/Logout",
+    "/nethernode.v1.AuthService/ChangePassword",
+];
+
+/// Marks a request from a user who must change their password first; they
+/// get no [`CurrentUser`] for anything else.
+#[derive(Debug, Clone, Copy)]
+pub struct PasswordChangeRequired;
 
 /// Response header set on 401s while first-run setup is pending, so the UI
 /// can route to `/setup` instead of `/login`.
@@ -82,7 +95,14 @@ pub(crate) async fn resolve_session(
                 if authed.renewed {
                     renewed = Some(token);
                 }
-                req.extensions_mut().insert(CurrentUser(authed));
+                let procedure = req.uri().path().strip_prefix(RPC_PREFIX);
+                if authed.user.must_change_password
+                    && !procedure.is_some_and(|p| PASSWORD_CHANGE_PROCEDURES.contains(&p))
+                {
+                    req.extensions_mut().insert(PasswordChangeRequired);
+                } else {
+                    req.extensions_mut().insert(CurrentUser(authed));
+                }
             }
             Ok(None) => {}
             Err(e) => tracing::error!(error = %e, "session lookup failed"),
@@ -122,6 +142,10 @@ pub(crate) async fn require_session_for_rpc(
     let public = PUBLIC_PROCEDURES.contains(&req.uri().path());
     if public || req.extensions().get::<CurrentUser>().is_some() {
         return next.run(req).await;
+    }
+    if req.extensions().get::<PasswordChangeRequired>().is_some() {
+        return ConnectError::permission_denied("Choose a new password to continue.")
+            .into_response();
     }
     unauthenticated(&state).await
 }

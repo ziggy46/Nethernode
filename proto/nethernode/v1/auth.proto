@@ -12,8 +12,12 @@ service AuthService {
 
   // Signs in with a username and password.
   // Fails with UNAUTHENTICATED on bad credentials and RESOURCE_EXHAUSTED
-  // when rate limited.
+  // when rate limited. For accounts with two-factor sign-in, no session is
+  // opened; finish with FinishSignIn.
   rpc Login(LoginRequest) returns (LoginResponse);
+
+  // Finishes a two-factor sign-in with an authenticator or recovery code.
+  rpc FinishSignIn(FinishSignInRequest) returns (FinishSignInResponse);
 
   // Ends the current session.
   rpc Logout(LogoutRequest) returns (LogoutResponse);
@@ -22,6 +26,29 @@ service AuthService {
   rpc Me(MeRequest) returns (MeResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+
+  // Changes the signed-in user's password and ends their other sessions.
+  // The only call (with Me and Logout) allowed while a password change is
+  // required.
+  rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse);
+
+  // The signed-in user's sessions and two-factor status.
+  rpc GetSecurity(GetSecurityRequest) returns (GetSecurityResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // Ends one of the signed-in user's other sessions.
+  rpc RevokeSession(RevokeSessionRequest) returns (RevokeSessionResponse);
+
+  // Starts two-factor enrollment: a secret to add to an authenticator app.
+  rpc BeginTotpSetup(BeginTotpSetupRequest) returns (BeginTotpSetupResponse);
+
+  // Turns two-factor sign-in on with a code from the app. Returns recovery
+  // codes, shown once.
+  rpc ConfirmTotpSetup(ConfirmTotpSetupRequest) returns (ConfirmTotpSetupResponse);
+
+  // Turns two-factor sign-in off. Needs the current password.
+  rpc DisableTotp(DisableTotpRequest) returns (DisableTotpResponse);
 }
 
 // A panel user's role. Each role includes the permissions of those below it.
@@ -42,6 +69,10 @@ message User {
   int64 created_at_ms = 4;
   // Unix milliseconds; unset if the user has never signed in.
   optional int64 last_login_at_ms = 5;
+  // The password was set by an owner and must be changed before anything else.
+  bool must_change_password = 6;
+  // Signs in with an authenticator code as well as a password.
+  bool totp_enabled = 7;
 }
 
 message SetupRequest {
@@ -59,8 +90,81 @@ message LoginRequest {
 }
 
 message LoginResponse {
+  // Unset when a second factor is needed.
+  User user = 1;
+  // Set when a second factor is needed: pass it to FinishSignIn.
+  string second_factor_challenge = 2;
+}
+
+message FinishSignInRequest {
+  string challenge = 1;
+  // A 6-digit authenticator code or a recovery code.
+  string code = 2;
+}
+
+message FinishSignInResponse {
   User user = 1;
 }
+
+message ChangePasswordRequest {
+  string current_password = 1;
+  string new_password = 2;
+}
+
+message ChangePasswordResponse {
+  User user = 1;
+}
+
+// A signed-in browser.
+message Session {
+  string id = 1;
+  string user_agent = 2;
+  string ip = 3;
+  int64 created_at_ms = 4;
+  int64 expires_at_ms = 5;
+  // The session making this request.
+  bool current = 6;
+}
+
+message GetSecurityRequest {}
+
+message GetSecurityResponse {
+  repeated Session sessions = 1;
+  bool totp_enabled = 2;
+  int64 recovery_codes_left = 3;
+  // False when the data key couldn't be loaded, so two-factor can't be set up.
+  bool totp_available = 4;
+}
+
+message RevokeSessionRequest {
+  string id = 1;
+}
+
+message RevokeSessionResponse {}
+
+message BeginTotpSetupRequest {}
+
+message BeginTotpSetupResponse {
+  // Base32, for typing in by hand.
+  string secret = 1;
+  string otpauth_uri = 2;
+  // The link as a QR code (SVG document).
+  string qr_svg = 3;
+}
+
+message ConfirmTotpSetupRequest {
+  string code = 1;
+}
+
+message ConfirmTotpSetupResponse {
+  repeated string recovery_codes = 1;
+}
+
+message DisableTotpRequest {
+  string password = 1;
+}
+
+message DisableTotpResponse {}
 
 message LogoutRequest {}
 

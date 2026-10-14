@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+package nethernode.v1;
+
+import "nethernode/v1/auth.proto";
+
+// Panel accounts. Owners only. There is always at least one owner.
+service UserService {
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // Creates a user with a one-time password, returned once. They choose
+  // their own password at first sign-in.
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+
+  // Fails with FAILED_PRECONDITION if it would leave no owner.
+  rpc SetUserRole(SetUserRoleRequest) returns (SetUserRoleResponse);
+
+  // Sets a new one-time password (returned once) and signs the user out.
+  rpc ResetUserPassword(ResetUserPasswordRequest) returns (ResetUserPasswordResponse);
+
+  // Turns off a user's two-factor sign-in, for a lost phone.
+  rpc ResetUserTotp(ResetUserTotpRequest) returns (ResetUserTotpResponse);
+
+  // Signs a user out everywhere.
+  rpc RevokeUserSessions(RevokeUserSessionsRequest) returns (RevokeUserSessionsResponse);
+
+  // Fails with FAILED_PRECONDITION for the last owner or yourself.
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
+}
+
+message UserSummary {
+  User user = 1;
+  int64 active_sessions = 2;
+}
+
+message ListUsersRequest {}
+
+message ListUsersResponse {
+  repeated UserSummary users = 1;
+}
+
+message CreateUserRequest {
+  string username = 1;
+  Role role = 2;
+}
+
+message CreateUserResponse {
+  User user = 1;
+  string password = 2;
+}
+
+message SetUserRoleRequest {
+  string id = 1;
+  Role role = 2;
+}
+
+message SetUserRoleResponse {
+  User user = 1;
+}
+
+message ResetUserPasswordRequest {
+  string id = 1;
+}
+
+message ResetUserPasswordResponse {
+  string password = 1;
+}
+
+message ResetUserTotpRequest {
+  string id = 1;
+}
+
+message ResetUserTotpResponse {}
+
+message RevokeUserSessionsRequest {
+  string id = 1;
+}
+
+message RevokeUserSessionsResponse {
+  int64 ended = 1;
+}
+
+message DeleteUserRequest {
+  string id = 1;
+}
+
+message DeleteUserResponse {}

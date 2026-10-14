@@ -124,12 +124,15 @@ impl Harness {
                 username: "viewer",
                 password_hash: &hash,
                 role: "viewer",
+                must_change_password: false,
             })
             .await
             .unwrap();
         self.auth
             .login("viewer", PASSWORD, Default::default())
             .await
+            .unwrap()
+            .session()
             .unwrap()
             .token
     }

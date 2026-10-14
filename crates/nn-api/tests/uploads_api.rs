@@ -219,6 +219,7 @@ impl Harness {
                 username: name,
                 password_hash: &hash,
                 role: "admin",
+                must_change_password: false,
             })
             .await
             .unwrap();
@@ -226,6 +227,8 @@ impl Harness {
             .auth
             .login(name, PASSWORD, Default::default())
             .await
+            .unwrap()
+            .session()
             .unwrap()
             .token
     }

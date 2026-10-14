@@ -92,12 +92,6 @@ async fn serve(config: Config) -> Result<()> {
         .context("installing metrics recorder")?;
 
     let store = open_store(&config).await?;
-    let auth = Arc::new(Auth::new(store.clone(), AuthConfig::default()));
-    spawn_session_pruner(auth.clone());
-
-    let events = EventBus::default();
-    let hooks = StoreProxyHooks::new(store.clone());
-    let proxy = start_proxy(&config, &store, &events, hooks.clone()).await?;
     let secrets = match SecretBox::load(&config.data.secret_key_path()) {
         Ok(secrets) => Some(Arc::new(secrets)),
         Err(e) => {
@@ -105,6 +99,13 @@ async fn serve(config: Config) -> Result<()> {
             None
         }
     };
+    let auth =
+        Arc::new(Auth::new(store.clone(), AuthConfig::default()).with_secrets(secrets.clone()));
+    spawn_session_pruner(auth.clone());
+
+    let events = EventBus::default();
+    let hooks = StoreProxyHooks::new(store.clone());
+    let proxy = start_proxy(&config, &store, &events, hooks.clone()).await?;
     let servers = start_orchestrator(&config, &store, &events, secrets.clone()).await;
     if let Some(orchestrator) = &servers.orchestrator {
         hooks.set_orchestrator(orchestrator.clone());

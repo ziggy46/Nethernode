@@ -303,6 +303,7 @@ async fn viewers_can_look_but_not_change() {
             username: "viewer",
             password_hash: &hash,
             role: "viewer",
+            must_change_password: false,
         })
         .await
         .unwrap();
@@ -310,6 +311,8 @@ async fn viewers_can_look_but_not_change() {
     let viewer = auth
         .login("viewer", PASSWORD, Default::default())
         .await
+        .unwrap()
+        .session()
         .unwrap()
         .token;
 
@@ -498,12 +501,15 @@ async fn viewers_cannot_manage_servers() {
             username: "viewer",
             password_hash: &hash,
             role: "viewer",
+            must_change_password: false,
         })
         .await
         .unwrap();
     let viewer = Auth::new(h.store.clone(), AuthConfig::default())
         .login("viewer", PASSWORD, Default::default())
         .await
+        .unwrap()
+        .session()
         .unwrap()
         .token;
     let id = server(&h.store, "smp", "stopped").await;

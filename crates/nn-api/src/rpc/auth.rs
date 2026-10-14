@@ -2,7 +2,7 @@
 
 use connectrpc::{ConnectError, RequestContext, Response, ServiceRequest, ServiceResult};
 use http::header::SET_COOKIE;
-use nn_auth::{AuthUser, IssuedSession, Role, token};
+use nn_auth::{AuthUser, IssuedSession, Role, SignIn, token};
 use nn_events::Event;
 
 use crate::middleware::CurrentUser;
@@ -66,12 +66,21 @@ impl pb::AuthService for AuthRpc {
         request: ServiceRequest<'_, pb::LoginRequest>,
     ) -> ServiceResult<pb::LoginResponse> {
         let meta = meta(&ctx);
-        let issued = self
+        let issued = match self
             .state
             .auth
             .login(request.username, request.password, meta.client())
             .await
-            .map_err(auth_error)?;
+            .map_err(auth_error)?
+        {
+            SignIn::Session(issued) => issued,
+            SignIn::SecondFactor { challenge } => {
+                return Response::ok(pb::LoginResponse {
+                    second_factor_challenge: challenge,
+                    ..Default::default()
+                });
+            }
+        };
         self.state.events.publish(Event::UserLoggedIn {
             user_id: issued.user.id.clone(),
         });
@@ -118,27 +127,201 @@ impl pb::AuthService for AuthRpc {
             ..Default::default()
         })
     }
+
+    async fn finish_sign_in(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::FinishSignInRequest>,
+    ) -> ServiceResult<pb::FinishSignInResponse> {
+        let meta = meta(&ctx);
+        let issued = self
+            .state
+            .auth
+            .finish_sign_in(request.challenge, request.code, meta.client())
+            .await
+            .map_err(auth_error)?;
+        self.state.events.publish(Event::UserLoggedIn {
+            user_id: issued.user.id.clone(),
+        });
+        let body = pb::FinishSignInResponse {
+            user: proto_user(&issued.user).into(),
+            ..Default::default()
+        };
+        Ok(self.signed_in(&ctx, body, &issued))
+    }
+
+    async fn change_password(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::ChangePasswordRequest>,
+    ) -> ServiceResult<pb::ChangePasswordResponse> {
+        let authed = signed_in(&ctx)?;
+        self.state
+            .auth
+            .change_password(
+                &authed.user.id,
+                &authed.session_id,
+                request.current_password,
+                request.new_password,
+                meta(&ctx).client(),
+            )
+            .await
+            .map_err(auth_error)?;
+        let mut user = authed.user.clone();
+        user.must_change_password = false;
+        Response::ok(pb::ChangePasswordResponse {
+            user: proto_user(&user).into(),
+            ..Default::default()
+        })
+    }
+
+    async fn get_security(
+        &self,
+        ctx: RequestContext,
+        _request: ServiceRequest<'_, pb::GetSecurityRequest>,
+    ) -> ServiceResult<pb::GetSecurityResponse> {
+        let authed = signed_in(&ctx)?;
+        let store = self.state.auth.store();
+        let sessions = store
+            .list_sessions(Some(&authed.user.id), nn_store::now_ms())
+            .await
+            .map_err(crate::rpc::store_error)?;
+        let left = self
+            .state
+            .auth
+            .recovery_codes_left(&authed.user.id)
+            .await
+            .map_err(auth_error)?;
+        Response::ok(pb::GetSecurityResponse {
+            sessions: sessions
+                .into_iter()
+                .map(|s| pb::Session {
+                    current: s.id == authed.session_id,
+                    id: s.id,
+                    user_agent: s.user_agent.unwrap_or_default(),
+                    ip: s.ip.unwrap_or_default(),
+                    created_at_ms: s.created_at,
+                    expires_at_ms: s.expires_at,
+                    ..Default::default()
+                })
+                .collect(),
+            totp_enabled: authed.user.totp_enabled,
+            recovery_codes_left: left,
+            totp_available: self.state.auth.two_factor_available(),
+            ..Default::default()
+        })
+    }
+
+    async fn revoke_session(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::RevokeSessionRequest>,
+    ) -> ServiceResult<pb::RevokeSessionResponse> {
+        let authed = signed_in(&ctx)?;
+        if request.id == authed.session_id {
+            return Err(ConnectError::invalid_argument(
+                "sign out to end this session",
+            ));
+        }
+        let ended = self
+            .state
+            .auth
+            .store()
+            .delete_session(request.id, &authed.user.id)
+            .await
+            .map_err(crate::rpc::store_error)?;
+        if !ended {
+            return Err(ConnectError::not_found("no such session"));
+        }
+        Response::ok(pb::RevokeSessionResponse::default())
+    }
+
+    async fn begin_totp_setup(
+        &self,
+        ctx: RequestContext,
+        _request: ServiceRequest<'_, pb::BeginTotpSetupRequest>,
+    ) -> ServiceResult<pb::BeginTotpSetupResponse> {
+        let authed = signed_in(&ctx)?;
+        if authed.user.totp_enabled {
+            return Err(ConnectError::failed_precondition(
+                "two-factor sign-in is already on",
+            ));
+        }
+        let enrollment = self
+            .state
+            .auth
+            .begin_totp(&authed.user)
+            .await
+            .map_err(auth_error)?;
+        Response::ok(pb::BeginTotpSetupResponse {
+            secret: enrollment.secret,
+            otpauth_uri: enrollment.uri,
+            qr_svg: enrollment.qr_svg,
+            ..Default::default()
+        })
+    }
+
+    async fn confirm_totp_setup(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::ConfirmTotpSetupRequest>,
+    ) -> ServiceResult<pb::ConfirmTotpSetupResponse> {
+        let authed = signed_in(&ctx)?;
+        let codes = self
+            .state
+            .auth
+            .confirm_totp(&authed.user.id, request.code, meta(&ctx).client())
+            .await
+            .map_err(auth_error)?;
+        Response::ok(pb::ConfirmTotpSetupResponse {
+            recovery_codes: codes,
+            ..Default::default()
+        })
+    }
+
+    async fn disable_totp(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::DisableTotpRequest>,
+    ) -> ServiceResult<pb::DisableTotpResponse> {
+        let authed = signed_in(&ctx)?;
+        self.state
+            .auth
+            .disable_totp(&authed.user.id, request.password, meta(&ctx).client())
+            .await
+            .map_err(auth_error)?;
+        Response::ok(pb::DisableTotpResponse::default())
+    }
 }
 
-fn meta(ctx: &RequestContext) -> RequestMeta {
+fn signed_in(ctx: &RequestContext) -> Result<&nn_auth::Authenticated, ConnectError> {
+    ctx.extensions()
+        .get::<CurrentUser>()
+        .map(|CurrentUser(authed)| authed)
+        .ok_or_else(|| ConnectError::unauthenticated("sign in required"))
+}
+
+pub(crate) fn meta(ctx: &RequestContext) -> RequestMeta {
     ctx.extensions()
         .get::<RequestMeta>()
         .cloned()
         .unwrap_or_default()
 }
 
-fn proto_user(user: &AuthUser) -> pb::User {
+pub(crate) fn proto_user(user: &AuthUser) -> pb::User {
     pb::User {
         id: user.id.clone(),
         username: user.username.clone(),
         role: proto_role(user.role).into(),
         created_at_ms: user.created_at,
         last_login_at_ms: user.last_login_at,
+        must_change_password: user.must_change_password,
+        totp_enabled: user.totp_enabled,
         ..Default::default()
     }
 }
 
-fn proto_role(role: Role) -> pb::Role {
+pub(crate) fn proto_role(role: Role) -> pb::Role {
     match role {
         Role::Viewer => pb::Role::ROLE_VIEWER,
         Role::Moderator => pb::Role::ROLE_MODERATOR,
