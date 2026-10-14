@@ -82,6 +82,7 @@ impl ServerRpc {
             players_online: players.map(|p| p.online),
             players_max: players.map(|p| p.max),
             restart_required,
+            modpack: proto_modpack(server.modpack_json.as_deref()).into(),
             internal_port: u32::try_from(server.internal_port).unwrap_or_default(),
             sleep_when_empty: server.sleep_when_empty,
             created_at_ms: server.created_at,
@@ -327,7 +328,29 @@ fn settings_from_proto(s: &pb::ServerSettingsView<'_>) -> ServerSettings {
         motd: text(s.motd),
         max_players: i64::from(s.max_players),
         card_theme: theme_name(s.card_theme.as_known()).to_owned(),
+        // Not part of the editable settings; kept from the server.
+        modpack_json: None,
     }
+}
+
+fn proto_modpack(json: Option<&str>) -> Option<pb::Modpack> {
+    let pack: nn_orchestrator::spec::Modpack = serde_json::from_str(json?).ok()?;
+    Some(pb::Modpack {
+        platform: match pack.platform.as_str() {
+            "curseforge" => pb::Platform::PLATFORM_CURSEFORGE,
+            _ => pb::Platform::PLATFORM_MODRINTH,
+        }
+        .into(),
+        icon_url: crate::content::icons::proxied(pack.icon_url.as_deref()),
+        project_id: pack.project_id,
+        slug: pack.slug,
+        title: pack.title,
+        version_id: pack.version_id.unwrap_or_default(),
+        version_name: pack.version_name.unwrap_or_default(),
+        loader: pack.loader.unwrap_or_default(),
+        page_url: pack.page_url.unwrap_or_default(),
+        ..Default::default()
+    })
 }
 
 #[allow(refining_impl_trait)]
@@ -377,10 +400,34 @@ impl pb::ServerService for ServerRpc {
     ) -> ServiceResult<pb::CreateServerResponse> {
         let user = require(&ctx, Permission::ManageServers)?.clone();
         let orch = self.orchestrator()?;
+        let loader = request.loader.trim().to_ascii_lowercase();
+        let mut mc_version = request.mc_version.trim().to_owned();
+        let modpack = match loader.as_str() {
+            "modrinth" | "curseforge" => {
+                let source = request
+                    .modpack
+                    .as_option()
+                    .ok_or_else(|| ConnectError::invalid_argument("choose a modpack"))?;
+                let project = source.project.trim();
+                let version = Some(source.version_id.trim()).filter(|v| !v.is_empty());
+                let content = &self.state.content;
+                let resolved = if loader == "modrinth" {
+                    content.resolve_modrinth(project, version).await?
+                } else {
+                    content
+                        .resolve_curseforge(project, version, Some(mc_version.as_str()))
+                        .await?
+                };
+                mc_version = resolved.mc_version;
+                Some(resolved.modpack)
+            }
+            _ => None,
+        };
         let input = CreateServer {
             name: request.name.to_owned(),
-            loader: request.loader.to_owned(),
-            mc_version: request.mc_version.to_owned(),
+            loader,
+            mc_version,
+            modpack,
             loader_version: Some(request.loader_version.to_owned()),
             memory_mb: i64::from(request.memory_mb),
             card_theme: theme_name(request.card_theme.as_known()).to_owned(),
@@ -389,7 +436,12 @@ impl pb::ServerService for ServerRpc {
             start_after_create: request.start_after_create,
         };
         let server = orch.create(input).await.map_err(orchestrator_error)?;
-        let details = json!({ "name": server.name, "loader": server.loader, "version": server.mc_version, "eula_accepted": true });
+        let pack = server
+            .modpack_json
+            .as_deref()
+            .and_then(|j| serde_json::from_str::<nn_orchestrator::spec::Modpack>(j).ok())
+            .map(|p| json!({ "platform": p.platform, "slug": p.slug, "version": p.version_id }));
+        let details = json!({ "name": server.name, "loader": server.loader, "version": server.mc_version, "modpack": pack, "eula_accepted": true });
         audit(
             &self.state,
             &user,
@@ -412,11 +464,12 @@ impl pb::ServerService for ServerRpc {
     ) -> ServiceResult<pb::UpdateServerResponse> {
         let user = require(&ctx, Permission::ManageServers)?.clone();
         let orch = self.orchestrator()?;
-        let settings = request
+        let mut settings = request
             .settings
             .as_option()
             .map(settings_from_proto)
             .ok_or_else(|| ConnectError::invalid_argument("settings are required"))?;
+        settings.modpack_json = self.load(request.id).await?.modpack_json;
         let (server, _) = orch
             .update(request.id, settings)
             .await

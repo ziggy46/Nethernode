@@ -10,6 +10,7 @@ fn main() {
             format!("{proto_root}/nethernode/v1/proxy.proto"),
             format!("{proto_root}/nethernode/v1/files.proto"),
             format!("{proto_root}/nethernode/v1/players.proto"),
+            format!("{proto_root}/nethernode/v1/catalog.proto"),
         ])
         .includes(&[proto_root])
         .include_file("_connectrpc.rs")

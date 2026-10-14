@@ -115,6 +115,8 @@ pub struct CreateServer {
     pub sleep_when_empty: bool,
     /// Start as soon as installation finishes.
     pub start_after_create: bool,
+    /// The modpack to install, for the `modrinth` and `curseforge` loaders.
+    pub modpack: Option<spec::Modpack>,
 }
 
 /// Docker host facts for the UI.
@@ -142,6 +144,8 @@ pub struct Orchestrator {
     runtimes: Mutex<HashMap<String, Arc<Runtime>>>,
     create_lock: tokio::sync::Mutex<()>,
     before_start: std::sync::OnceLock<Arc<dyn BeforeStart>>,
+    /// The admin's CurseForge API key, for CurseForge modpacks.
+    curseforge_key: std::sync::RwLock<Option<String>>,
 }
 
 /// Work done just before a server's container starts, while the server is
@@ -181,7 +185,17 @@ impl Orchestrator {
             runtimes: Mutex::new(HashMap::new()),
             create_lock: tokio::sync::Mutex::new(()),
             before_start: std::sync::OnceLock::new(),
+            curseforge_key: std::sync::RwLock::new(None),
         }))
+    }
+
+    /// Sets (or clears) the CurseForge API key given to CurseForge modpack
+    /// servers. Takes effect when each one next starts.
+    pub fn set_curseforge_key(&self, key: Option<String>) {
+        *self
+            .curseforge_key
+            .write()
+            .unwrap_or_else(|e| e.into_inner()) = key.filter(|k| !k.is_empty());
     }
 
     pub(crate) fn runtime(&self, id: &str) -> Arc<Runtime> {
@@ -346,6 +360,12 @@ impl Orchestrator {
             motd: Some(format!("{name} · NetherNode")),
             max_players: 20,
             card_theme: input.card_theme,
+            modpack_json: input
+                .modpack
+                .as_ref()
+                .map(serde_json::to_string)
+                .transpose()
+                .map_err(|e| OrchestratorError::InvalidInput(e.to_string()))?,
         })?;
 
         let server = {
@@ -413,6 +433,21 @@ impl Orchestrator {
                 s.loader
             )));
         }
+        let is_modpack = spec::MODPACK_LOADERS.contains(&s.loader.as_str());
+        match (is_modpack, s.modpack_json.as_deref()) {
+            (true, Some(json)) => {
+                let pack: spec::Modpack = serde_json::from_str(json).map_err(|_| {
+                    OrchestratorError::InvalidInput("The modpack details are invalid.".into())
+                })?;
+                if pack.slug.is_empty() && pack.project_id.is_empty() {
+                    return Err(OrchestratorError::InvalidInput("Choose a modpack.".into()));
+                }
+            }
+            (true, None) => {
+                return Err(OrchestratorError::InvalidInput("Choose a modpack.".into()));
+            }
+            (false, _) => s.modpack_json = None,
+        }
         if !java::is_valid_version(&s.mc_version) {
             return Err(OrchestratorError::InvalidInput(
                 "Enter a Minecraft version like 1.21.4, or LATEST.".into(),
@@ -479,6 +514,15 @@ impl Orchestrator {
         };
         let extra_env: BTreeMap<String, String> =
             serde_json::from_str(&server.env_json).unwrap_or_default();
+        let modpack: Option<spec::Modpack> = server
+            .modpack_json
+            .as_deref()
+            .and_then(|json| serde_json::from_str(json).ok());
+        let curseforge_key = self
+            .curseforge_key
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
         Ok(spec::build(&SpecInput {
             server_id: &server.id,
             slug: &server.slug,
@@ -504,6 +548,8 @@ impl Orchestrator {
             extra_env: &extra_env,
             run_as: self.config.run_as,
             servers_dir: &self.config.servers_dir,
+            modpack: modpack.as_ref(),
+            curseforge_api_key: curseforge_key.as_deref(),
         }))
     }
 
@@ -513,6 +559,15 @@ impl Orchestrator {
         let server = &self.ensure_management(server).await?;
         let spec = self.spec(server)?;
         std::fs::create_dir_all(self.config.servers_dir.join(&server.slug))?;
+        if server.loader == "curseforge" {
+            // The image only looks in a downloads folder that exists.
+            std::fs::create_dir_all(
+                self.config
+                    .servers_dir
+                    .join(&server.slug)
+                    .join(spec::CURSEFORGE_DOWNLOADS_DIR),
+            )?;
+        }
 
         if let Ok(existing) = self.docker.inspect_container(&spec.name, None).await {
             let hash = existing

@@ -1,0 +1,184 @@
+syntax = "proto3";
+
+package nethernode.v1;
+
+// What can be installed: Minecraft versions, server software builds, and
+// modpacks and mods from Modrinth and CurseForge. Version lists are cached
+// for six hours; search results are live.
+service CatalogService {
+  // Minecraft versions a server software supports, newest first.
+  rpc ListMcVersions(ListMcVersionsRequest) returns (ListMcVersionsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Builds of a server software for one Minecraft version, newest first.
+  rpc ListLoaderVersions(ListLoaderVersionsRequest) returns (ListLoaderVersionsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Searches modpacks or mods.
+  rpc SearchProjects(SearchProjectsRequest) returns (SearchProjectsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // A project's versions, newest first.
+  rpc ListProjectVersions(ListProjectVersionsRequest) returns (ListProjectVersionsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Whether a CurseForge API key is set (never the key itself).
+  rpc GetCurseForgeStatus(GetCurseForgeStatusRequest) returns (GetCurseForgeStatusResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Sets the CurseForge API key after checking it with CurseForge, or
+  // removes it when empty. Administrators only.
+  rpc SetCurseForgeKey(SetCurseForgeKeyRequest) returns (SetCurseForgeKeyResponse);
+}
+
+enum Platform {
+  PLATFORM_UNSPECIFIED = 0;
+  PLATFORM_MODRINTH = 1;
+  PLATFORM_CURSEFORGE = 2;
+}
+
+enum ProjectKind {
+  PROJECT_KIND_UNSPECIFIED = 0;
+  PROJECT_KIND_MODPACK = 1;
+  PROJECT_KIND_MOD = 2;
+}
+
+message McVersion {
+  // e.g. "1.21.11", "26.3", "26.4-snapshot-4".
+  string id = 1;
+  // Snapshots, pre-releases, and release candidates.
+  bool snapshot = 2;
+  // Unix ms.
+  int64 released_ms = 3;
+}
+
+message LoaderVersion {
+  // What to pin: "0.19.5" (Fabric), "47.3.0" (Forge), "132" (Paper).
+  string version = 1;
+  bool stable = 2;
+  // The default choice.
+  bool recommended = 3;
+}
+
+message Project {
+  Platform platform = 1;
+  string id = 2;
+  string slug = 3;
+  string title = 4;
+  string summary = 5;
+  string author = 6;
+  // Through NetherNode (/api/catalog/icon), so browsers don't contact the
+  // platforms' image servers directly. Empty when there's none.
+  string icon_url = 7;
+  uint64 downloads = 8;
+  // fabric, forge, neoforge, quilt.
+  repeated string loaders = 9;
+  // Newest last.
+  repeated string game_versions = 10;
+  string page_url = 11;
+  // required, optional, unsupported, or unknown.
+  string server_side = 12;
+  int64 updated_ms = 13;
+}
+
+message ProjectVersion {
+  string id = 1;
+  string project_id = 2;
+  string name = 3;
+  string version_number = 4;
+  repeated string game_versions = 5;
+  repeated string loaders = 6;
+  // release, beta, or alpha.
+  string channel = 7;
+  int64 published_ms = 8;
+  string filename = 9;
+  uint64 size = 10;
+  // The author doesn't allow other apps to download it (CurseForge): it
+  // has to be downloaded from the website and uploaded.
+  bool manual_download = 11;
+}
+
+// A server's modpack.
+message Modpack {
+  Platform platform = 1;
+  string project_id = 2;
+  string slug = 3;
+  string title = 4;
+  // Empty: the newest version.
+  string version_id = 5;
+  string version_name = 6;
+  // fabric, forge, neoforge, quilt; empty if unknown.
+  string loader = 7;
+  string icon_url = 8;
+  string page_url = 9;
+}
+
+// The modpack to create a server from. NetherNode looks up the rest
+// (name, loader, Minecraft version).
+message ModpackSource {
+  Platform platform = 1;
+  // Modrinth project ID or slug; CurseForge numeric ID or slug.
+  string project = 2;
+  // Modrinth version ID or CurseForge file ID; empty for the newest.
+  string version_id = 3;
+}
+
+message ListMcVersionsRequest {
+  // vanilla, paper, purpur, fabric, quilt, forge, neoforge.
+  string loader = 1;
+  bool include_snapshots = 2;
+}
+
+message ListMcVersionsResponse {
+  repeated McVersion versions = 1;
+}
+
+message ListLoaderVersionsRequest {
+  string loader = 1;
+  string mc_version = 2;
+}
+
+message ListLoaderVersionsResponse {
+  repeated LoaderVersion versions = 1;
+}
+
+message SearchProjectsRequest {
+  Platform platform = 1;
+  ProjectKind kind = 2;
+  string query = 3;
+  // Optional filters.
+  string mc_version = 4;
+  string loader = 5;
+  uint32 offset = 6;
+  // At most 50; default 20.
+  uint32 limit = 7;
+}
+
+message SearchProjectsResponse {
+  repeated Project projects = 1;
+  uint64 total = 2;
+}
+
+message ListProjectVersionsRequest {
+  Platform platform = 1;
+  string project_id = 2;
+  // Optional filters.
+  string mc_version = 3;
+  string loader = 4;
+}
+
+message ListProjectVersionsResponse {
+  repeated ProjectVersion versions = 1;
+}
+
+message GetCurseForgeStatusRequest {}
+
+message GetCurseForgeStatusResponse {
+  bool configured = 1;
+}
+
+message SetCurseForgeKeyRequest {
+  string key = 1;
+}
+
+message SetCurseForgeKeyResponse {}

@@ -70,6 +70,7 @@ async fn harness_with(settings: UploadSettings) -> Harness {
             settings,
             nn_uploads::TempStore::open(&temp).unwrap(),
         )),
+        content: Default::default(),
         servers: ServerManager {
             servers_dir: Some(servers_dir.clone()),
             ..Default::default()

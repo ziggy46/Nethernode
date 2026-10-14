@@ -30,6 +30,7 @@ use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::trace::TraceLayer;
 
 mod console;
+pub mod content;
 mod cookies;
 mod events;
 mod files;
@@ -106,6 +107,8 @@ pub struct AppState {
     pub players: Arc<players::PlayerManager>,
     /// Resumable uploads.
     pub uploads: Arc<uploads::Uploads>,
+    /// Versions, modpacks, and mods.
+    pub content: Arc<content::Content>,
 }
 
 /// Server lifecycle management, which needs Docker.
@@ -153,6 +156,7 @@ pub fn router(state: AppState) -> Router {
         )
         .route("/ws/servers/{id}/console", get(console::console))
         .route("/api/players/{uuid}/head", get(players::heads::head))
+        .route("/api/catalog/icon", get(content::icons::icon))
         .nest(RPC_PREFIX, rpc_routes)
         .fallback(spa::serve)
         .layer(from_fn_with_state(

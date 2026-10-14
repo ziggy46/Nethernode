@@ -69,6 +69,8 @@ pub struct Server {
     pub mgmt_port: Option<i64>,
     /// Management protocol secret, sealed.
     pub mgmt_secret_enc: Option<String>,
+    /// The modpack it's installed from (JSON), if any.
+    pub modpack_json: Option<String>,
 }
 
 /// Fields needed to create a server.
@@ -129,6 +131,8 @@ pub struct ServerSettings {
     pub max_players: i64,
     /// Card artwork.
     pub card_theme: String,
+    /// The modpack it's installed from (JSON), if any.
+    pub modpack_json: Option<String>,
 }
 
 impl Server {
@@ -151,6 +155,7 @@ impl Server {
             motd: self.motd.clone(),
             max_players: self.max_players,
             card_theme: self.card_theme.clone(),
+            modpack_json: self.modpack_json.clone(),
         }
     }
 }
@@ -167,7 +172,7 @@ impl Store {
                       created_at, updated_at, rcon_port, container_id, eula_accepted_at, card_theme,
                       restart_on_crash AS "restart_on_crash: bool",
                       use_aikar_flags AS "use_aikar_flags: bool", motd, max_players, last_started_at,
-                      mgmt_port, mgmt_secret_enc
+                      mgmt_port, mgmt_secret_enc, modpack_json
                FROM servers ORDER BY name COLLATE NOCASE, id"#,
         )
         .fetch_all(self.pool())
@@ -186,7 +191,7 @@ impl Store {
                       created_at, updated_at, rcon_port, container_id, eula_accepted_at, card_theme,
                       restart_on_crash AS "restart_on_crash: bool",
                       use_aikar_flags AS "use_aikar_flags: bool", motd, max_players, last_started_at,
-                      mgmt_port, mgmt_secret_enc
+                      mgmt_port, mgmt_secret_enc, modpack_json
                FROM servers WHERE id = ?1"#,
             id,
         )
@@ -240,9 +245,10 @@ impl Store {
                                     java_version, memory_mb, cpu_limit, internal_port, rcon_port,
                                     auto_start, sleep_when_empty, auto_stop_idle_minutes,
                                     restart_on_crash, use_aikar_flags, motd, max_players, card_theme,
-                                    rcon_password_enc, eula_accepted_at, created_at, updated_at)
+                                    rcon_password_enc, eula_accepted_at, modpack_json, created_at,
+                                    updated_at)
                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18,
-                       ?19, ?20, ?21, ?22, ?23, ?24, ?24)"#,
+                       ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?25)"#,
             id,
             settings.name,
             slug,
@@ -266,6 +272,7 @@ impl Store {
             settings.card_theme,
             rcon_password_enc,
             eula_accepted_at,
+            settings.modpack_json,
             now,
         )
         .execute(self.pool())
@@ -281,8 +288,8 @@ impl Store {
                    image = ?5, java_version = ?6, memory_mb = ?7, cpu_limit = ?8, auto_start = ?9,
                    sleep_when_empty = ?10, auto_stop_idle_minutes = ?11, restart_on_crash = ?12,
                    use_aikar_flags = ?13, motd = ?14, max_players = ?15, card_theme = ?16,
-                   updated_at = ?17
-               WHERE id = ?18"#,
+                   modpack_json = ?17, updated_at = ?18
+               WHERE id = ?19"#,
             s.name,
             s.mc_version,
             s.loader,
@@ -299,6 +306,7 @@ impl Store {
             s.motd,
             s.max_players,
             s.card_theme,
+            s.modpack_json,
             now,
             id,
         )
@@ -431,6 +439,7 @@ mod tests {
             motd: Some("hi".into()),
             max_players: 20,
             card_theme: "nether".into(),
+            modpack_json: None,
         }
     }
 

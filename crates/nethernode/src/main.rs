@@ -98,7 +98,14 @@ async fn serve(config: Config) -> Result<()> {
     let events = EventBus::default();
     let hooks = StoreProxyHooks::new(store.clone());
     let proxy = start_proxy(&config, &store, &events, hooks.clone()).await?;
-    let servers = start_orchestrator(&config, &store, &events).await;
+    let secrets = match SecretBox::load(&config.data.secret_key_path()) {
+        Ok(secrets) => Some(Arc::new(secrets)),
+        Err(e) => {
+            tracing::warn!(error = %e, "the data key couldn't be loaded");
+            None
+        }
+    };
+    let servers = start_orchestrator(&config, &store, &events, secrets.clone()).await;
     if let Some(orchestrator) = &servers.orchestrator {
         hooks.set_orchestrator(orchestrator.clone());
     }
@@ -109,6 +116,19 @@ async fn serve(config: Config) -> Result<()> {
     let temp = nn_uploads::TempStore::open(&upload_dir)
         .with_context(|| format!("creating {}", upload_dir.display()))?;
     let uploads = nn_api::uploads::Uploads::new(upload_settings, temp);
+
+    let content = Arc::new(nn_api::content::Content::new(
+        nn_catalog::Catalog::new(
+            Some(config.data.dir.join("cache").join("catalog")),
+            Default::default(),
+        ),
+        secrets,
+        Some(config.data.dir.join("cache")),
+    ));
+    let curseforge_key = content.load_curseforge_key(&store).await;
+    if let Some(orchestrator) = &servers.orchestrator {
+        orchestrator.set_curseforge_key(curseforge_key);
+    }
 
     let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
     let state = AppState {
@@ -124,6 +144,7 @@ async fn serve(config: Config) -> Result<()> {
         servers,
         players: Arc::new(nn_api::players::PlayerManager::new(hooks.bans())),
         uploads: Arc::new(uploads),
+        content: content.clone(),
     };
     nn_api::players::tasks::spawn(state.clone());
     nn_api::uploads::tasks::spawn(state.clone());
@@ -211,7 +232,12 @@ async fn start_proxy(
 
 /// Connects to Docker and starts the orchestrator. If Docker can't be
 /// reached, the panel still runs; server management reports why it's off.
-async fn start_orchestrator(config: &Config, store: &Store, events: &EventBus) -> ServerManager {
+async fn start_orchestrator(
+    config: &Config,
+    store: &Store,
+    events: &EventBus,
+    secrets: Option<Arc<SecretBox>>,
+) -> ServerManager {
     // Bind mounts need an absolute path.
     let servers_dir = match fs::canonicalize(&config.data.dir) {
         Ok(dir) => Some(dir.join("servers")),
@@ -228,9 +254,8 @@ async fn start_orchestrator(config: &Config, store: &Store, events: &EventBus) -
             servers_dir: servers_dir.clone(),
         }
     };
-    let secrets = match SecretBox::load(&config.data.secret_key_path()) {
-        Ok(secrets) => Arc::new(secrets),
-        Err(e) => return unavailable(e.to_string()),
+    let Some(secrets) = secrets else {
+        return unavailable("the data key couldn't be loaded".into());
     };
     let Some(dir) = servers_dir.clone() else {
         return unavailable("the data directory isn't available".into());

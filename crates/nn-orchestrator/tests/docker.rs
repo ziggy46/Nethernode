@@ -87,6 +87,7 @@ async fn create_start_adopt_sleep_wake_stop_delete() {
             eula_accepted: true,
             sleep_when_empty: true,
             start_after_create: true,
+            modpack: None,
         })
         .await
         .unwrap();

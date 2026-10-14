@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO servers (id, name, slug, status, mc_version, loader, loader_version, image,\n                                    java_version, memory_mb, cpu_limit, internal_port, rcon_port,\n                                    auto_start, sleep_when_empty, auto_stop_idle_minutes,\n                                    restart_on_crash, use_aikar_flags, motd, max_players, card_theme,\n                                    rcon_password_enc, eula_accepted_at, modpack_json, created_at,\n                                    updated_at)\n               VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18,\n                       ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?25)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 25
+    },
+    "nullable": []
+  },
+  "hash": "9d6cd5b110f7bdd63c4657bf585c5b93edc7ab70402821bae8824cbb85de7df8"
+}

@@ -274,6 +274,32 @@ impl Catalog {
         parse_search(&raw)
     }
 
+    /// A CurseForge modpack or mod by its URL name.
+    pub async fn curseforge_by_slug(
+        &self,
+        key: &str,
+        kind: ProjectKind,
+        slug: &str,
+    ) -> Result<Project, Error> {
+        let class = match kind {
+            ProjectKind::Modpack => CLASS_MODPACK,
+            ProjectKind::Mod => CLASS_MOD,
+        };
+        let params = [
+            ("gameId", MINECRAFT.to_string()),
+            ("classId", class.to_string()),
+            ("slug", slug.to_owned()),
+        ];
+        let raw = self
+            .fetch_text(self.curseforge(key, "/mods/search").query(&params))
+            .await?;
+        parse_search(&raw)?
+            .projects
+            .into_iter()
+            .find(|p| p.slug == slug)
+            .ok_or_else(|| Error::NotFound(format!("CurseForge has nothing called {slug}")))
+    }
+
     /// One CurseForge project, by numeric ID.
     pub async fn curseforge_project(&self, key: &str, id: &str) -> Result<Project, Error> {
         let raw = self

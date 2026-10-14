@@ -40,6 +40,19 @@ pub const RESERVED_ENV: &[&str] = &[
     "VERSION",
     "UID",
     "GID",
+    "MODPACK_PLATFORM",
+    "MOD_PLATFORM",
+    "MODRINTH_MODPACK",
+    "MODRINTH_PROJECT",
+    "MODRINTH_VERSION",
+    "MODRINTH_VERSION_ID",
+    "MODRINTH_LOADER",
+    "CF_API_KEY",
+    "CF_API_KEY_FILE",
+    "CF_SLUG",
+    "CF_PAGE_URL",
+    "CF_FILE_ID",
+    "CF_DOWNLOADS_REPO",
 ];
 
 /// `server.properties` keys NetherNode controls, with why. The image
@@ -101,7 +114,42 @@ pub const LOADERS: &[(&str, &str, Option<&str>)] = &[
     ("forge", "FORGE", Some("FORGE_VERSION")),
     ("neoforge", "NEOFORGE", Some("NEOFORGE_VERSION")),
     ("quilt", "QUILT", Some("QUILT_LOADER_VERSION")),
+    ("modrinth", "MODRINTH", None),
+    ("curseforge", "AUTO_CURSEFORGE", None),
 ];
+
+/// Loaders that install a modpack rather than plain server software.
+pub const MODPACK_LOADERS: &[&str] = &["modrinth", "curseforge"];
+
+/// Folder in a CurseForge modpack server's data where files the pack can't
+/// download itself go (the image's downloads repo).
+pub const CURSEFORGE_DOWNLOADS_DIR: &str = "downloads";
+
+/// The modpack a server is installed from, stored as JSON with the server.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct Modpack {
+    /// `modrinth` or `curseforge`.
+    pub platform: String,
+    /// Platform project ID (Modrinth ID; CurseForge numeric ID, or empty
+    /// when only the slug is known).
+    pub project_id: String,
+    /// URL name on the platform.
+    pub slug: String,
+    /// Display name.
+    pub title: String,
+    /// The pack version installed (Modrinth version ID, CurseForge file
+    /// ID); `None` installs the newest.
+    pub version_id: Option<String>,
+    /// That version's name, for display.
+    pub version_name: Option<String>,
+    /// The pack's mod loader (`fabric`, `forge`, `neoforge`, `quilt`), if
+    /// known.
+    pub loader: Option<String>,
+    /// Icon image URL.
+    pub icon_url: Option<String>,
+    /// The pack's page.
+    pub page_url: Option<String>,
+}
 
 /// Everything needed to define a server's container.
 #[derive(Debug, Clone)]
@@ -149,6 +197,10 @@ pub struct SpecInput<'a> {
     /// User and group the server runs as, so its files stay manageable by
     /// NetherNode; `None` keeps the image default.
     pub run_as: Option<(u32, u32)>,
+    /// The modpack, for modpack loaders.
+    pub modpack: Option<&'a Modpack>,
+    /// The admin's CurseForge API key; without one the image uses its own.
+    pub curseforge_api_key: Option<&'a str>,
 }
 
 /// A container definition plus its name and drift hash.
@@ -194,7 +246,42 @@ pub fn build(input: &SpecInput<'_>) -> ContainerSpec {
         env.insert("EULA".into(), "TRUE".into());
     }
     env.insert("TYPE".into(), ty.into());
-    env.insert("VERSION".into(), input.mc_version.trim().to_owned());
+    // A CurseForge pack decides its own Minecraft version.
+    if input.loader != "curseforge" {
+        env.insert("VERSION".into(), input.mc_version.trim().to_owned());
+    }
+    if let Some(pack) = input.modpack {
+        match input.loader {
+            "modrinth" => {
+                let project = if pack.project_id.is_empty() {
+                    &pack.slug
+                } else {
+                    &pack.project_id
+                };
+                env.insert("MODRINTH_MODPACK".into(), project.clone());
+                if let Some(version) = pack.version_id.as_ref().filter(|v| !v.is_empty()) {
+                    env.insert("MODRINTH_VERSION".into(), version.clone());
+                }
+                if let Some(loader) = pack.loader.as_ref().filter(|l| !l.is_empty()) {
+                    env.insert("MODRINTH_LOADER".into(), loader.clone());
+                }
+            }
+            "curseforge" => {
+                env.insert("CF_SLUG".into(), pack.slug.clone());
+                if let Some(file) = pack.version_id.as_ref().filter(|v| !v.is_empty()) {
+                    env.insert("CF_FILE_ID".into(), file.clone());
+                }
+                env.insert(
+                    "CF_DOWNLOADS_REPO".into(),
+                    format!("/data/{CURSEFORGE_DOWNLOADS_DIR}"),
+                );
+                if let Some(key) = input.curseforge_api_key.filter(|k| !k.is_empty()) {
+                    env.insert("CF_API_KEY".into(), key.to_owned());
+                }
+            }
+            _ => {}
+        }
+    }
     env.insert("MEMORY".into(), format!("{}M", input.memory_mb));
     env.insert("ENABLE_RCON".into(), "true".into());
     env.insert("SERVER_PORT".into(), "25565".into());
@@ -328,6 +415,8 @@ mod tests {
             extra_env: extra,
             servers_dir: dir,
             run_as: None,
+            modpack: None,
+            curseforge_api_key: None,
         }
     }
 
@@ -482,5 +571,86 @@ mod tests {
             assert_eq!(loader_type(id), Some(*ty));
         }
         assert_eq!(loader_type("bukkit"), None);
+    }
+
+    fn pack(platform: &str) -> Modpack {
+        Modpack {
+            platform: platform.into(),
+            project_id: if platform == "modrinth" {
+                "5FFgwNNP".into()
+            } else {
+                "285109".into()
+            },
+            slug: "some-pack".into(),
+            title: "Some Pack".into(),
+            version_id: Some("V1".into()),
+            version_name: None,
+            loader: Some("fabric".into()),
+            icon_url: None,
+            page_url: None,
+        }
+    }
+
+    #[test]
+    fn modrinth_packs_pin_project_and_version() {
+        let extra = BTreeMap::from([("MODRINTH_VERSION".to_owned(), "hijack".to_owned())]);
+        let dir = PathBuf::from("/srv/nn/servers");
+        let pack = pack("modrinth");
+        let spec = build(&SpecInput {
+            loader: "modrinth",
+            modpack: Some(&pack),
+            ..input(&extra, &dir)
+        });
+        let env = env(&spec);
+        for want in [
+            "TYPE=MODRINTH",
+            "MODRINTH_MODPACK=5FFgwNNP",
+            "MODRINTH_VERSION=V1",
+            "MODRINTH_LOADER=fabric",
+            "VERSION=1.20.1",
+        ] {
+            assert!(env.contains(&want.to_owned()), "{want} in {env:?}");
+        }
+        assert!(
+            !env.iter().any(|e| e == "MODRINTH_VERSION=hijack"),
+            "custom env can't override"
+        );
+    }
+
+    #[test]
+    fn curseforge_packs_get_a_downloads_folder_and_the_key() {
+        let extra = BTreeMap::new();
+        let dir = PathBuf::from("/srv/nn/servers");
+        let pack = pack("curseforge");
+        let spec = build(&SpecInput {
+            loader: "curseforge",
+            modpack: Some(&pack),
+            curseforge_api_key: Some("$2a$10$abc"),
+            ..input(&extra, &dir)
+        });
+        let vars = env(&spec);
+        for want in [
+            "TYPE=AUTO_CURSEFORGE",
+            "CF_SLUG=some-pack",
+            "CF_FILE_ID=V1",
+            "CF_DOWNLOADS_REPO=/data/downloads",
+            "CF_API_KEY=$2a$10$abc",
+        ] {
+            assert!(vars.contains(&want.to_owned()), "{want} in {vars:?}");
+        }
+        assert!(
+            !vars.iter().any(|e| e.starts_with("VERSION=")),
+            "the pack picks its version"
+        );
+        let without_key = build(&SpecInput {
+            loader: "curseforge",
+            modpack: Some(&pack),
+            ..input(&extra, &dir)
+        });
+        assert!(
+            !env(&without_key)
+                .iter()
+                .any(|e| e.starts_with("CF_API_KEY"))
+        );
     }
 }

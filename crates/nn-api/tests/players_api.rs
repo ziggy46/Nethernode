@@ -77,6 +77,7 @@ async fn harness() -> Harness {
         shutdown: shutdown_rx,
         players: Default::default(),
         uploads: Default::default(),
+        content: Default::default(),
         servers: ServerManager {
             servers_dir: Some(servers_dir),
             ..Default::default()

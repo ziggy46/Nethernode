@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE servers SET name = ?1, mc_version = ?2, loader = ?3, loader_version = ?4,\n                   image = ?5, java_version = ?6, memory_mb = ?7, cpu_limit = ?8, auto_start = ?9,\n                   sleep_when_empty = ?10, auto_stop_idle_minutes = ?11, restart_on_crash = ?12,\n                   use_aikar_flags = ?13, motd = ?14, max_players = ?15, card_theme = ?16,\n                   modpack_json = ?17, updated_at = ?18\n               WHERE id = ?19",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 19
+    },
+    "nullable": []
+  },
+  "hash": "dee1ab619381ee679aeba4181ff9475416af506d02f17c974d299f6083599447"
+}

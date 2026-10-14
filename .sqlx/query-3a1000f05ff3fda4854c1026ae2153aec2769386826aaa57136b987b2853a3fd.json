@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!\", name, slug, status, mc_version, loader, loader_version, image,\n                      java_version, memory_mb, cpu_limit, internal_port, public_port, hostname,\n                      auto_start AS \"auto_start: bool\", auto_stop_idle_minutes,\n                      sleep_when_empty AS \"sleep_when_empty: bool\", rcon_password_enc, env_json,\n                      created_at, updated_at, rcon_port, container_id, eula_accepted_at, card_theme,\n                      restart_on_crash AS \"restart_on_crash: bool\",\n                      use_aikar_flags AS \"use_aikar_flags: bool\", motd, max_players, last_started_at,\n                      mgmt_port, mgmt_secret_enc\n               FROM servers ORDER BY name COLLATE NOCASE, id",
+  "query": "SELECT id AS \"id!\", name, slug, status, mc_version, loader, loader_version, image,\n                      java_version, memory_mb, cpu_limit, internal_port, public_port, hostname,\n                      auto_start AS \"auto_start: bool\", auto_stop_idle_minutes,\n                      sleep_when_empty AS \"sleep_when_empty: bool\", rcon_password_enc, env_json,\n                      created_at, updated_at, rcon_port, container_id, eula_accepted_at, card_theme,\n                      restart_on_crash AS \"restart_on_crash: bool\",\n                      use_aikar_flags AS \"use_aikar_flags: bool\", motd, max_players, last_started_at,\n                      mgmt_port, mgmt_secret_enc, modpack_json\n               FROM servers WHERE id = ?1",
   "describe": {
     "columns": [
       {
@@ -354,10 +354,21 @@
             "name": "mgmt_secret_enc"
           }
         }
+      },
+      {
+        "name": "modpack_json",
+        "ordinal": 32,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "modpack_json"
+          }
+        }
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 1
     },
     "nullable": [
       false,
@@ -391,8 +402,9 @@
       false,
       true,
       true,
+      true,
       true
     ]
   },
-  "hash": "051093cedd1f6bd997f00f63478f4d544ab37dce2644e80033c663903893bb6e"
+  "hash": "3a1000f05ff3fda4854c1026ae2153aec2769386826aaa57136b987b2853a3fd"
 }
