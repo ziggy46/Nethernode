@@ -1,5 +1,6 @@
 import {
   Box,
+  ClipboardList,
   Cpu,
   History,
   LayoutGrid,
@@ -11,12 +12,24 @@ import {
   Users,
 } from "lucide-react";
 
+import { Role } from "@/gen/nethernode/v1/auth_pb";
+
 export interface NavItem {
-  to: "/" | "/servers" | "/players" | "/proxy" | "/modpacks" | "/backups" | "/host" | "/users" | "/settings";
+  to:
+    | "/"
+    | "/servers"
+    | "/players"
+    | "/proxy"
+    | "/modpacks"
+    | "/backups"
+    | "/host"
+    | "/audit"
+    | "/users"
+    | "/settings";
   label: string;
   icon: LucideIcon;
-  /** Shown only to owners. */
-  ownerOnly?: boolean;
+  /** Shown only to this role and above. */
+  minRole?: Role;
 }
 
 export const WORKSPACE_NAV: NavItem[] = [
@@ -30,11 +43,17 @@ export const WORKSPACE_NAV: NavItem[] = [
 
 export const SYSTEM_NAV: NavItem[] = [
   { to: "/host", label: "Host node", icon: Cpu },
-  { to: "/users", label: "Users", icon: UserCog, ownerOnly: true },
+  { to: "/audit", label: "Audit log", icon: ClipboardList, minRole: Role.ADMIN },
+  { to: "/users", label: "Users", icon: UserCog, minRole: Role.OWNER },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
 export const ALL_NAV = [...WORKSPACE_NAV, ...SYSTEM_NAV];
+
+/** Whether `role` sees `item`. */
+export function canSee(item: NavItem, role: Role): boolean {
+  return item.minRole === undefined || role >= item.minRole;
+}
 
 /** The nav item for a path, matching nested paths to their section. */
 export function navItemFor(pathname: string): NavItem | undefined {

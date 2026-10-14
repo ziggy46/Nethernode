@@ -3,14 +3,13 @@ import { Link } from "@tanstack/react-router";
 import { Box, CircleAlert, CircleCheck, Settings } from "lucide-react";
 import { Logo, Wordmark } from "@/components/brand";
 import { serversQuery } from "@/features/servers/queries";
-import { Role } from "@/gen/nethernode/v1/auth_pb";
 import { healthQuery } from "@/lib/health";
 import { ROLE_LABELS, useCurrentUser } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
 import { AccountMenu } from "./account-menu";
 import { Avatar } from "./avatar";
-import { type NavItem, SYSTEM_NAV, WORKSPACE_NAV } from "./nav";
+import { canSee, type NavItem, SYSTEM_NAV, WORKSPACE_NAV } from "./nav";
 
 export function Sidebar({ open, onNavigate }: { open: boolean; onNavigate: () => void }) {
   const user = useCurrentUser();
@@ -86,7 +85,7 @@ function NavSection({
   onNavigate: () => void;
 }) {
   const servers = useQuery(serversQuery);
-  const owner = useCurrentUser().role === Role.OWNER;
+  const { role } = useCurrentUser();
   return (
     <>
       <p className="mb-[9px] px-[13px] font-[650] text-[10px] text-text-muted uppercase tracking-[1.5px]">
@@ -94,7 +93,7 @@ function NavSection({
       </p>
       <nav aria-label={`${label} navigation`} className="mb-[27px] flex flex-col gap-1">
         {items
-          .filter((item) => owner || !item.ownerOnly)
+          .filter((item) => canSee(item, role))
           .map(({ to, label: text, icon: Icon }) => (
             <Link
               key={to}

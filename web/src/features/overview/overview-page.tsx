@@ -40,6 +40,8 @@ import { ago } from "@/lib/time";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { useNow } from "@/lib/use-now";
 
+const ActivityFeed = lazy(() => import("@/features/audit/activity-feed"));
+
 /** The newest finished backup, from any server. */
 function LatestBackup() {
   const backups = useQuery(backupsQuery());
@@ -227,9 +229,9 @@ export function OverviewPage() {
           <HostPanel totals={totals} />
           <Panel>
             <PanelHeader title="Recent activity" icon={<History />} />
-            <EmptyState compact icon={<History />} title="Nothing to show yet">
-              An activity feed of server, player, and backup events arrives in a later update.
-            </EmptyState>
+            <Suspense fallback={<div className="h-24 animate-pulse rounded-md bg-surface" aria-busy />}>
+              <ActivityFeed />
+            </Suspense>
           </Panel>
           <section className="rounded-lg border border-primary/35 border-dashed bg-primary-subtle p-4 below-lg:col-span-full below-lg:flex below-lg:items-center below-lg:gap-5 below-sm:block">
             <h3 className="mb-1.5 flex items-center gap-[7px] font-[550] text-label">

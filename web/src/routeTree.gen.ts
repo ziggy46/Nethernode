@@ -13,6 +13,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppAuditRouteImport } from './routes/_app/audit'
 import { Route as AppBackupsRouteImport } from './routes/_app/backups'
 import { Route as AppHostRouteImport } from './routes/_app/host'
 import { Route as AppModpacksRouteImport } from './routes/_app/modpacks'
@@ -40,6 +41,11 @@ const SetupRoute = SetupRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAuditRoute = AppAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
   getParentRoute: () => AppRoute,
 } as any)
 const AppBackupsRoute = AppBackupsRouteImport.update({
@@ -92,6 +98,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
+  '/audit': typeof AppAuditRoute
   '/backups': typeof AppBackupsRoute
   '/host': typeof AppHostRoute
   '/modpacks': typeof AppModpacksRoute
@@ -105,6 +112,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
+  '/audit': typeof AppAuditRoute
   '/backups': typeof AppBackupsRoute
   '/host': typeof AppHostRoute
   '/modpacks': typeof AppModpacksRoute
@@ -121,6 +129,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
+  '/_app/audit': typeof AppAuditRoute
   '/_app/backups': typeof AppBackupsRoute
   '/_app/host': typeof AppHostRoute
   '/_app/modpacks': typeof AppModpacksRoute
@@ -138,6 +147,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/setup'
+    | '/audit'
     | '/backups'
     | '/host'
     | '/modpacks'
@@ -151,6 +161,7 @@ export interface FileRouteTypes {
   to:
     | '/login'
     | '/setup'
+    | '/audit'
     | '/backups'
     | '/host'
     | '/modpacks'
@@ -166,6 +177,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/login'
     | '/setup'
+    | '/_app/audit'
     | '/_app/backups'
     | '/_app/host'
     | '/_app/modpacks'
@@ -212,6 +224,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/audit': {
+      id: '/_app/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AppAuditRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/backups': {
@@ -281,6 +300,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppAuditRoute: typeof AppAuditRoute
   AppBackupsRoute: typeof AppBackupsRoute
   AppHostRoute: typeof AppHostRoute
   AppModpacksRoute: typeof AppModpacksRoute
@@ -294,6 +314,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAuditRoute: AppAuditRoute,
   AppBackupsRoute: AppBackupsRoute,
   AppHostRoute: AppHostRoute,
   AppModpacksRoute: AppModpacksRoute,

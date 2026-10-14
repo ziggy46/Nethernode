@@ -11,10 +11,9 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 
-import { Role } from "@/gen/nethernode/v1/auth_pb";
 import { useCurrentUser } from "@/lib/session";
 
-import { ALL_NAV } from "./nav";
+import { ALL_NAV, canSee } from "./nav";
 import { useSignOut } from "./use-sign-out";
 
 /**
@@ -30,7 +29,7 @@ export default function CommandPalette({
 }) {
   const navigate = useNavigate();
   const signOut = useSignOut();
-  const owner = useCurrentUser().role === Role.OWNER;
+  const { role } = useCurrentUser();
 
   const run = (action: () => unknown) => {
     onOpenChange(false);
@@ -50,7 +49,7 @@ export default function CommandPalette({
       <CommandList>
         <CommandEmpty>No matching commands.</CommandEmpty>
         <CommandGroup heading="Go to">
-          {ALL_NAV.filter((item) => owner || !item.ownerOnly).map(({ to, label, icon: Icon }) => (
+          {ALL_NAV.filter((item) => canSee(item, role)).map(({ to, label, icon: Icon }) => (
             <CommandItem key={to} value={`Go to ${label}`} onSelect={() => run(() => navigate({ to }))}>
               <Icon />
               {label}

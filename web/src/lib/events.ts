@@ -14,10 +14,10 @@ import { jobFinished, jobProgress } from "@/lib/jobs";
 const INVALIDATES: Record<string, string[][]> = {
   player_joined: [["proxy", "connections"], ["players"]],
   player_left: [["proxy", "connections"], ["players"]],
-  players_changed: [["players"]],
+  players_changed: [["players"], ["activity"]],
   proxy_connection_closed: [["proxy", "connections"]],
   proxy_listener_changed: [["proxy", "listeners"]],
-  server_status_changed: [["servers"], ["proxy", "routes"], ["players"], ["schedules"]],
+  server_status_changed: [["servers"], ["proxy", "routes"], ["players"], ["schedules"], ["activity"]],
   server_players: [["servers"]],
   server_operation_failed: [["servers"]],
 };
@@ -98,6 +98,7 @@ function applyData(client: QueryClient, event: DataEvent) {
       if (event.kind === "backup" || event.kind === "restore") {
         void client.invalidateQueries({ queryKey: ["backups"] });
         void client.invalidateQueries({ queryKey: ["schedules"] });
+        void client.invalidateQueries({ queryKey: ["activity"] });
       }
       break;
     case "upload_finished":
