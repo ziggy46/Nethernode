@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "INSERT INTO users (id, username, password_hash, role, created_at)\n               VALUES (?1, ?2, ?3, ?4, ?5)\n               RETURNING id AS \"id!\", username, password_hash, role, totp_secret, created_at,\n                         last_login_at",
+  "query": "SELECT id AS \"id!\", username, password_hash, role, totp_secret, totp_pending, totp_enabled_at,\n                      totp_last_step, must_change_password AS \"must_change_password: bool\", created_at,\n                      last_login_at\n               FROM users WHERE role = 'owner'\n               ORDER BY created_at, id LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -59,8 +59,52 @@
         }
       },
       {
-        "name": "created_at",
+        "name": "totp_pending",
         "ordinal": 5,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "totp_pending"
+          }
+        }
+      },
+      {
+        "name": "totp_enabled_at",
+        "ordinal": 6,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "totp_enabled_at"
+          }
+        }
+      },
+      {
+        "name": "totp_last_step",
+        "ordinal": 7,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "totp_last_step"
+          }
+        }
+      },
+      {
+        "name": "must_change_password: bool",
+        "ordinal": 8,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "must_change_password"
+          }
+        }
+      },
+      {
+        "name": "created_at",
+        "ordinal": 9,
         "type_info": "Integer",
         "origin": {
           "Table": {
@@ -71,7 +115,7 @@
       },
       {
         "name": "last_login_at",
-        "ordinal": 6,
+        "ordinal": 10,
         "type_info": "Integer",
         "origin": {
           "Table": {
@@ -82,7 +126,7 @@
       }
     ],
     "parameters": {
-      "Right": 5
+      "Right": 0
     },
     "nullable": [
       false,
@@ -90,9 +134,13 @@
       false,
       false,
       true,
+      true,
+      true,
+      true,
+      false,
       false,
       true
     ]
   },
-  "hash": "7a8cdabe8280b34156777a77267b1b5c16ba705b5fe9b79c3aada4fe64511bd6"
+  "hash": "690e961c9448efb688472ff774bcf72412410f5e84f249d3dae92fbcf2e1de9c"
 }

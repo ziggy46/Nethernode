@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO users (id, username, password_hash, role, must_change_password, created_at)\n               SELECT ?1, ?2, ?3, ?4, ?5, ?6\n               WHERE NOT EXISTS (SELECT 1 FROM users)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "5c89f3f6817bb86cbe9e11e19c5884663d6748dff63f68f1e0fddba1eac25793"
+}

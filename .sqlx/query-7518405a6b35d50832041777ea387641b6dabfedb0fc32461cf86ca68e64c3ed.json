@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM users\n               WHERE id = ?1\n                 AND NOT (role = 'owner' AND (SELECT COUNT(*) FROM users WHERE role = 'owner') <= 1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "7518405a6b35d50832041777ea387641b6dabfedb0fc32461cf86ca68e64c3ed"
+}

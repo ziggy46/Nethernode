@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE users SET totp_last_step = ?2\n               WHERE id = ?1 AND (totp_last_step IS NULL OR totp_last_step < ?2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "f73e06562c22b3eca45fc719150f1c0d34d74958a11324e13fb94cbcaf544f0f"
+}

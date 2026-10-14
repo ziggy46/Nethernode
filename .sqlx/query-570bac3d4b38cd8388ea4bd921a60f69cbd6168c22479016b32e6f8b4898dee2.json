@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT s.id AS \"session_id!\", s.user_id, s.token_hash, s.user_agent, s.ip,\n                      s.created_at AS session_created_at, s.expires_at,\n                      u.username, u.password_hash, u.role, u.totp_secret,\n                      u.created_at AS user_created_at, u.last_login_at\n               FROM sessions s JOIN users u ON u.id = s.user_id\n               WHERE s.token_hash = ?1 AND s.expires_at > ?2",
+  "query": "SELECT s.id AS \"session_id!\", s.user_id, s.token_hash, s.user_agent, s.ip,\n                      s.created_at AS session_created_at, s.expires_at,\n                      u.username, u.password_hash, u.role, u.totp_secret, u.totp_pending,\n                      u.totp_enabled_at, u.totp_last_step,\n                      u.must_change_password AS \"must_change_password: bool\",\n                      u.created_at AS user_created_at, u.last_login_at\n               FROM sessions s JOIN users u ON u.id = s.user_id\n               WHERE s.token_hash = ?1 AND s.expires_at > ?2",
   "describe": {
     "columns": [
       {
@@ -125,8 +125,52 @@
         }
       },
       {
-        "name": "user_created_at",
+        "name": "totp_pending",
         "ordinal": 11,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "totp_pending"
+          }
+        }
+      },
+      {
+        "name": "totp_enabled_at",
+        "ordinal": 12,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "totp_enabled_at"
+          }
+        }
+      },
+      {
+        "name": "totp_last_step",
+        "ordinal": 13,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "totp_last_step"
+          }
+        }
+      },
+      {
+        "name": "must_change_password: bool",
+        "ordinal": 14,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "must_change_password"
+          }
+        }
+      },
+      {
+        "name": "user_created_at",
+        "ordinal": 15,
         "type_info": "Integer",
         "origin": {
           "Table": {
@@ -137,7 +181,7 @@
       },
       {
         "name": "last_login_at",
-        "ordinal": 12,
+        "ordinal": 16,
         "type_info": "Integer",
         "origin": {
           "Table": {
@@ -162,9 +206,13 @@
       false,
       false,
       true,
+      true,
+      true,
+      true,
+      false,
       false,
       true
     ]
   },
-  "hash": "f83f6212a4bf4f3123029cb6637b78183236b42af2b90d54ed3da9d92b66f0db"
+  "hash": "570bac3d4b38cd8388ea4bd921a60f69cbd6168c22479016b32e6f8b4898dee2"
 }

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!\", username, password_hash, role, totp_secret, created_at,\n                      last_login_at\n               FROM users ORDER BY username COLLATE NOCASE",
+  "query": "SELECT id AS \"id!\", username, password_hash, role, totp_secret, totp_pending, totp_enabled_at,\n                      totp_last_step, must_change_password AS \"must_change_password: bool\", created_at,\n                      last_login_at\n               FROM users ORDER BY username COLLATE NOCASE",
   "describe": {
     "columns": [
       {
@@ -59,8 +59,52 @@
         }
       },
       {
-        "name": "created_at",
+        "name": "totp_pending",
         "ordinal": 5,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "totp_pending"
+          }
+        }
+      },
+      {
+        "name": "totp_enabled_at",
+        "ordinal": 6,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "totp_enabled_at"
+          }
+        }
+      },
+      {
+        "name": "totp_last_step",
+        "ordinal": 7,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "totp_last_step"
+          }
+        }
+      },
+      {
+        "name": "must_change_password: bool",
+        "ordinal": 8,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "must_change_password"
+          }
+        }
+      },
+      {
+        "name": "created_at",
+        "ordinal": 9,
         "type_info": "Integer",
         "origin": {
           "Table": {
@@ -71,7 +115,7 @@
       },
       {
         "name": "last_login_at",
-        "ordinal": 6,
+        "ordinal": 10,
         "type_info": "Integer",
         "origin": {
           "Table": {
@@ -90,9 +134,13 @@
       false,
       false,
       true,
+      true,
+      true,
+      true,
+      false,
       false,
       true
     ]
   },
-  "hash": "b624d4c8b88d9e9054ca950124dc6172b1cd8e0bec1dd9c87c80149b1cfee5a6"
+  "hash": "f18ff9feb9dcfed25ce415e990ca3261939d9f08923b45716fe6a5b230270d73"
 }

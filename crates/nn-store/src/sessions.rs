@@ -51,6 +51,10 @@ struct SessionUserRow {
     password_hash: String,
     role: String,
     totp_secret: Option<String>,
+    totp_pending: Option<String>,
+    totp_enabled_at: Option<i64>,
+    totp_last_step: Option<i64>,
+    must_change_password: bool,
     user_created_at: i64,
     last_login_at: Option<i64>,
 }
@@ -88,7 +92,9 @@ impl Store {
             SessionUserRow,
             r#"SELECT s.id AS "session_id!", s.user_id, s.token_hash, s.user_agent, s.ip,
                       s.created_at AS session_created_at, s.expires_at,
-                      u.username, u.password_hash, u.role, u.totp_secret,
+                      u.username, u.password_hash, u.role, u.totp_secret, u.totp_pending,
+                      u.totp_enabled_at, u.totp_last_step,
+                      u.must_change_password AS "must_change_password: bool",
                       u.created_at AS user_created_at, u.last_login_at
                FROM sessions s JOIN users u ON u.id = s.user_id
                WHERE s.token_hash = ?1 AND s.expires_at > ?2"#,
@@ -113,6 +119,10 @@ impl Store {
                 password_hash: r.password_hash,
                 role: r.role,
                 totp_secret: r.totp_secret,
+                totp_pending: r.totp_pending,
+                totp_enabled_at: r.totp_enabled_at,
+                totp_last_step: r.totp_last_step,
+                must_change_password: r.must_change_password,
                 created_at: r.user_created_at,
                 last_login_at: r.last_login_at,
             };
@@ -148,6 +158,45 @@ impl Store {
         Ok(result.rows_affected())
     }
 
+    /// Unexpired sessions, newest first; all of them, or one user's.
+    pub async fn list_sessions(&self, user_id: Option<&str>, now_ms: i64) -> Result<Vec<Session>> {
+        let rows = sqlx::query_as!(
+            Session,
+            r#"SELECT id AS "id!", user_id, token_hash, user_agent, ip, created_at, expires_at
+               FROM sessions WHERE (?1 IS NULL OR user_id = ?1) AND expires_at > ?2
+               ORDER BY created_at DESC"#,
+            user_id,
+            now_ms,
+        )
+        .fetch_all(self.pool())
+        .await?;
+        Ok(rows)
+    }
+
+    /// Deletes one of a user's sessions. Returns `false` if none matched.
+    pub async fn delete_session(&self, session_id: &str, user_id: &str) -> Result<bool> {
+        let result = sqlx::query!(
+            "DELETE FROM sessions WHERE id = ?1 AND user_id = ?2",
+            session_id,
+            user_id
+        )
+        .execute(self.pool())
+        .await?;
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Deletes a user's sessions except `keep`. Returns the number removed.
+    pub async fn delete_other_sessions(&self, user_id: &str, keep: &str) -> Result<u64> {
+        let result = sqlx::query!(
+            "DELETE FROM sessions WHERE user_id = ?1 AND id <> ?2",
+            user_id,
+            keep
+        )
+        .execute(self.pool())
+        .await?;
+        Ok(result.rows_affected())
+    }
+
     /// Deletes sessions that expired at or before `now_ms`. Returns the number removed.
     pub async fn delete_expired_sessions(&self, now_ms: i64) -> Result<u64> {
         let result = sqlx::query!("DELETE FROM sessions WHERE expires_at <= ?1", now_ms)
@@ -169,6 +218,7 @@ mod tests {
                 username: "alpha",
                 password_hash: "h",
                 role: "owner",
+                must_change_password: false,
             })
             .await
             .unwrap()
