@@ -134,7 +134,7 @@ function SecondFactor({
           spellCheck={false}
           placeholder="xxxxx-xxxxx"
           hint="Each recovery code works once."
-          className="font-mono"
+          inputClassName="font-mono"
           required
           autoFocus
           value={code}
@@ -151,7 +151,7 @@ function SecondFactor({
           maxLength={7}
           placeholder="123 456"
           hint="The 6-digit code from your authenticator app."
-          className="font-mono"
+          inputClassName="font-mono"
           required
           autoFocus
           value={code}

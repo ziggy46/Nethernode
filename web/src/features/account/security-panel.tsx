@@ -279,7 +279,7 @@ function EnrollDialog({ onClose }: { onClose: () => void }) {
                     inputMode="numeric"
                     maxLength={7}
                     placeholder="123 456"
-                    className="font-mono"
+                    inputClassName="font-mono"
                     autoFocus
                     value={code}
                     onChange={(e) => setCode(e.target.value)}

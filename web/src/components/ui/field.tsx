@@ -28,8 +28,15 @@ export function Field({
   hint,
   error,
   className,
+  inputClassName,
   ...inputProps
-}: React.ComponentProps<"input"> & { label: string; hint?: string; error?: string | undefined }) {
+}: React.ComponentProps<"input"> & {
+  label: string;
+  hint?: string;
+  error?: string | undefined;
+  /** Classes for the input itself; `className` styles the wrapper. */
+  inputClassName?: string;
+}) {
   const id = useId();
   const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
   return (
@@ -37,7 +44,13 @@ export function Field({
       <label htmlFor={id} className="mb-[7px] block text-label text-text-secondary">
         {label}
       </label>
-      <Input id={id} aria-invalid={error ? true : undefined} aria-describedby={describedBy} {...inputProps} />
+      <Input
+        id={id}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={describedBy}
+        className={inputClassName}
+        {...inputProps}
+      />
       {error ? (
         <p id={`${id}-error`} className="mt-1.5 text-meta text-danger">
           {error}

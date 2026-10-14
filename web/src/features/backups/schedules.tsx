@@ -395,7 +395,7 @@ function ScheduleDialog({
                   ? "Runs in the console, without the leading slash. Skipped while the server is off."
                   : "Shown in chat to everyone online. Skipped while the server is off."
               }
-              className="font-mono"
+              inputClassName="font-mono"
               onChange={(e) => setText(e.target.value)}
             />
           )}
@@ -473,7 +473,7 @@ function ScheduleDialog({
                 value={when.cron}
                 required
                 placeholder="0 4 * * *"
-                className="font-mono"
+                inputClassName="font-mono"
                 hint="Minute, hour, day, month, weekday."
                 onChange={(e) => setWhen({ kind: "custom", cron: e.target.value })}
               />
