@@ -21,7 +21,7 @@ pub const PUBLIC_PROCEDURES: &[&str] = &[
 pub const PASSWORD_CHANGE_PROCEDURES: &[&str] = &[
     "/nethernode.v1.AuthService/Me",
     "/nethernode.v1.AuthService/Logout",
-    "/nethernode.v1.AuthService/ChangePassword",
+    "/nethernode.v1.AccountService/ChangePassword",
 ];
 
 /// Marks a request from a user who must change their password first; they

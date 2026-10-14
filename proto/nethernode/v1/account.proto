@@ -1,0 +1,91 @@
+syntax = "proto3";
+
+package nethernode.v1;
+
+import "nethernode/v1/auth.proto";
+
+// The signed-in user's own password, two-factor sign-in, and sessions.
+service AccountService {
+  // Changes the signed-in user's password and ends their other sessions.
+  // The only call (with AuthService Me and Logout) allowed while a password
+  // change is required.
+  rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse);
+
+  // The signed-in user's sessions and two-factor status.
+  rpc GetSecurity(GetSecurityRequest) returns (GetSecurityResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // Ends one of the signed-in user's other sessions.
+  rpc RevokeSession(RevokeSessionRequest) returns (RevokeSessionResponse);
+
+  // Starts two-factor enrollment: a secret to add to an authenticator app.
+  rpc BeginTotpSetup(BeginTotpSetupRequest) returns (BeginTotpSetupResponse);
+
+  // Turns two-factor sign-in on with a code from the app. Returns recovery
+  // codes, shown once.
+  rpc ConfirmTotpSetup(ConfirmTotpSetupRequest) returns (ConfirmTotpSetupResponse);
+
+  // Turns two-factor sign-in off. Needs the current password.
+  rpc DisableTotp(DisableTotpRequest) returns (DisableTotpResponse);
+}
+
+message ChangePasswordRequest {
+  string current_password = 1;
+  string new_password = 2;
+}
+
+message ChangePasswordResponse {
+  User user = 1;
+}
+
+// A signed-in browser.
+message Session {
+  string id = 1;
+  string user_agent = 2;
+  string ip = 3;
+  int64 created_at_ms = 4;
+  int64 expires_at_ms = 5;
+  // The session making this request.
+  bool current = 6;
+}
+
+message GetSecurityRequest {}
+
+message GetSecurityResponse {
+  repeated Session sessions = 1;
+  bool totp_enabled = 2;
+  int64 recovery_codes_left = 3;
+  // False when the data key couldn't be loaded, so two-factor can't be set up.
+  bool totp_available = 4;
+}
+
+message RevokeSessionRequest {
+  string id = 1;
+}
+
+message RevokeSessionResponse {}
+
+message BeginTotpSetupRequest {}
+
+message BeginTotpSetupResponse {
+  // Base32, for typing in by hand.
+  string secret = 1;
+  string otpauth_uri = 2;
+  // The link as a QR code (SVG document).
+  string qr_svg = 3;
+}
+
+message ConfirmTotpSetupRequest {
+  string code = 1;
+}
+
+message ConfirmTotpSetupResponse {
+  repeated string recovery_codes = 1;
+}
+
+message DisableTotpRequest {
+  string password = 1;
+}
+
+message DisableTotpResponse {}

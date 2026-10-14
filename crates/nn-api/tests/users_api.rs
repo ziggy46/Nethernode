@@ -141,14 +141,14 @@ async fn new_users_must_choose_a_password_first() {
     assert!(body["message"].as_str().unwrap().contains("new password"));
     let (status, _) = builder
         .call(
-            "AuthService/ChangePassword",
+            "AccountService/ChangePassword",
             json!({ "currentPassword": "wrong one!", "newPassword": "a brand new password" }),
         )
         .await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
     let changed = builder
         .ok(
-            "AuthService/ChangePassword",
+            "AccountService/ChangePassword",
             json!({ "currentPassword": temporary, "newPassword": "a brand new password" }),
         )
         .await;
@@ -198,20 +198,23 @@ async fn new_users_must_choose_a_password_first() {
 async fn two_factor_sign_in_over_http() {
     let (app, owner) = app().await;
     let mut owner = Client::new(&app, Some(owner));
-    let security = owner.ok("AuthService/GetSecurity", json!({})).await;
+    let security = owner.ok("AccountService/GetSecurity", json!({})).await;
     assert_eq!(security["totpAvailable"], true);
     assert_eq!(security["sessions"][0]["current"], true);
 
-    let setup = owner.ok("AuthService/BeginTotpSetup", json!({})).await;
+    let setup = owner.ok("AccountService/BeginTotpSetup", json!({})).await;
     let secret = setup["secret"].as_str().unwrap().to_owned();
     assert!(setup["qrSvg"].as_str().unwrap().contains("<svg"));
     let (status, _) = owner
-        .call("AuthService/ConfirmTotpSetup", json!({ "code": "000000" }))
+        .call(
+            "AccountService/ConfirmTotpSetup",
+            json!({ "code": "000000" }),
+        )
         .await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
     let confirmed = owner
         .ok(
-            "AuthService/ConfirmTotpSetup",
+            "AccountService/ConfirmTotpSetup",
             json!({ "code": code_for(&secret) }),
         )
         .await;
@@ -248,7 +251,7 @@ async fn two_factor_sign_in_over_http() {
     laptop.ok("ServerService/ListServers", json!({})).await;
 
     // The first browser can end the second one's session.
-    let security = owner.ok("AuthService/GetSecurity", json!({})).await;
+    let security = owner.ok("AccountService/GetSecurity", json!({})).await;
     assert_eq!(security["recoveryCodesLeft"], "9");
     let other = security["sessions"]
         .as_array()
@@ -258,20 +261,23 @@ async fn two_factor_sign_in_over_http() {
         .unwrap()["id"]
         .clone();
     owner
-        .ok("AuthService/RevokeSession", json!({ "id": other }))
+        .ok("AccountService/RevokeSession", json!({ "id": other }))
         .await;
     let (status, _) = laptop.call("ServerService/ListServers", json!({})).await;
     assert_eq!(status, StatusCode::UNAUTHORIZED);
 
     let (status, _) = owner
         .call(
-            "AuthService/DisableTotp",
+            "AccountService/DisableTotp",
             json!({ "password": "nope nope nope" }),
         )
         .await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
     owner
-        .ok("AuthService/DisableTotp", json!({ "password": PASSWORD }))
+        .ok(
+            "AccountService/DisableTotp",
+            json!({ "password": PASSWORD }),
+        )
         .await;
     let login = laptop
         .ok(
