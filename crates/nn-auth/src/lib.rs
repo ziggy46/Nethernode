@@ -4,7 +4,9 @@
 //! session issuance and validation, logout, and owner password recovery.
 //! It knows nothing about HTTP; `nn-api` maps it onto cookies and RPCs.
 
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use nn_store::{NewAuditEntry, NewSession, NewUser, Store, now_ms};
@@ -15,6 +17,7 @@ pub mod rate_limit;
 pub mod rbac;
 pub mod secrets;
 pub mod token;
+pub mod totp;
 
 pub use rate_limit::LoginRateLimiter;
 pub use rbac::{Permission, Role};
@@ -46,6 +49,18 @@ pub enum AuthError {
     /// A referenced user does not exist.
     #[error("user not found")]
     UserNotFound,
+    /// The change would leave the panel without an owner.
+    #[error("there must always be at least one owner")]
+    LastOwner,
+    /// The username is taken.
+    #[error("that username is taken")]
+    UsernameTaken,
+    /// Wrong or expired two-factor code, or an expired sign-in attempt.
+    #[error("{0}")]
+    SecondFactor(&'static str),
+    /// Two-factor sign-in needs the data key, which couldn't be loaded.
+    #[error("two-factor sign-in isn't available because the data key couldn't be loaded")]
+    NoDataKey,
     /// Storage failure.
     #[error(transparent)]
     Store(#[from] nn_store::Error),
@@ -94,6 +109,10 @@ pub struct AuthUser {
     pub created_at: i64,
     /// Last successful login, unix ms.
     pub last_login_at: Option<i64>,
+    /// Must set a new password before doing anything else.
+    pub must_change_password: bool,
+    /// Signs in with an authenticator code as well as a password.
+    pub totp_enabled: bool,
 }
 
 impl TryFrom<nn_store::User> for AuthUser {
@@ -110,8 +129,57 @@ impl TryFrom<nn_store::User> for AuthUser {
             role,
             created_at: user.created_at,
             last_login_at: user.last_login_at,
+            must_change_password: user.must_change_password,
+            totp_enabled: user.totp_secret.is_some(),
         })
     }
+}
+
+/// The outcome of a correct password.
+#[derive(Debug, Clone)]
+pub enum SignIn {
+    /// Signed in.
+    Session(IssuedSession),
+    /// The account uses two-factor sign-in: finish with
+    /// [`Auth::finish_sign_in`] and an authenticator or recovery code.
+    SecondFactor {
+        /// Identifies this sign-in attempt; not a session.
+        challenge: String,
+    },
+}
+
+impl SignIn {
+    /// The session, if no second factor was needed.
+    pub fn session(self) -> Option<IssuedSession> {
+        match self {
+            SignIn::Session(issued) => Some(issued),
+            SignIn::SecondFactor { .. } => None,
+        }
+    }
+}
+
+/// What an authenticator app needs to enroll.
+#[derive(Debug, Clone)]
+pub struct TotpEnrollment {
+    /// Base32 secret, for typing in by hand.
+    pub secret: String,
+    /// `otpauth://` link.
+    pub uri: String,
+    /// The link as a QR code (SVG).
+    pub qr_svg: String,
+}
+
+/// How long a password-verified sign-in waits for its second factor.
+const CHALLENGE_TTL_MS: i64 = 5 * 60 * 1000;
+/// Wrong codes allowed per sign-in attempt.
+const CHALLENGE_ATTEMPTS: u32 = 5;
+
+#[derive(Debug)]
+struct Challenge {
+    user_id: String,
+    username: String,
+    expires_at: i64,
+    attempts: u32,
 }
 
 /// A newly created session. `token` goes into the cookie and is not stored.
@@ -145,6 +213,9 @@ pub struct Auth {
     limiter: LoginRateLimiter,
     config: AuthConfig,
     setup_complete: AtomicBool,
+    secrets: Option<Arc<SecretBox>>,
+    /// Sign-ins waiting for a second factor, by challenge hash.
+    challenges: Mutex<HashMap<String, Challenge>>,
 }
 
 impl Auth {
@@ -160,7 +231,16 @@ impl Auth {
             limiter,
             config,
             setup_complete: AtomicBool::new(false),
+            secrets: None,
+            challenges: Mutex::new(HashMap::new()),
         }
+    }
+
+    /// Uses `secrets` to seal two-factor secrets. Without it, two-factor
+    /// sign-in can't be turned on (or used).
+    pub fn with_secrets(mut self, secrets: Option<Arc<SecretBox>>) -> Self {
+        self.secrets = secrets;
+        self
     }
 
     /// The underlying store.
@@ -207,6 +287,7 @@ impl Auth {
                 username,
                 password_hash: &hash,
                 role: Role::Owner.as_str(),
+                must_change_password: false,
             })
             .await?
             .ok_or(AuthError::SetupAlreadyComplete)?;
@@ -218,13 +299,14 @@ impl Auth {
         self.issue_session(user, client).await
     }
 
-    /// Verifies a username and password and opens a session.
+    /// Verifies a username and password. Opens a session, or asks for a
+    /// second factor when the account has one.
     pub async fn login(
         &self,
         username: &str,
         password: &str,
         client: ClientInfo<'_>,
-    ) -> Result<IssuedSession> {
+    ) -> Result<SignIn> {
         let username = username.trim();
         if let Some(retry_after) = self.limiter.check(client.ip, username) {
             return Err(AuthError::RateLimited { retry_after });
@@ -255,14 +337,449 @@ impl Auth {
             return Err(AuthError::InvalidCredentials);
         };
 
+        let user = AuthUser::try_from(user)?;
+        if user.totp_enabled {
+            // Password right; the rate limit stays until the code is too.
+            let challenge = token::generate_token();
+            let mut challenges = self.challenges.lock().expect("challenge lock");
+            let now = now_ms();
+            challenges.retain(|_, c| c.expires_at > now);
+            challenges.insert(
+                token::hash_token(&challenge),
+                Challenge {
+                    user_id: user.id.clone(),
+                    username: user.username.clone(),
+                    expires_at: now + CHALLENGE_TTL_MS,
+                    attempts: 0,
+                },
+            );
+            return Ok(SignIn::SecondFactor { challenge });
+        }
         self.limiter.record_success(username);
-        let mut user = AuthUser::try_from(user)?;
+        self.complete_sign_in(user, client, None)
+            .await
+            .map(SignIn::Session)
+    }
+
+    /// Finishes a two-factor sign-in with an authenticator or recovery code.
+    pub async fn finish_sign_in(
+        &self,
+        challenge: &str,
+        code: &str,
+        client: ClientInfo<'_>,
+    ) -> Result<IssuedSession> {
+        const EXPIRED: AuthError =
+            AuthError::SecondFactor("This sign-in expired. Enter your password again.");
+        let key = token::hash_token(challenge);
+        let (user_id, username) = {
+            let challenges = self.challenges.lock().expect("challenge lock");
+            match challenges.get(&key) {
+                Some(c) if c.expires_at > now_ms() => (c.user_id.clone(), c.username.clone()),
+                _ => return Err(EXPIRED),
+            }
+        };
+        if let Some(retry_after) = self.limiter.check(client.ip, &username) {
+            return Err(AuthError::RateLimited { retry_after });
+        }
+        let user = self.store.find_user_by_id(&user_id).await?.ok_or(EXPIRED)?;
+        let via = self.check_second_factor(&user, code).await?;
+        let Some(via) = via else {
+            self.limiter.record_failure(client.ip, &username);
+            self.count_attempt(&key);
+            let details = json!({ "username": username, "second_factor": true });
+            self.audit(
+                Some(&user_id),
+                "auth.login_failed",
+                Some(&user_id),
+                client,
+                Some(details),
+            )
+            .await;
+            return Err(AuthError::SecondFactor("That code isn't right."));
+        };
+        self.challenges.lock().expect("challenge lock").remove(&key);
+        self.limiter.record_success(&username);
+        let user = AuthUser::try_from(user)?;
+        self.complete_sign_in(user, client, Some(via)).await
+    }
+
+    /// Counts a wrong code; too many and the sign-in attempt is over.
+    fn count_attempt(&self, key: &str) {
+        let mut challenges = self.challenges.lock().expect("challenge lock");
+        if let Some(c) = challenges.get_mut(key) {
+            c.attempts += 1;
+            if c.attempts >= CHALLENGE_ATTEMPTS {
+                challenges.remove(key);
+            }
+        }
+    }
+
+    /// Checks an authenticator code (once per time step) or an unused
+    /// recovery code. Returns how it matched, or `None`.
+    async fn check_second_factor(
+        &self,
+        user: &nn_store::User,
+        code: &str,
+    ) -> Result<Option<&'static str>> {
+        if totp::is_recovery_code(code) {
+            let used = self
+                .store
+                .use_recovery_code(&user.id, &totp::hash_recovery_code(code))
+                .await?;
+            return Ok(used.then_some("recovery_code"));
+        }
+        let Some(sealed) = &user.totp_secret else {
+            return Ok(None);
+        };
+        let secret = self.open(sealed)?;
+        let Some(step) = totp::verify(&secret, code, now_ms() / 1000) else {
+            return Ok(None);
+        };
+        // A code works once: an intercepted one can't be replayed.
+        let fresh = self.store.advance_totp_step(&user.id, step).await?;
+        Ok(fresh.then_some("authenticator"))
+    }
+
+    async fn complete_sign_in(
+        &self,
+        mut user: AuthUser,
+        client: ClientInfo<'_>,
+        second_factor: Option<&str>,
+    ) -> Result<IssuedSession> {
         let now = now_ms();
         self.store.touch_last_login(&user.id, now).await?;
         user.last_login_at = Some(now);
-        self.audit(Some(&user.id), "auth.login", Some(&user.id), client, None)
-            .await;
+        let details = second_factor.map(|via| json!({ "second_factor": via }));
+        self.audit(
+            Some(&user.id),
+            "auth.login",
+            Some(&user.id),
+            client,
+            details,
+        )
+        .await;
         self.issue_session(user, client).await
+    }
+
+    /// Whether two-factor sign-in can be turned on (the data key loaded).
+    pub fn two_factor_available(&self) -> bool {
+        self.secrets.is_some()
+    }
+
+    fn sealer(&self) -> Result<&SecretBox> {
+        self.secrets.as_deref().ok_or(AuthError::NoDataKey)
+    }
+
+    fn open(&self, sealed: &str) -> Result<String> {
+        self.sealer()?
+            .open(sealed)
+            .map_err(|e| AuthError::Internal(format!("couldn't open a two-factor secret: {e}")))
+    }
+
+    /// Verifies `password` for a signed-in user (before sensitive changes).
+    async fn check_password(&self, user_id: &str, password: &str) -> Result<nn_store::User> {
+        let user = self
+            .store
+            .find_user_by_id(user_id)
+            .await?
+            .ok_or(AuthError::UserNotFound)?;
+        if let Some(retry_after) = self.limiter.check(None, &user.username) {
+            return Err(AuthError::RateLimited { retry_after });
+        }
+        let (password, hash) = (password.to_owned(), user.password_hash.clone());
+        let ok = tokio::task::spawn_blocking(move || password::verify_password(&password, &hash))
+            .await
+            .map_err(|e| AuthError::Internal(e.to_string()))?;
+        if !ok {
+            self.limiter.record_failure(None, &user.username);
+            return Err(AuthError::InvalidInput(
+                "Your current password isn't right.".into(),
+            ));
+        }
+        Ok(user)
+    }
+
+    /// Changes a user's own password and signs out their other sessions.
+    pub async fn change_password(
+        &self,
+        user_id: &str,
+        session_id: &str,
+        current: &str,
+        new: &str,
+        client: ClientInfo<'_>,
+    ) -> Result<()> {
+        self.check_password(user_id, current).await?;
+        password::validate_password(new).map_err(AuthError::InvalidInput)?;
+        if current == new {
+            return Err(AuthError::InvalidInput(
+                "Choose a password different from the current one.".into(),
+            ));
+        }
+        let hash = hash_blocking(new.to_owned()).await?;
+        self.store.set_password(user_id, &hash, false).await?;
+        let signed_out = self
+            .store
+            .delete_other_sessions(user_id, session_id)
+            .await?;
+        self.audit(
+            Some(user_id),
+            "auth.change_password",
+            Some(user_id),
+            client,
+            Some(json!({ "other_sessions_ended": signed_out })),
+        )
+        .await;
+        Ok(())
+    }
+
+    /// Starts two-factor enrollment: a new secret to scan, held until
+    /// [`Auth::confirm_totp`] proves the app has it.
+    pub async fn begin_totp(&self, user: &AuthUser) -> Result<TotpEnrollment> {
+        let secret = totp::generate_secret();
+        let sealed = self.sealer()?.seal(&secret);
+        self.store.set_totp_pending(&user.id, Some(&sealed)).await?;
+        let uri = totp::otpauth_uri(&secret, &user.username);
+        let qr_svg = totp::qr_svg(&uri)
+            .ok_or_else(|| AuthError::Internal("couldn't draw the QR code".into()))?;
+        Ok(TotpEnrollment {
+            secret,
+            uri,
+            qr_svg,
+        })
+    }
+
+    /// Turns two-factor sign-in on once `code` matches the pending secret.
+    /// Returns recovery codes, shown once.
+    pub async fn confirm_totp(
+        &self,
+        user_id: &str,
+        code: &str,
+        client: ClientInfo<'_>,
+    ) -> Result<Vec<String>> {
+        let user = self
+            .store
+            .find_user_by_id(user_id)
+            .await?
+            .ok_or(AuthError::UserNotFound)?;
+        let sealed = user.totp_pending.as_deref().ok_or(AuthError::SecondFactor(
+            "Start setting up two-factor sign-in again.",
+        ))?;
+        let secret = self.open(sealed)?;
+        let step = totp::verify(&secret, code, now_ms() / 1000).ok_or(AuthError::SecondFactor(
+            "That code isn't right. Check the time on your phone and try the newest code.",
+        ))?;
+        let codes = totp::generate_recovery_codes();
+        let hashes: Vec<String> = codes.iter().map(|c| totp::hash_recovery_code(c)).collect();
+        self.store
+            .enable_totp(user_id, sealed, step, &hashes)
+            .await?;
+        self.audit(
+            Some(user_id),
+            "auth.totp_enabled",
+            Some(user_id),
+            client,
+            None,
+        )
+        .await;
+        Ok(codes)
+    }
+
+    /// Turns a user's own two-factor sign-in off, after checking their password.
+    pub async fn disable_totp(
+        &self,
+        user_id: &str,
+        password: &str,
+        client: ClientInfo<'_>,
+    ) -> Result<()> {
+        self.check_password(user_id, password).await?;
+        self.store.disable_totp(user_id).await?;
+        self.audit(
+            Some(user_id),
+            "auth.totp_disabled",
+            Some(user_id),
+            client,
+            None,
+        )
+        .await;
+        Ok(())
+    }
+
+    /// Unused recovery codes left.
+    pub async fn recovery_codes_left(&self, user_id: &str) -> Result<i64> {
+        Ok(self.store.recovery_codes_left(user_id).await?)
+    }
+
+    /// Creates a user with a one-time password they must change. Returns
+    /// the user and that password, which is shown once.
+    pub async fn create_user(
+        &self,
+        actor: &AuthUser,
+        username: &str,
+        role: Role,
+        client: ClientInfo<'_>,
+    ) -> Result<(AuthUser, String)> {
+        let username = validate_username(username)?;
+        if self.store.find_user_by_username(username).await?.is_some() {
+            return Err(AuthError::UsernameTaken);
+        }
+        let password = token::generate_password();
+        let hash = hash_blocking(password.clone()).await?;
+        let created = self
+            .store
+            .create_user(NewUser {
+                username,
+                password_hash: &hash,
+                role: role.as_str(),
+                must_change_password: true,
+            })
+            .await
+            .map_err(|e| {
+                if e.is_unique_violation() {
+                    AuthError::UsernameTaken
+                } else {
+                    AuthError::Store(e)
+                }
+            })?;
+        let user = AuthUser::try_from(created)?;
+        let details = json!({ "username": user.username, "role": role.as_str() });
+        self.audit(
+            Some(&actor.id),
+            "user.create",
+            Some(&user.id),
+            client,
+            Some(details),
+        )
+        .await;
+        Ok((user, password))
+    }
+
+    /// Changes a user's role, keeping at least one owner.
+    pub async fn set_role(
+        &self,
+        actor: &AuthUser,
+        user_id: &str,
+        role: Role,
+        client: ClientInfo<'_>,
+    ) -> Result<AuthUser> {
+        let before = self.load_user(user_id).await?;
+        if !self.store.set_user_role(user_id, role.as_str()).await? {
+            return Err(AuthError::LastOwner);
+        }
+        let details = json!({ "username": before.username, "from": before.role.as_str(), "to": role.as_str() });
+        self.audit(
+            Some(&actor.id),
+            "user.role",
+            Some(user_id),
+            client,
+            Some(details),
+        )
+        .await;
+        self.load_user(user_id).await
+    }
+
+    /// Sets a new one-time password for a user and signs them out
+    /// everywhere. Returns the password, shown once.
+    pub async fn reset_password(
+        &self,
+        actor: &AuthUser,
+        user_id: &str,
+        client: ClientInfo<'_>,
+    ) -> Result<String> {
+        let user = self.load_user(user_id).await?;
+        let password = token::generate_password();
+        let hash = hash_blocking(password.clone()).await?;
+        self.store.set_password(user_id, &hash, true).await?;
+        self.store.delete_sessions_for_user(user_id).await?;
+        self.limiter.record_success(&user.username);
+        let details = json!({ "username": user.username });
+        self.audit(
+            Some(&actor.id),
+            "user.reset_password",
+            Some(user_id),
+            client,
+            Some(details),
+        )
+        .await;
+        Ok(password)
+    }
+
+    /// Turns off another user's two-factor sign-in (a lost phone).
+    pub async fn reset_totp(
+        &self,
+        actor: &AuthUser,
+        user_id: &str,
+        client: ClientInfo<'_>,
+    ) -> Result<()> {
+        let user = self.load_user(user_id).await?;
+        self.store.disable_totp(user_id).await?;
+        let details = json!({ "username": user.username });
+        self.audit(
+            Some(&actor.id),
+            "user.reset_totp",
+            Some(user_id),
+            client,
+            Some(details),
+        )
+        .await;
+        Ok(())
+    }
+
+    /// Signs a user out everywhere. Returns how many sessions ended.
+    pub async fn revoke_sessions(
+        &self,
+        actor: &AuthUser,
+        user_id: &str,
+        client: ClientInfo<'_>,
+    ) -> Result<u64> {
+        let user = self.load_user(user_id).await?;
+        let ended = self.store.delete_sessions_for_user(user_id).await?;
+        let details = json!({ "username": user.username, "sessions": ended });
+        self.audit(
+            Some(&actor.id),
+            "user.revoke_sessions",
+            Some(user_id),
+            client,
+            Some(details),
+        )
+        .await;
+        Ok(ended)
+    }
+
+    /// Deletes a user, keeping at least one owner. Nobody deletes themselves.
+    pub async fn delete_user(
+        &self,
+        actor: &AuthUser,
+        user_id: &str,
+        client: ClientInfo<'_>,
+    ) -> Result<()> {
+        if actor.id == user_id {
+            return Err(AuthError::InvalidInput(
+                "You can't delete your own account.".into(),
+            ));
+        }
+        let user = self.load_user(user_id).await?;
+        if !self.store.delete_user(user_id).await? {
+            return Err(AuthError::LastOwner);
+        }
+        let details = json!({ "username": user.username, "role": user.role.as_str() });
+        self.audit(
+            Some(&actor.id),
+            "user.delete",
+            Some(user_id),
+            client,
+            Some(details),
+        )
+        .await;
+        Ok(())
+    }
+
+    async fn load_user(&self, user_id: &str) -> Result<AuthUser> {
+        let user = self
+            .store
+            .find_user_by_id(user_id)
+            .await?
+            .ok_or(AuthError::UserNotFound)?;
+        AuthUser::try_from(user)
     }
 
     /// Resolves a session token to its user, renewing the session if it's
@@ -324,7 +841,7 @@ impl Auth {
 
         let new_password = token::generate_password();
         let hash = hash_blocking(new_password.clone()).await?;
-        self.store.set_password_hash(&user.id, &hash).await?;
+        self.store.set_password(&user.id, &hash, true).await?;
         self.store.delete_sessions_for_user(&user.id).await?;
         self.limiter.record_success(&user.username);
         let details = json!({ "via": "cli" });
@@ -490,7 +1007,12 @@ mod tests {
         let auth = auth().await;
         auth.setup("Admin", PASSWORD, CLIENT).await.unwrap();
 
-        let issued = auth.login("admin", PASSWORD, CLIENT).await.unwrap();
+        let issued = auth
+            .login("admin", PASSWORD, CLIENT)
+            .await
+            .unwrap()
+            .session()
+            .unwrap();
         assert_eq!(issued.user.username, "Admin");
         assert!(issued.user.last_login_at.is_some());
 
@@ -570,6 +1092,233 @@ mod tests {
             auth.reset_owner_password(Some("ghost")).await,
             Err(AuthError::UserNotFound)
         ));
+    }
+
+    async fn auth_with_key() -> Auth {
+        let key = hex::encode([7u8; 32]);
+        auth()
+            .await
+            .with_secrets(Some(Arc::new(SecretBox::from_hex_key(&key).unwrap())))
+    }
+
+    fn current_code(secret: &str) -> String {
+        let key = totp::decode_secret(secret).unwrap();
+        let code = totp::code_at(&key, totp::step_at(now_ms() / 1000), totp::DIGITS);
+        format!("{code:06}")
+    }
+
+    #[tokio::test]
+    async fn two_factor_sign_in() {
+        let auth = auth_with_key().await;
+        let owner = auth.setup("admin", PASSWORD, CLIENT).await.unwrap().user;
+        let enrollment = auth.begin_totp(&owner).await.unwrap();
+        assert!(enrollment.qr_svg.contains("<svg"));
+        assert!(matches!(
+            auth.confirm_totp(&owner.id, "000000", CLIENT).await,
+            Err(AuthError::SecondFactor(_))
+        ));
+        let code = current_code(&enrollment.secret);
+        let recovery = auth.confirm_totp(&owner.id, &code, CLIENT).await.unwrap();
+        assert_eq!(recovery.len(), totp::RECOVERY_CODES);
+        // The stored secret is sealed, not the plain base32.
+        let stored = auth
+            .store()
+            .find_user_by_id(&owner.id)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_ne!(
+            stored.totp_secret.as_deref(),
+            Some(enrollment.secret.as_str())
+        );
+
+        // The password alone no longer signs in.
+        let SignIn::SecondFactor { challenge } =
+            auth.login("admin", PASSWORD, CLIENT).await.unwrap()
+        else {
+            panic!("expected a second-factor challenge");
+        };
+        // The enrollment code was already used for this time step.
+        assert!(
+            auth.finish_sign_in(&challenge, &code, CLIENT)
+                .await
+                .is_err()
+        );
+        assert!(
+            auth.finish_sign_in(&challenge, "123456", CLIENT)
+                .await
+                .is_err()
+        );
+        let issued = auth
+            .finish_sign_in(&challenge, &recovery[0], CLIENT)
+            .await
+            .unwrap();
+        assert!(issued.user.totp_enabled);
+        // The challenge is spent, and so is the recovery code.
+        assert!(
+            auth.finish_sign_in(&challenge, &recovery[1], CLIENT)
+                .await
+                .is_err()
+        );
+        let SignIn::SecondFactor { challenge } =
+            auth.login("admin", PASSWORD, CLIENT).await.unwrap()
+        else {
+            panic!("expected a second-factor challenge");
+        };
+        assert!(
+            auth.finish_sign_in(&challenge, &recovery[0], CLIENT)
+                .await
+                .is_err()
+        );
+        assert_eq!(auth.recovery_codes_left(&owner.id).await.unwrap(), 9);
+
+        auth.disable_totp(&owner.id, PASSWORD, CLIENT)
+            .await
+            .unwrap();
+        assert!(
+            auth.login("admin", PASSWORD, CLIENT)
+                .await
+                .unwrap()
+                .session()
+                .is_some()
+        );
+    }
+
+    #[tokio::test]
+    async fn sign_in_challenges_allow_few_attempts() {
+        let auth = auth_with_key().await;
+        let owner = auth.setup("admin", PASSWORD, CLIENT).await.unwrap().user;
+        let enrollment = auth.begin_totp(&owner).await.unwrap();
+        auth.confirm_totp(&owner.id, &current_code(&enrollment.secret), CLIENT)
+            .await
+            .unwrap();
+        let SignIn::SecondFactor { challenge } =
+            auth.login("admin", PASSWORD, CLIENT).await.unwrap()
+        else {
+            panic!("expected a second-factor challenge");
+        };
+        for _ in 0..CHALLENGE_ATTEMPTS {
+            assert!(
+                auth.finish_sign_in(&challenge, "000001", CLIENT)
+                    .await
+                    .is_err()
+            );
+        }
+        let err = auth
+            .finish_sign_in(&challenge, "000002", CLIENT)
+            .await
+            .unwrap_err();
+        assert!(
+            err.to_string().contains("expired") || matches!(err, AuthError::RateLimited { .. })
+        );
+    }
+
+    #[tokio::test]
+    async fn two_factor_needs_the_data_key() {
+        let auth = auth().await;
+        let owner = auth.setup("admin", PASSWORD, CLIENT).await.unwrap().user;
+        assert!(matches!(
+            auth.begin_totp(&owner).await,
+            Err(AuthError::NoDataKey)
+        ));
+    }
+
+    #[tokio::test]
+    async fn managed_users_change_their_one_time_password() {
+        let auth = auth().await;
+        let owner = auth.setup("admin", PASSWORD, CLIENT).await.unwrap().user;
+        let (user, temporary) = auth
+            .create_user(&owner, "builder", Role::Moderator, CLIENT)
+            .await
+            .unwrap();
+        assert!(user.must_change_password);
+        assert!(matches!(
+            auth.create_user(&owner, "BUILDER", Role::Viewer, CLIENT)
+                .await,
+            Err(AuthError::UsernameTaken)
+        ));
+        let issued = auth
+            .login("builder", &temporary, CLIENT)
+            .await
+            .unwrap()
+            .session()
+            .unwrap();
+        assert!(issued.user.must_change_password);
+        let session = auth.authenticate(&issued.token).await.unwrap().unwrap();
+        let other = auth
+            .login("builder", &temporary, CLIENT)
+            .await
+            .unwrap()
+            .session()
+            .unwrap();
+        assert!(matches!(
+            auth.change_password(
+                &user.id,
+                &session.session_id,
+                "wrong!!!!!",
+                PASSWORD,
+                CLIENT
+            )
+            .await,
+            Err(AuthError::InvalidInput(_))
+        ));
+        auth.change_password(&user.id, &session.session_id, &temporary, PASSWORD, CLIENT)
+            .await
+            .unwrap();
+        let after = auth.authenticate(&issued.token).await.unwrap().unwrap();
+        assert!(!after.user.must_change_password);
+        assert!(
+            auth.authenticate(&other.token).await.unwrap().is_none(),
+            "other sessions end"
+        );
+
+        // An owner's reset forces another change and signs them out.
+        let reset = auth.reset_password(&owner, &user.id, CLIENT).await.unwrap();
+        assert!(auth.authenticate(&issued.token).await.unwrap().is_none());
+        let again = auth
+            .login("builder", &reset, CLIENT)
+            .await
+            .unwrap()
+            .session()
+            .unwrap();
+        assert!(again.user.must_change_password);
+    }
+
+    #[tokio::test]
+    async fn owners_keep_one_owner() {
+        let auth = auth().await;
+        let owner = auth.setup("admin", PASSWORD, CLIENT).await.unwrap().user;
+        assert!(matches!(
+            auth.set_role(&owner, &owner.id, Role::Admin, CLIENT).await,
+            Err(AuthError::LastOwner)
+        ));
+        assert!(matches!(
+            auth.delete_user(&owner, &owner.id, CLIENT).await,
+            Err(AuthError::InvalidInput(_))
+        ));
+        let (second, _) = auth
+            .create_user(&owner, "second", Role::Owner, CLIENT)
+            .await
+            .unwrap();
+        auth.set_role(&second, &owner.id, Role::Admin, CLIENT)
+            .await
+            .unwrap();
+        assert!(matches!(
+            auth.delete_user(&owner, &second.id, CLIENT).await,
+            Err(AuthError::LastOwner)
+        ));
+        let actions: Vec<_> = auth
+            .store()
+            .recent_audit(10)
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|e| e.action)
+            .collect();
+        assert!(
+            actions.contains(&"user.create".to_owned())
+                && actions.contains(&"user.role".to_owned())
+        );
     }
 
     #[test]
