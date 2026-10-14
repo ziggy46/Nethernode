@@ -1,0 +1,17 @@
+# Only what the image build needs.
+target/
+**/node_modules/
+web/dist/
+docs/
+tmp/
+data/
+backups/
+.git/
+crates/*/fuzz/target/
+crates/*/fuzz/corpus/
+crates/*/fuzz/artifacts/
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.*
