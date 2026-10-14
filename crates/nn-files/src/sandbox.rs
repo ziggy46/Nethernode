@@ -100,7 +100,8 @@ impl ServerFiles {
         &self.root
     }
 
-    pub(crate) fn owner(&self) -> Owner {
+    /// Who new files in this folder belong to.
+    pub fn owner(&self) -> Owner {
         self.owner
     }
 

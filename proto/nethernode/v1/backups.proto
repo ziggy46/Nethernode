@@ -1,0 +1,88 @@
+syntax = "proto3";
+
+package nethernode.v1;
+
+// Backups of whole server folders (everything except what the server
+// downloads again on its own: libraries, versions, caches, logs). Making
+// and restoring run in the background: watch /api/events for
+// `file_job_progress` and `file_job_finished` (kind "backup" or "restore").
+// Downloads: GET /api/backups/{id}/download.
+service BackupService {
+  rpc ListBackups(ListBackupsRequest) returns (ListBackupsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Backs a server up now. A running server's saving is paused meanwhile,
+  // so the world on disk is consistent.
+  rpc CreateBackup(CreateBackupRequest) returns (CreateBackupResponse);
+  // Replaces a server's folder with a backup: stops the server, backs up
+  // what's there first (kind "pre-restore"), then swaps the folders.
+  rpc RestoreBackup(RestoreBackupRequest) returns (RestoreBackupResponse);
+  rpc DeleteBackup(DeleteBackupRequest) returns (DeleteBackupResponse);
+}
+
+enum BackupKind {
+  BACKUP_KIND_UNSPECIFIED = 0;
+  BACKUP_KIND_MANUAL = 1;
+  BACKUP_KIND_SCHEDULED = 2;
+  BACKUP_KIND_PRE_RESTORE = 3;
+}
+
+enum BackupStatus {
+  BACKUP_STATUS_UNSPECIFIED = 0;
+  BACKUP_STATUS_CREATING = 1;
+  BACKUP_STATUS_READY = 2;
+  BACKUP_STATUS_FAILED = 3;
+}
+
+message Backup {
+  string id = 1;
+  // Unset once the server is deleted (the backup stays).
+  optional string server_id = 2;
+  string server_name = 3;
+  uint64 size_bytes = 4;
+  uint64 files = 5;
+  // Size before compression.
+  uint64 raw_bytes = 6;
+  BackupKind kind = 7;
+  BackupStatus status = 8;
+  string message = 9;
+  string created_by = 10;
+  int64 created_at_ms = 11;
+  optional int64 finished_at_ms = 12;
+}
+
+message ListBackupsRequest {
+  // Unset: every server's.
+  optional string server_id = 1;
+}
+
+message ListBackupsResponse {
+  repeated Backup backups = 1;
+  // Free space where backups are kept, when known.
+  optional uint64 free_bytes = 2;
+}
+
+message CreateBackupRequest {
+  string server_id = 1;
+}
+
+message CreateBackupResponse {
+  string backup_id = 1;
+  string job_id = 2;
+}
+
+message RestoreBackupRequest {
+  string backup_id = 1;
+  // Start the server again afterwards.
+  bool start_after = 2;
+}
+
+message RestoreBackupResponse {
+  string job_id = 1;
+}
+
+message DeleteBackupRequest {
+  string backup_id = 1;
+}
+
+message DeleteBackupResponse {}

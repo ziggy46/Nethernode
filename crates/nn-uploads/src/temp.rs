@@ -112,14 +112,16 @@ fn preallocate(file: &std::fs::File, len: u64) -> io::Result<()> {
     file.set_len(len)
 }
 
+/// Free space on the filesystem holding `dir`, where the platform reports it.
 #[cfg(target_os = "linux")]
-fn available_space(dir: &Path) -> Option<u64> {
+pub fn available_space(dir: &Path) -> Option<u64> {
     let stat = rustix::fs::statvfs(dir).ok()?;
     Some(stat.f_bavail.saturating_mul(stat.f_frsize))
 }
 
+/// Free space on the filesystem holding `dir`, where the platform reports it.
 #[cfg(not(target_os = "linux"))]
-fn available_space(_dir: &Path) -> Option<u64> {
+pub fn available_space(_dir: &Path) -> Option<u64> {
     None
 }
 

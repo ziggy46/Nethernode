@@ -198,6 +198,22 @@ impl Orchestrator {
             .unwrap_or_else(|e| e.into_inner()) = key.filter(|k| !k.is_empty());
     }
 
+    /// Runs `work` while holding the server's lifecycle lock: nothing can
+    /// start, stop, or wake it meanwhile (a player connecting waits). `work`
+    /// gets the server as it is once the lock is held. Console commands
+    /// still work, so a running server can be told to save first.
+    pub async fn locked<T>(&self, id: &str, work: impl AsyncFnOnce(Server) -> T) -> Result<T> {
+        let rt = self.runtime(id);
+        let _op = rt.op.lock().await;
+        let server = self.load(id).await?;
+        Ok(work(server).await)
+    }
+
+    /// Where servers' folders are.
+    pub fn servers_dir(&self) -> &std::path::Path {
+        &self.config.servers_dir
+    }
+
     pub(crate) fn runtime(&self, id: &str) -> Arc<Runtime> {
         self.runtimes
             .lock()

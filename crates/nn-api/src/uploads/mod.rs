@@ -14,7 +14,7 @@
 //! that went.
 
 mod finish;
-mod http;
+pub(crate) mod http;
 pub mod tasks;
 
 use std::collections::HashMap;

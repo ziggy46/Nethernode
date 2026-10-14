@@ -29,6 +29,7 @@ use tower_http::compression::CompressionLayer;
 use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::trace::TraceLayer;
 
+pub mod backups;
 mod console;
 pub mod content;
 mod cookies;
@@ -41,6 +42,7 @@ pub mod players;
 pub mod proxy_runtime;
 mod request_meta;
 mod rpc;
+pub mod schedules;
 mod spa;
 pub mod uploads;
 
@@ -157,6 +159,7 @@ pub fn router(state: AppState) -> Router {
         .route("/ws/servers/{id}/console", get(console::console))
         .route("/api/players/{uuid}/head", get(players::heads::head))
         .route("/api/catalog/icon", get(content::icons::icon))
+        .route("/api/backups/{id}/download", get(backups::http::download))
         .route("/api/servers/{id}/mods/icon", get(content::icons::mod_icon))
         .nest(RPC_PREFIX, rpc_routes)
         .fallback(spa::serve)

@@ -64,6 +64,17 @@ pub(crate) async fn download(
         Err(e) => return e.into_response(),
     };
 
+    stream_file(file, size, path.file_name().unwrap_or("download"), &headers).await
+}
+
+/// Streams `file` (of `size` bytes) as a download named `name`, honoring a
+/// single `Range` header.
+pub(crate) async fn stream_file(
+    file: std::fs::File,
+    size: u64,
+    name: &str,
+    headers: &HeaderMap,
+) -> Response {
     let range = headers
         .get(header::RANGE)
         .and_then(|v| v.to_str().ok())
@@ -105,9 +116,7 @@ pub(crate) async fn download(
         HeaderValue::from_static("identity"),
     );
     h.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
-    if let Ok(v) =
-        HeaderValue::from_str(&content_disposition(path.file_name().unwrap_or("download")))
-    {
+    if let Ok(v) = HeaderValue::from_str(&content_disposition(name)) {
         h.insert(header::CONTENT_DISPOSITION, v);
     }
     if status == StatusCode::PARTIAL_CONTENT

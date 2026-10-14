@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+package nethernode.v1;
+
+// Actions that run on a cron schedule: restarts (with countdown warnings
+// in chat), backups (with how many to keep), console commands, and chat
+// broadcasts. A run missed while NetherNode was down happens once when it
+// comes back, except broadcasts and commands, which are skipped.
+service ScheduleService {
+  rpc ListSchedules(ListSchedulesRequest) returns (ListSchedulesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Creates a schedule, or updates it when `id` is set.
+  rpc UpsertSchedule(UpsertScheduleRequest) returns (UpsertScheduleResponse);
+  rpc DeleteSchedule(DeleteScheduleRequest) returns (DeleteScheduleResponse);
+  // Runs a schedule's action now (warnings are skipped).
+  rpc RunScheduleNow(RunScheduleNowRequest) returns (RunScheduleNowResponse);
+  // Checks a cron expression and lists its next runs.
+  rpc PreviewSchedule(PreviewScheduleRequest) returns (PreviewScheduleResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+enum ScheduleAction {
+  SCHEDULE_ACTION_UNSPECIFIED = 0;
+  SCHEDULE_ACTION_RESTART = 1;
+  SCHEDULE_ACTION_BACKUP = 2;
+  SCHEDULE_ACTION_COMMAND = 3;
+  SCHEDULE_ACTION_BROADCAST = 4;
+  SCHEDULE_ACTION_START = 5;
+  SCHEDULE_ACTION_STOP = 6;
+}
+
+message Schedule {
+  string id = 1;
+  string server_id = 2;
+  string server_name = 3;
+  string name = 4;
+  // 5 fields (minute hour day month weekday) or 6 (with seconds first).
+  string cron = 5;
+  // IANA time zone, e.g. America/New_York.
+  string timezone = 6;
+  ScheduleAction action = 7;
+  // COMMAND: the console command. BROADCAST: the message.
+  string text = 8;
+  // RESTART and STOP: warn players this many minutes before (e.g. 5, 1).
+  repeated uint32 warn_minutes = 9;
+  // BACKUP: scheduled backups to keep, one per day and one per week.
+  uint32 keep_daily = 10;
+  uint32 keep_weekly = 11;
+  bool enabled = 12;
+  optional int64 next_run_ms = 13;
+  optional int64 last_run_ms = 14;
+  string last_result = 15;
+}
+
+message ListSchedulesRequest {
+  optional string server_id = 1;
+}
+
+message ListSchedulesResponse {
+  repeated Schedule schedules = 1;
+}
+
+message UpsertScheduleRequest {
+  // Fields as in Schedule; `id` empty creates.
+  Schedule schedule = 1;
+}
+
+message UpsertScheduleResponse {
+  Schedule schedule = 1;
+}
+
+message DeleteScheduleRequest {
+  string id = 1;
+}
+
+message DeleteScheduleResponse {}
+
+message RunScheduleNowRequest {
+  string id = 1;
+}
+
+message RunScheduleNowResponse {}
+
+message PreviewScheduleRequest {
+  string cron = 1;
+  string timezone = 2;
+}
+
+message PreviewScheduleResponse {
+  // Unix ms; empty when the expression is invalid.
+  repeated int64 next_runs_ms = 1;
+  // Why it's invalid.
+  string error = 2;
+  // In words, e.g. "At 04:00 every day".
+  string description = 3;
+}
