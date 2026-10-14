@@ -76,6 +76,7 @@ const storage = new SafeStorage();
  * an error response, and behind Cloudflare or a reverse proxy a brief outage
  * (NetherNode restarting, a tunnel reconnecting) answers 502 or 530. Those
  * are treated as network errors instead, so the same upload is retried.
+ * Rate limiting (429, which Cloudflare may send) is handled the same way.
  */
 class ResumeFriendlyStack implements HttpStack {
   private readonly inner = new DefaultHttpStack({});
@@ -87,7 +88,8 @@ class ResumeFriendlyStack implements HttpStack {
     request.send = async (body) => {
       const response = await send(body);
       const status = response.getStatus();
-      if (status >= 500) throw new Error(`NetherNode didn't answer (HTTP ${status}); retrying`);
+      if (status >= 500 || status === 429)
+        throw new Error(`NetherNode didn't answer (HTTP ${status}); retrying`);
       return response;
     };
     return request;
@@ -165,7 +167,7 @@ export async function startUpload(
       const status = error.originalResponse?.getStatus() ?? 0;
       // Network trouble, server errors, and "busy, try again" are worth
       // retrying; anything else (no space, too large, signed out) isn't.
-      return status === 0 || (status >= 500 && status !== 507) || status === 409 || status === 423;
+      return status === 0 || (status >= 500 && status !== 507) || [409, 423, 429].includes(status);
     },
   });
   if (!target.resumeUrl) {
