@@ -326,6 +326,28 @@ async fn responses_hand_out_csrf_cookie_and_security_headers() {
         "nosniff"
     );
     assert_eq!(reply.headers.get(header::X_FRAME_OPTIONS).unwrap(), "DENY");
+    let csp = reply.headers.get(header::CONTENT_SECURITY_POLICY).unwrap();
+    assert!(csp.to_str().unwrap().contains("script-src 'self';"));
+    assert!(csp.to_str().unwrap().contains("frame-ancestors 'none'"));
+    // Plain HTTP never gets HSTS; HTTPS (through a proxy that says so) does.
+    assert!(
+        reply
+            .headers
+            .get(header::STRICT_TRANSPORT_SECURITY)
+            .is_none()
+    );
+    let req = Request::get("/healthz")
+        .header("x-forwarded-proto", "https")
+        .body(Body::empty())
+        .unwrap();
+    assert_eq!(
+        send(&app, req)
+            .await
+            .headers
+            .get(header::STRICT_TRANSPORT_SECURITY)
+            .unwrap(),
+        "max-age=31536000"
+    );
 
     let req = Request::get("/healthz")
         .header(header::COOKIE, "nn_csrf=existing")

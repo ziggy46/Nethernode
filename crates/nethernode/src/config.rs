@@ -271,7 +271,10 @@ mod tests {
             jail.set_env("NETHERNODE_DOCKER__HOST_DATA_DIR", "/srv/host/nn");
             let config = Config::load(Path::new("nethernode.toml")).map_err(|e| *e)?;
             assert_eq!(config.docker.backend_ip.to_string(), "172.17.0.1");
-            assert_eq!(config.docker.host_data_dir, Some(PathBuf::from("/srv/host/nn")));
+            assert_eq!(
+                config.docker.host_data_dir,
+                Some(PathBuf::from("/srv/host/nn"))
+            );
             assert_eq!(config.http.bind.to_string(), "127.0.0.1:9100");
             assert_eq!(config.http.secure_cookies, SecureCookiesSetting::Always);
             assert!(!config.proxy.enabled);

@@ -19,6 +19,7 @@ use rand::Rng;
 use tracing_subscriber::EnvFilter;
 
 mod config;
+mod redact;
 
 use config::Config;
 
@@ -85,6 +86,9 @@ async fn serve(config: Config) -> Result<()> {
             EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| EnvFilter::new("info,tower_http=warn")),
         )
+        // Colours only for a person watching; files and journals get plain text.
+        .with_ansi(std::io::IsTerminal::is_terminal(&std::io::stdout()))
+        .with_writer(redact::Redacting(std::io::stdout))
         .init();
 
     let metrics = metrics_exporter_prometheus::PrometheusBuilder::new()

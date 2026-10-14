@@ -260,7 +260,8 @@ async fn post(
             .json(&body)
             .send()
             .await
-            .map_err(|e| format!("Couldn't reach Discord: {e}"))?;
+            // Without the URL: its last part is the webhook's password.
+            .map_err(|e| format!("Couldn't reach Discord: {}", e.without_url()))?;
         let status = response.status();
         if status.is_success() {
             return Ok(());

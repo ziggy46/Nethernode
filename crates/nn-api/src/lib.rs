@@ -60,6 +60,15 @@ pub mod proto {
 /// Path prefix for ConnectRPC services.
 pub const RPC_PREFIX: &str = "/api/rpc";
 
+/// Scripts, connections, and images only from NetherNode itself (plus
+/// `data:` images, for the two-factor QR code). Styles allow inline
+/// `<style>` because the code editor and notifications inject them; no
+/// inline script runs.
+pub const CONTENT_SECURITY_POLICY: &str = "default-src 'self'; script-src 'self'; \
+    style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; \
+    connect-src 'self'; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; \
+    base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+
 /// When to mark cookies `Secure`.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -171,6 +180,7 @@ pub fn router(state: AppState) -> Router {
             middleware::resolve_session,
         ))
         .layer(from_fn_with_state(state.clone(), middleware::csrf))
+        .layer(axum::middleware::from_fn(middleware::strict_transport))
         .layer(from_fn_with_state(state.clone(), request_meta::attach))
         .layer(axum::middleware::from_fn(
             observability::record_http_metrics,
@@ -186,6 +196,11 @@ pub fn router(state: AppState) -> Router {
         .layer(SetResponseHeaderLayer::if_not_present(
             header::REFERRER_POLICY,
             HeaderValue::from_static("same-origin"),
+        ))
+        // Responses that set their own (the icon proxy's stricter one) keep it.
+        .layer(SetResponseHeaderLayer::if_not_present(
+            header::CONTENT_SECURITY_POLICY,
+            HeaderValue::from_static(CONTENT_SECURITY_POLICY),
         ))
         .layer(CompressionLayer::new())
         .layer(TraceLayer::new_for_http())

@@ -15,6 +15,7 @@ use serde_json::json;
 pub mod password;
 pub mod rate_limit;
 pub mod rbac;
+pub mod redact;
 pub mod secrets;
 pub mod token;
 pub mod totp;
@@ -77,12 +78,15 @@ pub type Result<T, E = AuthError> = std::result::Result<T, E>;
 pub struct AuthConfig {
     /// How long a session lasts without activity. Sessions renew while in use.
     pub session_ttl: Duration,
+    /// How long a session lasts at most, however much it's used.
+    pub session_max_age: Duration,
 }
 
 impl Default for AuthConfig {
     fn default() -> Self {
         Self {
             session_ttl: Duration::from_secs(7 * 24 * 60 * 60),
+            session_max_age: Duration::from_secs(30 * 24 * 60 * 60),
         }
     }
 }
@@ -797,11 +801,21 @@ impl Auth {
             return Ok(None);
         };
 
+        // However active, a session ends this long after sign-in.
+        let ends_at = session.created_at.saturating_add(
+            i64::try_from(self.config.session_max_age.as_millis()).unwrap_or(i64::MAX / 2),
+        );
+        if now >= ends_at {
+            self.store
+                .delete_session_by_token_hash(&session.token_hash)
+                .await?;
+            return Ok(None);
+        }
         let ttl = self.ttl_ms();
         let mut expires_at_ms = session.expires_at;
-        let renewed = expires_at_ms - now < ttl / 2;
+        let renewed = expires_at_ms - now < ttl / 2 && expires_at_ms < ends_at;
         if renewed {
-            expires_at_ms = now + ttl;
+            expires_at_ms = (now + ttl).min(ends_at);
             self.store
                 .extend_session(&session.id, expires_at_ms)
                 .await?;
@@ -1060,6 +1074,7 @@ mod tests {
             store,
             AuthConfig {
                 session_ttl: Duration::from_secs(60),
+                ..AuthConfig::default()
             },
         );
         let issued = auth.setup("admin", PASSWORD, CLIENT).await.unwrap();
@@ -1072,6 +1087,42 @@ mod tests {
         let renewed = auth.authenticate(&issued.token).await.unwrap().unwrap();
         assert!(renewed.renewed);
         assert!(renewed.expires_at_ms > now_ms() + 50_000);
+    }
+
+    #[tokio::test]
+    async fn sessions_end_at_their_maximum_age_however_active() {
+        let store = Store::open_in_memory().await.unwrap();
+        store.migrate().await.unwrap();
+        let auth = Auth::new(
+            store,
+            AuthConfig {
+                session_ttl: Duration::from_secs(60),
+                session_max_age: Duration::from_secs(90),
+            },
+        );
+        let issued = auth.setup("admin", PASSWORD, CLIENT).await.unwrap();
+        let session = auth.authenticate(&issued.token).await.unwrap().unwrap();
+        // Renewal never reaches past the maximum age.
+        auth.store()
+            .extend_session(&session.session_id, now_ms() + 10_000)
+            .await
+            .unwrap();
+        let renewed = auth.authenticate(&issued.token).await.unwrap().unwrap();
+        assert!(renewed.renewed);
+        assert!(renewed.expires_at_ms <= now_ms() + 90_000);
+        // Signed in long ago: over, even though the expiry is in the future.
+        sqlx::query("UPDATE sessions SET created_at = created_at - 100000")
+            .execute(auth.store().pool())
+            .await
+            .unwrap();
+        assert!(auth.authenticate(&issued.token).await.unwrap().is_none());
+        assert!(
+            auth.store()
+                .list_sessions(None, now_ms())
+                .await
+                .unwrap()
+                .is_empty()
+        );
     }
 
     #[tokio::test]

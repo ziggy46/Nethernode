@@ -160,3 +160,21 @@ pub(crate) async fn unauthenticated(state: &AppState) -> Response {
     }
     response
 }
+
+/// Tells browsers to use HTTPS from now on, on responses to requests that
+/// arrived over HTTPS (directly or through a proxy that says so). Plain-HTTP
+/// LAN use never gets it, so it can't lock anyone out.
+pub(crate) async fn strict_transport(req: Request, next: Next) -> Response {
+    let https = req
+        .extensions()
+        .get::<RequestMeta>()
+        .is_some_and(|m| m.secure_cookies);
+    let mut response = next.run(req).await;
+    if https {
+        response.headers_mut().insert(
+            header::STRICT_TRANSPORT_SECURITY,
+            HeaderValue::from_static("max-age=31536000"),
+        );
+    }
+    response
+}

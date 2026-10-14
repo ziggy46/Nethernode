@@ -64,6 +64,7 @@ impl SecretBox {
 
     /// Encrypts `plaintext`.
     pub fn seal(&self, plaintext: &str) -> String {
+        crate::redact::register(plaintext);
         let mut nonce = [0u8; NONCE_BYTES];
         rand::rng().fill_bytes(&mut nonce);
         let ciphertext = self
@@ -91,7 +92,9 @@ impl SecretBox {
             .cipher
             .decrypt(&nonce, ciphertext)
             .map_err(|_| SecretError::Decrypt)?;
-        String::from_utf8(plaintext).map_err(|_| SecretError::Decrypt)
+        let plaintext = String::from_utf8(plaintext).map_err(|_| SecretError::Decrypt)?;
+        crate::redact::register(&plaintext);
+        Ok(plaintext)
     }
 }
 
