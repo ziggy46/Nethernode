@@ -2233,6 +2233,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "nn-catalog"
+version = "0.1.0"
+dependencies = [
+ "jiff",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "nn-events"
 version = "0.1.0"
 dependencies = [

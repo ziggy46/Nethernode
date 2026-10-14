@@ -1,0 +1,27 @@
+[
+ {
+  "id": 132,
+  "time": "2026-05-11T11:43:09Z",
+  "channel": "STABLE"
+ },
+ {
+  "id": 131,
+  "time": "2026-05-03T16:08:07Z",
+  "channel": "STABLE"
+ },
+ {
+  "id": 130,
+  "time": "2026-04-11T11:14:19Z",
+  "channel": "STABLE"
+ },
+ {
+  "id": 66,
+  "time": "2025-12-30T14:15:39Z",
+  "channel": "BETA"
+ },
+ {
+  "id": 65,
+  "time": "2025-12-29T21:56:22Z",
+  "channel": "BETA"
+ }
+]

@@ -1,0 +1,18 @@
+[
+ {
+  "version": "26.3",
+  "stable": true
+ },
+ {
+  "version": "26.3-rc-3",
+  "stable": false
+ },
+ {
+  "version": "26.3-rc-2",
+  "stable": false
+ },
+ {
+  "version": "1.20.1",
+  "stable": true
+ }
+]

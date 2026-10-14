@@ -1,0 +1,71 @@
+{
+ "latest": {
+  "release": "26.3",
+  "snapshot": "26.4-snapshot-4"
+ },
+ "versions": [
+  {
+   "id": "26.4-snapshot-4",
+   "type": "snapshot",
+   "time": "2026-10-13T12:12:37+00:00",
+   "releaseTime": "2026-10-13T12:05:46+00:00",
+   "complianceLevel": 1
+  },
+  {
+   "id": "26.3",
+   "type": "release",
+   "time": "2026-10-13T06:43:38+00:00",
+   "releaseTime": "2026-09-15T11:23:02+00:00",
+   "complianceLevel": 1
+  },
+  {
+   "id": "26.3-rc-3",
+   "type": "snapshot",
+   "time": "2026-10-13T06:43:38+00:00",
+   "releaseTime": "2026-09-14T12:58:38+00:00",
+   "complianceLevel": 1
+  },
+  {
+   "id": "26.1.2",
+   "type": "release",
+   "time": "2026-10-13T06:40:25+00:00",
+   "releaseTime": "2026-04-09T10:12:23+00:00",
+   "complianceLevel": 1
+  },
+  {
+   "id": "1.21.11",
+   "type": "release",
+   "time": "2026-10-13T06:39:05+00:00",
+   "releaseTime": "2025-12-09T12:23:30+00:00",
+   "complianceLevel": 1
+  },
+  {
+   "id": "1.21.1",
+   "type": "release",
+   "time": "2026-10-13T06:30:24+00:00",
+   "releaseTime": "2024-08-08T12:24:45+00:00",
+   "complianceLevel": 1
+  },
+  {
+   "id": "1.20.1",
+   "type": "release",
+   "time": "2026-10-13T06:45:37+00:00",
+   "releaseTime": "2023-06-12T13:25:51+00:00",
+   "complianceLevel": 1
+  },
+  {
+   "id": "1.12.2",
+   "type": "release",
+   "time": "2023-06-07T11:49:20+00:00",
+   "releaseTime": "2017-09-18T08:39:46+00:00",
+   "complianceLevel": 0
+  },
+  {
+   "id": "b1.7.3",
+   "type": "old_beta",
+   "time": "2022-03-10T09:51:38+00:00",
+   "releaseTime": "2011-07-07T22:00:00+00:00",
+   "complianceLevel": 0
+  }
+ ]
+}
