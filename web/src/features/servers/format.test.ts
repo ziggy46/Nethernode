@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatBytes, formatUptime, gb, loaderName, versionLabel } from "./format";
+import { formatBytes, formatUptime, gb, loaderName, memoryLimitBytes, versionLabel } from "./format";
 
 describe("formatting", () => {
   it("formats bytes", () => {
@@ -22,5 +22,15 @@ describe("formatting", () => {
     expect(loaderName("custom")).toBe("custom");
     expect(versionLabel("LATEST")).toBe("Latest release");
     expect(versionLabel("1.21.4")).toBe("1.21.4");
+  });
+});
+
+describe("memoryLimitBytes", () => {
+  it("adds more room for mods", () => {
+    const mb = (n: number) => n * 1024 * 1024;
+    expect(memoryLimitBytes(4096)).toBe(mb(5120));
+    expect(memoryLimitBytes(4096, "paper")).toBe(mb(5120));
+    expect(memoryLimitBytes(4096, "fabric")).toBe(mb(6144));
+    expect(memoryLimitBytes(6144, "curseforge")).toBe(mb(6144 + 6144 * 0.4));
   });
 });

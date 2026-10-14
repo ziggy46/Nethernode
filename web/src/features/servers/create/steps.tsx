@@ -382,7 +382,7 @@ export function ResourcesStep({
   );
   const gb = (mb: number) => `${(mb / 1024).toFixed(mb % 1024 ? 1 : 0)} GB`;
   const recommended = SOFTWARE.find((s) => s.id === draft.software)?.memoryMb ?? 4096;
-  const limit = memoryLimitBytes(draft.memoryMb);
+  const limit = memoryLimitBytes(draft.memoryMb, draft.software === "modpack" ? "modrinth" : draft.software);
   return (
     <div>
       <Label htmlFor={id}>Memory for Minecraft (Java heap): {gb(draft.memoryMb)}</Label>

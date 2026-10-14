@@ -105,6 +105,34 @@ pub fn memory_limit_mb(heap_mb: i64, percent: u32, min_mb: u32) -> i64 {
     heap_mb + (heap_mb * i64::from(percent) / 100).max(i64::from(min_mb))
 }
 
+/// Extra memory for modded servers, in percent of the heap and at least in
+/// MiB: a large modpack's class metadata, compiled code, and buffers need
+/// 1.5–2 GB beyond the heap (a 242-mod Forge 1.20.1 pack with a 6 GB heap
+/// runs at about 7.3 GB).
+pub const MODDED_OVERHEAD: (u32, u32) = (40, 2048);
+
+/// Whether a loader runs mods (and so needs more room beyond the heap).
+pub fn is_modded(loader: &str) -> bool {
+    matches!(
+        loader,
+        "fabric" | "quilt" | "forge" | "neoforge" | "modrinth" | "curseforge"
+    )
+}
+
+/// Container memory limit for `loader`: modded servers get at least
+/// [`MODDED_OVERHEAD`].
+pub fn memory_limit_mb_for(loader: &str, heap_mb: i64, percent: u32, min_mb: u32) -> i64 {
+    if is_modded(loader) {
+        memory_limit_mb(
+            heap_mb,
+            percent.max(MODDED_OVERHEAD.0),
+            min_mb.max(MODDED_OVERHEAD.1),
+        )
+    } else {
+        memory_limit_mb(heap_mb, percent, min_mb)
+    }
+}
+
 /// Supported server software: (loader id, `TYPE`, version-pin env var).
 pub const LOADERS: &[(&str, &str, Option<&str>)] = &[
     ("vanilla", "VANILLA", None),
@@ -317,7 +345,8 @@ pub fn build(input: &SpecInput<'_>) -> ContainerSpec {
         port_bindings.insert(CONTAINER_MGMT_PORT.to_owned(), localhost(port));
         exposed.push(CONTAINER_MGMT_PORT.to_owned());
     }
-    let memory_bytes = memory_limit_mb(
+    let memory_bytes = memory_limit_mb_for(
+        input.loader,
         input.memory_mb,
         input.memory_overhead_percent,
         input.memory_overhead_min_mb,
@@ -486,6 +515,14 @@ mod tests {
             "big heaps keep the percentage"
         );
         assert_eq!(memory_limit_mb(1024, 25, 0), 1280);
+    }
+
+    #[test]
+    fn modded_servers_get_more_room() {
+        assert_eq!(memory_limit_mb_for("forge", 6144, 25, 1024), 6144 + 2457);
+        assert_eq!(memory_limit_mb_for("modrinth", 4096, 25, 1024), 4096 + 2048);
+        assert_eq!(memory_limit_mb_for("paper", 4096, 25, 1024), 5120);
+        assert_eq!(memory_limit_mb_for("vanilla", 2048, 25, 1024), 3072);
     }
 
     #[test]

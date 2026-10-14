@@ -48,10 +48,14 @@ export function versionLabel(version: string): string {
   return version;
 }
 
+const MODDED = ["fabric", "quilt", "forge", "neoforge", "modrinth", "curseforge"];
+
 /**
  * Container memory limit for a Java heap of `heapMb`: the heap plus 25%, at
- * least 1 GiB more (NetherNode's defaults; Java needs room beyond the heap).
+ * least 1 GiB more; modded servers get 40%, at least 2 GiB (NetherNode's
+ * defaults; Java needs room beyond the heap, and mods need more).
  */
-export function memoryLimitBytes(heapMb: number): number {
-  return (heapMb + Math.max(heapMb * 0.25, 1024)) * 1024 * 1024;
+export function memoryLimitBytes(heapMb: number, loader = ""): number {
+  const [percent, min] = MODDED.includes(loader) ? [0.4, 2048] : [0.25, 1024];
+  return (heapMb + Math.max(heapMb * percent, min)) * 1024 * 1024;
 }
