@@ -52,13 +52,15 @@ import { errorMessage } from "@/lib/api";
 import { trackJob } from "@/lib/jobs";
 import { useNow } from "@/lib/use-now";
 import { cn } from "@/lib/utils";
-
+import { DropOverlay, useFileDrop } from "../uploads/drop";
+import { enqueue } from "../uploads/store";
+import { UnfinishedUploads } from "../uploads/unfinished";
+import { UploadOptionsDialog } from "../uploads/upload-options-dialog";
 import { fileClient } from "./api";
 import { downloadUrl, EditorPane } from "./editor-pane";
 import { ExtractDialog, PromptDialog, TrashDialog } from "./file-dialogs";
 import { ago, baseName, crumbs, formatSize, isZip, joinPath, parentPath, validName } from "./paths";
 import { filesKey, listQuery } from "./queries";
-import { UploadError, uploadFile } from "./upload";
 
 type DialogState =
   | { kind: "mkdir" | "touch" }
@@ -84,7 +86,7 @@ export default function FilesTab({ server }: { server: Server }) {
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [dirty, setDirty] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
-  const [dragging, setDragging] = useState(false);
+  const [pendingUpload, setPendingUpload] = useState<{ files: File[]; taken: string[] } | null>(null);
   const uploadInput = useRef<HTMLInputElement>(null);
   const list = useQuery(listQuery(server.id, dir));
   const entries = list.data?.entries ?? [];
@@ -150,32 +152,23 @@ export default function FilesTab({ server }: { server: Server }) {
     setAnchor(name);
   };
 
-  const upload = async (files: FileList | File[]) => {
-    for (const file of Array.from(files)) {
-      const id = `upload:${dir}/${file.name}`;
-      const send = async (overwrite: boolean) => {
-        toast.loading(`Uploading ${file.name}…`, { id });
-        try {
-          await uploadFile(server.id, dir, file, overwrite, (f) =>
-            toast.loading(`Uploading ${file.name}… ${Math.round(f * 100)}%`, { id }),
-          );
-          toast.success(`Uploaded ${file.name}.`, { id });
-          void refresh();
-        } catch (err) {
-          if (err instanceof UploadError && err.exists) {
-            toast.error(`${file.name} already exists here.`, {
-              id,
-              action: { label: "Replace", onClick: () => void send(true) },
-              duration: 10_000,
-            });
-          } else {
-            toast.error(err instanceof Error ? err.message : `Uploading ${file.name} failed.`, { id });
-          }
-        }
-      };
-      await send(false);
+  /** Uploads into the current folder, asking first when names are taken or zips could be unpacked. */
+  const upload = (files: FileList | File[]) => {
+    const list = Array.from(files);
+    if (list.length === 0) return;
+    const names = new Set(entries.map((e) => e.name));
+    const taken = list.filter((f) => names.has(f.name)).map((f) => f.name);
+    const zips = list.some((f) => f.name.toLowerCase().endsWith(".zip"));
+    if (taken.length === 0 && !zips) {
+      enqueue({ serverId: server.id, serverName: server.name, dir }, list, {
+        conflict: "rename",
+        extract: false,
+      });
+    } else {
+      setPendingUpload({ files: list, taken });
     }
   };
+  const drop = useFileDrop(upload);
 
   const startJob = async (title: string, start: () => Promise<{ jobId: string }>) => {
     try {
@@ -239,255 +232,249 @@ export default function FilesTab({ server }: { server: Server }) {
   const editorOpen = openPath !== null;
 
   return (
-    <div
-      className={cn(
-        "grid gap-5 below-lg:grid-cols-1",
-        editorOpen ? "grid-cols-[minmax(300px,0.9fr)_minmax(0,1.4fr)]" : "grid-cols-1",
-      )}
-    >
-      <section
-        aria-label="Server files"
+    <>
+      <UnfinishedUploads serverId={server.id} serverName={server.name} />
+      <div
+        {...drop.handlers}
         className={cn(
-          "relative flex min-w-0 flex-col overflow-hidden rounded-[9px] border border-border bg-surface-subtle",
-          editorOpen && "below-lg:hidden",
+          "relative grid gap-5 below-lg:grid-cols-1",
+          editorOpen ? "grid-cols-[minmax(300px,0.9fr)_minmax(0,1.4fr)]" : "grid-cols-1",
         )}
-        onDragOver={(e) => {
-          if (e.dataTransfer.types.includes("Files")) {
-            e.preventDefault();
-            setDragging(true);
-          }
-        }}
-        onDragLeave={(e) => {
-          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false);
-        }}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDragging(false);
-          if (e.dataTransfer.files.length > 0) void upload(e.dataTransfer.files);
-        }}
       >
-        <div className="flex flex-wrap items-center gap-2 border-border border-b bg-surface px-[13px] py-[9px]">
-          <nav aria-label="Folder" className="flex min-w-0 flex-1 items-center gap-1 text-label">
-            <button
-              type="button"
-              onClick={() => goTo("")}
-              className="flex shrink-0 items-center gap-1.5 rounded-sm px-1 py-0.5 text-text-secondary hover:text-text-primary"
-              aria-current={dir === "" ? "location" : undefined}
-            >
-              <HardDrive className="size-[14px]" aria-hidden />
-              {server.name}
-            </button>
-            {crumbs(dir).map((c) => (
-              <span key={c.path} className="flex min-w-0 items-center gap-1">
-                <ChevronRight className="size-3 shrink-0 text-text-muted" aria-hidden />
-                <button
-                  type="button"
-                  onClick={() => goTo(c.path)}
-                  className="truncate rounded-sm px-1 py-0.5 text-text-secondary hover:text-text-primary aria-[current]:text-text-primary"
-                  aria-current={c.path === dir ? "location" : undefined}
-                >
-                  {c.name}
-                </button>
-              </span>
-            ))}
-          </nav>
-          <div className="flex items-center gap-1.5">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="mini">
-                  <FilePlus />
-                  New
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => setDialog({ kind: "mkdir" })}>
-                  <FolderPlus />
-                  Folder
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setDialog({ kind: "touch" })}>
-                  <FilePlus />
-                  Text file
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button size="mini" onClick={() => uploadInput.current?.click()}>
-              <Upload />
-              Upload
-            </Button>
-            <input
-              ref={uploadInput}
-              type="file"
-              multiple
-              className="hidden"
-              aria-label="Choose files to upload"
-              onChange={(e) => {
-                if (e.target.files) void upload(e.target.files);
-                e.target.value = "";
-              }}
-            />
-            <Button
-              size="icon"
-              variant="ghost"
-              className="size-[27px]"
-              aria-label="Trash"
-              onClick={() => setDialog({ kind: "trash" })}
-            >
-              <Trash2 className="size-[14px]" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="size-[27px]"
-              aria-label="Refresh"
-              onClick={() => void refresh()}
-            >
-              <RefreshCw
-                className={cn("size-[14px]", list.isFetching && "animate-spin motion-reduce:animate-none")}
-              />
-            </Button>
-          </div>
-        </div>
-
-        {selection.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 border-border border-b bg-nav-active px-[13px] py-2 text-meta text-nav-active-foreground">
-            <span className="mr-auto">{selection.length} selected</span>
-            <Button size="mini" onClick={() => setDialog({ kind: "compress", names: selection })}>
-              <Archive />
-              Compress
-            </Button>
-            <Button size="mini" onClick={() => setDialog({ kind: "move-many", names: selection })}>
-              <FolderOpen />
-              Move
-            </Button>
-            <Button
-              size="mini"
-              variant="danger"
-              onClick={() => setDialog({ kind: "delete", names: selection })}
-            >
-              <Trash2 />
-              Delete
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="size-[27px]"
-              aria-label="Clear selection"
-              onClick={() => setSelected(new Set())}
-            >
-              <X className="size-[14px]" />
-            </Button>
-          </div>
-        )}
-
-        <div className="min-h-[300px] flex-1">
-          {list.isPending ? (
-            <div className="m-3 h-40 animate-pulse rounded-md bg-surface" aria-busy />
-          ) : list.isError ? (
-            <EmptyState compact icon={<Folder />} title="Couldn't open this folder">
-              {errorMessage(list.error)}
-            </EmptyState>
-          ) : (
-            <ul aria-label={`Contents of ${dir || server.name}`} className="divide-y divide-divider">
-              {dir && (
-                <li>
+        {drop.dragging && <DropOverlay label={`Drop to upload to ${dir || server.name}`} />}
+        <section
+          aria-label="Server files"
+          className={cn(
+            "relative flex min-w-0 flex-col overflow-hidden rounded-[9px] border border-border bg-surface-subtle",
+            editorOpen && "below-lg:hidden",
+          )}
+        >
+          <div className="flex flex-wrap items-center gap-2 border-border border-b bg-surface px-[13px] py-[9px]">
+            <nav aria-label="Folder" className="flex min-w-0 flex-1 items-center gap-1 text-label">
+              <button
+                type="button"
+                onClick={() => goTo("")}
+                className="flex shrink-0 items-center gap-1.5 rounded-sm px-1 py-0.5 text-text-secondary hover:text-text-primary"
+                aria-current={dir === "" ? "location" : undefined}
+              >
+                <HardDrive className="size-[14px]" aria-hidden />
+                {server.name}
+              </button>
+              {crumbs(dir).map((c) => (
+                <span key={c.path} className="flex min-w-0 items-center gap-1">
+                  <ChevronRight className="size-3 shrink-0 text-text-muted" aria-hidden />
                   <button
                     type="button"
-                    onClick={() => goTo(parentPath(dir))}
-                    className="flex w-full items-center gap-3 px-[13px] py-2 text-left text-label text-text-secondary hover:bg-nav-hover"
+                    onClick={() => goTo(c.path)}
+                    className="truncate rounded-sm px-1 py-0.5 text-text-secondary hover:text-text-primary aria-[current]:text-text-primary"
+                    aria-current={c.path === dir ? "location" : undefined}
                   >
-                    <span className="w-4" />
-                    <Folder className="size-4 text-text-muted" aria-hidden />
-                    ..
-                    <span className="sr-only">(parent folder)</span>
+                    {c.name}
                   </button>
-                </li>
-              )}
-              {entries.length === 0 && (
-                <li>
-                  <EmptyState compact icon={<FolderOpen />} title="This folder is empty">
-                    Drop files here or use Upload to add some.
-                  </EmptyState>
-                </li>
-              )}
-              {entries.map((entry) => (
-                <EntryRow
-                  key={entry.name}
-                  entry={entry}
-                  active={joinPath(dir, entry.name) === openPath}
-                  selected={selected.has(entry.name)}
-                  now={now}
-                  actions={actionsFor(entry)}
-                  onOpen={() => open(entry)}
-                  onToggle={(e) => toggle(entry.name, e)}
-                />
+                </span>
               ))}
-            </ul>
-          )}
-        </div>
-
-        {dragging && (
-          <div className="pointer-events-none absolute inset-0 grid place-items-center rounded-[9px] border-2 border-primary border-dashed bg-overlay">
-            <p className="flex items-center gap-2 font-semibold text-label">
-              <Upload className="size-4 text-primary" aria-hidden />
-              Drop to upload to {dir || server.name}
-            </p>
+            </nav>
+            <div className="flex items-center gap-1.5">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="mini">
+                    <FilePlus />
+                    New
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => setDialog({ kind: "mkdir" })}>
+                    <FolderPlus />
+                    Folder
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setDialog({ kind: "touch" })}>
+                    <FilePlus />
+                    Text file
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button size="mini" onClick={() => uploadInput.current?.click()}>
+                <Upload />
+                Upload
+              </Button>
+              <input
+                ref={uploadInput}
+                type="file"
+                multiple
+                className="hidden"
+                aria-label="Choose files to upload"
+                onChange={(e) => {
+                  if (e.target.files) void upload(e.target.files);
+                  e.target.value = "";
+                }}
+              />
+              <Button
+                size="icon"
+                variant="ghost"
+                className="size-[27px]"
+                aria-label="Trash"
+                onClick={() => setDialog({ kind: "trash" })}
+              >
+                <Trash2 className="size-[14px]" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="size-[27px]"
+                aria-label="Refresh"
+                onClick={() => void refresh()}
+              >
+                <RefreshCw
+                  className={cn("size-[14px]", list.isFetching && "animate-spin motion-reduce:animate-none")}
+                />
+              </Button>
+            </div>
           </div>
-        )}
-      </section>
 
-      {openPath && (
-        <EditorPane
-          key={openPath}
+          {selection.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 border-border border-b bg-nav-active px-[13px] py-2 text-meta text-nav-active-foreground">
+              <span className="mr-auto">{selection.length} selected</span>
+              <Button size="mini" onClick={() => setDialog({ kind: "compress", names: selection })}>
+                <Archive />
+                Compress
+              </Button>
+              <Button size="mini" onClick={() => setDialog({ kind: "move-many", names: selection })}>
+                <FolderOpen />
+                Move
+              </Button>
+              <Button
+                size="mini"
+                variant="danger"
+                onClick={() => setDialog({ kind: "delete", names: selection })}
+              >
+                <Trash2 />
+                Delete
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="size-[27px]"
+                aria-label="Clear selection"
+                onClick={() => setSelected(new Set())}
+              >
+                <X className="size-[14px]" />
+              </Button>
+            </div>
+          )}
+
+          <div className="min-h-[300px] flex-1">
+            {list.isPending ? (
+              <div className="m-3 h-40 animate-pulse rounded-md bg-surface" aria-busy />
+            ) : list.isError ? (
+              <EmptyState compact icon={<Folder />} title="Couldn't open this folder">
+                {errorMessage(list.error)}
+              </EmptyState>
+            ) : (
+              <ul aria-label={`Contents of ${dir || server.name}`} className="divide-y divide-divider">
+                {dir && (
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => goTo(parentPath(dir))}
+                      className="flex w-full items-center gap-3 px-[13px] py-2 text-left text-label text-text-secondary hover:bg-nav-hover"
+                    >
+                      <span className="w-4" />
+                      <Folder className="size-4 text-text-muted" aria-hidden />
+                      ..
+                      <span className="sr-only">(parent folder)</span>
+                    </button>
+                  </li>
+                )}
+                {entries.length === 0 && (
+                  <li>
+                    <EmptyState compact icon={<FolderOpen />} title="This folder is empty">
+                      Drop files anywhere here or use Upload to add some.
+                    </EmptyState>
+                  </li>
+                )}
+                {entries.map((entry) => (
+                  <EntryRow
+                    key={entry.name}
+                    entry={entry}
+                    active={joinPath(dir, entry.name) === openPath}
+                    selected={selected.has(entry.name)}
+                    now={now}
+                    actions={actionsFor(entry)}
+                    onOpen={() => open(entry)}
+                    onToggle={(e) => toggle(entry.name, e)}
+                  />
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
+
+        {openPath && (
+          <EditorPane
+            key={openPath}
+            server={server}
+            path={openPath}
+            onDirtyChange={setDirty}
+            onClose={() =>
+              guarded(() => {
+                setOpenPath(null);
+                setDirty(false);
+              })
+            }
+          />
+        )}
+
+        <FileDialogs
           server={server}
-          path={openPath}
-          onDirtyChange={setDirty}
-          onClose={() =>
-            guarded(() => {
+          dir={dir}
+          dialog={dialog}
+          onClose={() => setDialog(null)}
+          act={act}
+          startJob={startJob}
+          onDeleted={(names) => {
+            setSelected(new Set());
+            if (
+              openPath &&
+              names.some((n) => openPath === joinPath(dir, n) || openPath.startsWith(`${joinPath(dir, n)}/`))
+            ) {
               setOpenPath(null);
               setDirty(false);
-            })
-          }
+            }
+          }}
         />
-      )}
 
-      <FileDialogs
-        server={server}
-        dir={dir}
-        dialog={dialog}
-        onClose={() => setDialog(null)}
-        act={act}
-        startJob={startJob}
-        onDeleted={(names) => {
-          setSelected(new Set());
-          if (
-            openPath &&
-            names.some((n) => openPath === joinPath(dir, n) || openPath.startsWith(`${joinPath(dir, n)}/`))
-          ) {
-            setOpenPath(null);
+        <ConfirmDialog
+          open={pendingAction !== null || blocker.status === "blocked"}
+          onOpenChange={(next) => {
+            if (!next) {
+              setPendingAction(null);
+              if (blocker.status === "blocked") blocker.reset();
+            }
+          }}
+          title="Discard unsaved changes?"
+          description={`Your edits to ${openPath ? baseName(openPath) : "this file"} haven't been saved.`}
+          confirmLabel="Discard changes"
+          onConfirm={() => {
             setDirty(false);
-          }
-        }}
-      />
-
-      <ConfirmDialog
-        open={pendingAction !== null || blocker.status === "blocked"}
-        onOpenChange={(next) => {
-          if (!next) {
+            if (blocker.status === "blocked") blocker.proceed();
+            pendingAction?.();
             setPendingAction(null);
-            if (blocker.status === "blocked") blocker.reset();
-          }
-        }}
-        title="Discard unsaved changes?"
-        description={`Your edits to ${openPath ? baseName(openPath) : "this file"} haven't been saved.`}
-        confirmLabel="Discard changes"
-        onConfirm={() => {
-          setDirty(false);
-          if (blocker.status === "blocked") blocker.proceed();
-          pendingAction?.();
-          setPendingAction(null);
-        }}
-      />
-    </div>
+          }}
+        />
+        {pendingUpload && (
+          <UploadOptionsDialog
+            files={pendingUpload.files}
+            taken={pendingUpload.taken}
+            folder={dir || server.name}
+            onCancel={() => setPendingUpload(null)}
+            onConfirm={(options) => {
+              enqueue({ serverId: server.id, serverName: server.name, dir }, pendingUpload.files, options);
+              setPendingUpload(null);
+            }}
+          />
+        )}
+      </div>
+    </>
   );
 }
 

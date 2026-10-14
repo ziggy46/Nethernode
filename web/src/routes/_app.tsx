@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 
 import { AppShell } from "@/components/shell/app-shell";
+import { UploadTrayHost } from "@/features/uploads/tray-host";
 import { sessionQuery } from "@/lib/session";
 
 /** Authenticated layout: every page inside requires a session. */
@@ -22,6 +23,7 @@ function AppLayout() {
   return (
     <AppShell>
       <Outlet />
+      <UploadTrayHost />
     </AppShell>
   );
 }

@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 
 import { type LiveStats, liveStatsKey, type PullProgress, pullKey } from "@/features/servers/queries";
+import { uploadFinished } from "@/features/uploads/store";
 import { jobFinished, jobProgress } from "@/lib/jobs";
 
 /**
@@ -33,6 +34,15 @@ type DataEvent =
   | { type: "image_pull_progress"; server_id: string; percent: number | null; status: string }
   | { type: "server_operation_failed"; server_id: string; operation: string; message: string }
   | { type: "server_status_changed"; server_id: string; status: string }
+  | {
+      type: "upload_finished";
+      server_id: string;
+      upload_id: string;
+      path: string;
+      message: string;
+      skipped: boolean;
+      failed: boolean;
+    }
   | { type: "file_job_progress"; server_id: string; job_id: string; kind: string; percent: number }
   | {
       type: "file_job_finished";
@@ -50,6 +60,7 @@ const DATA_EVENTS = [
   "server_status_changed",
   "file_job_progress",
   "file_job_finished",
+  "upload_finished",
 ];
 
 function applyData(client: QueryClient, event: DataEvent) {
@@ -83,6 +94,16 @@ function applyData(client: QueryClient, event: DataEvent) {
     case "file_job_finished":
       jobFinished(event.job_id, { message: event.message, failed: event.failed });
       void client.invalidateQueries({ queryKey: ["files", event.server_id] });
+      break;
+    case "upload_finished":
+      uploadFinished(event.upload_id, {
+        path: event.path,
+        message: event.message,
+        skipped: event.skipped,
+        failed: event.failed,
+      });
+      void client.invalidateQueries({ queryKey: ["files", event.server_id] });
+      void client.invalidateQueries({ queryKey: ["uploads"] });
       break;
     case "server_status_changed":
       if (event.status !== "starting" && event.status !== "running") {
