@@ -3,7 +3,15 @@
  * panel). Chunks stay well under Cloudflare's 100 MB request limit, and an
  * interrupted upload resumes from the last chunk that reached the server.
  */
-import { type DetailedError, type PreviousUpload, Upload, type UrlStorage } from "tus-js-client";
+import {
+  DefaultHttpStack,
+  type DetailedError,
+  type HttpRequest,
+  type HttpStack,
+  type PreviousUpload,
+  Upload,
+  type UrlStorage,
+} from "tus-js-client";
 
 import { CSRF_HEADER_NAME } from "@/lib/api";
 
@@ -63,6 +71,35 @@ class SafeStorage implements UrlStorage {
 
 const storage = new SafeStorage();
 
+/**
+ * tus-js-client starts a brand-new upload when asking where to resume gets
+ * an error response, and behind Cloudflare or a reverse proxy a brief outage
+ * (NetherNode restarting, a tunnel reconnecting) answers 502 or 530. Those
+ * are treated as network errors instead, so the same upload is retried.
+ */
+class ResumeFriendlyStack implements HttpStack {
+  private readonly inner = new DefaultHttpStack({});
+
+  createRequest(method: string, url: string): HttpRequest {
+    const request = this.inner.createRequest(method, url);
+    if (method !== "HEAD") return request;
+    const send = request.send.bind(request);
+    request.send = async (body) => {
+      const response = await send(body);
+      const status = response.getStatus();
+      if (status >= 500) throw new Error(`NetherNode didn't answer (HTTP ${status}); retrying`);
+      return response;
+    };
+    return request;
+  }
+
+  getName() {
+    return "nethernode";
+  }
+}
+
+const httpStack = new ResumeFriendlyStack();
+
 export interface TusTarget {
   serverId: string;
   dir: string;
@@ -118,6 +155,7 @@ export async function startUpload(
     fingerprint: async (f) =>
       ["v1", target.serverId, target.dir, f.name, f.size, f.lastModified].map(encodeURIComponent).join("/"),
     urlStorage: storage,
+    httpStack,
     storeFingerprintForResuming: true,
     removeFingerprintOnSuccess: true,
     onProgress: (sent, total) => callbacks.onProgress(sent, total),
