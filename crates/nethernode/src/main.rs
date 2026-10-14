@@ -123,7 +123,7 @@ async fn serve(config: Config) -> Result<()> {
             Some(config.data.dir.join("cache").join("catalog")),
             Default::default(),
         ),
-        secrets,
+        secrets.clone(),
         Some(config.data.dir.join("cache")),
     ));
     let curseforge_key = content.load_curseforge_key(&store).await;
@@ -132,6 +132,8 @@ async fn serve(config: Config) -> Result<()> {
     }
 
     let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+    let notifier = Arc::new(nn_api::notify::Notifier::default());
+    notifier.load(&store, secrets.as_deref()).await;
     let state = AppState {
         auth: auth.clone(),
         proxy: proxy.clone(),
@@ -146,11 +148,13 @@ async fn serve(config: Config) -> Result<()> {
         players: Arc::new(nn_api::players::PlayerManager::new(hooks.bans())),
         uploads: Arc::new(uploads),
         content: content.clone(),
+        notifier: notifier.clone(),
     };
     nn_api::players::tasks::spawn(state.clone());
     nn_api::uploads::tasks::spawn(state.clone());
     nn_api::backups::tasks::recover(&state).await;
     nn_api::schedules::runner::spawn(state.clone());
+    nn_api::notify::spawn(state.clone());
     let app = nn_api::router(state);
 
     let listener = tokio::net::TcpListener::bind(config.http.bind)

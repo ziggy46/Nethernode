@@ -53,6 +53,7 @@ async fn harness() -> Harness {
         players: Default::default(),
         uploads: Default::default(),
         content: Default::default(),
+        notifier: Default::default(),
         servers: Default::default(),
     });
     let owner = auth

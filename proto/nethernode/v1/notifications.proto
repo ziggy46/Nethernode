@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package nethernode.v1;
+
+// Discord webhook notifications. Administrators and owners.
+service NotificationService {
+  rpc GetNotifications(GetNotificationsRequest) returns (GetNotificationsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // Fails with INVALID_ARGUMENT for a URL that isn't a Discord webhook.
+  rpc UpdateNotifications(UpdateNotificationsRequest) returns (UpdateNotificationsResponse);
+
+  // Sends a test message. Fails with FAILED_PRECONDITION, saying why, if it
+  // doesn't go through.
+  rpc SendTestNotification(SendTestNotificationRequest) returns (SendTestNotificationResponse);
+}
+
+message NotificationEvents {
+  bool start_stop = 1;
+  bool crash = 2;
+  bool player_join = 3;
+  bool backup_failed = 4;
+}
+
+message GetNotificationsRequest {}
+
+message GetNotificationsResponse {
+  // The end of the saved webhook URL, to recognize it by; unset if none.
+  optional string webhook_hint = 1;
+  NotificationEvents events = 2;
+  // Why the last message didn't go through.
+  string last_error = 3;
+  optional int64 last_sent_ms = 4;
+}
+
+message UpdateNotificationsRequest {
+  // A new webhook URL; empty removes it; unset keeps the current one.
+  optional string webhook_url = 1;
+  NotificationEvents events = 2;
+}
+
+message UpdateNotificationsResponse {}
+
+message SendTestNotificationRequest {}
+
+message SendTestNotificationResponse {}

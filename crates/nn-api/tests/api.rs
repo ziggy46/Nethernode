@@ -36,6 +36,7 @@ async fn app() -> Router {
         players: Default::default(),
         uploads: Default::default(),
         content: Default::default(),
+        notifier: Default::default(),
         servers: Default::default(),
     })
 }

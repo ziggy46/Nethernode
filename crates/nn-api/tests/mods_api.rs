@@ -64,6 +64,7 @@ async fn harness() -> Harness {
         players: Default::default(),
         uploads: Default::default(),
         content: Default::default(),
+        notifier: Default::default(),
         servers: ServerManager {
             servers_dir: Some(servers_dir.clone()),
             ..Default::default()

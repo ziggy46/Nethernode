@@ -71,6 +71,7 @@ async fn harness_with(settings: UploadSettings) -> Harness {
             nn_uploads::TempStore::open(&temp).unwrap(),
         )),
         content: Default::default(),
+        notifier: Default::default(),
         servers: ServerManager {
             servers_dir: Some(servers_dir.clone()),
             ..Default::default()

@@ -38,6 +38,7 @@ async fn harness() -> (Router, String, String) {
         players: Default::default(),
         uploads: Default::default(),
         content: Default::default(),
+        notifier: Default::default(),
         servers: ServerManager::default(),
     });
     let owner = auth

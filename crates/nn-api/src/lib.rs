@@ -37,6 +37,7 @@ mod events;
 mod files;
 mod files_http;
 mod middleware;
+pub mod notify;
 mod observability;
 pub mod players;
 pub mod proxy_runtime;
@@ -111,6 +112,8 @@ pub struct AppState {
     pub uploads: Arc<uploads::Uploads>,
     /// Versions, modpacks, and mods.
     pub content: Arc<content::Content>,
+    /// Discord notifications.
+    pub notifier: Arc<notify::Notifier>,
 }
 
 /// Server lifecycle management, which needs Docker.

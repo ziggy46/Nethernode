@@ -64,6 +64,7 @@ const LABELS: Record<string, string> = {
   "proxy.route.upsert": "Saved a route",
   "proxy.route.delete": "Deleted a route",
   "settings.curseforge_key": "Changed the CurseForge key",
+  "settings.notifications": "Changed Discord notifications",
 };
 
 export function actionLabel(action: string): string {

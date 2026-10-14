@@ -26,9 +26,14 @@ async fn app() -> (Router, String) {
         events.clone(),
         nn_proxy::Limits::default(),
     );
-    let key = SecretBox::from_hex_key(&"ab".repeat(32)).unwrap();
+    let key = Arc::new(SecretBox::from_hex_key(&"ab".repeat(32)).unwrap());
     let auth =
-        Arc::new(Auth::new(store.clone(), AuthConfig::default()).with_secrets(Some(Arc::new(key))));
+        Arc::new(Auth::new(store.clone(), AuthConfig::default()).with_secrets(Some(key.clone())));
+    let content = Arc::new(nn_api::content::Content::new(
+        nn_catalog::Catalog::new(None, Default::default()),
+        Some(key),
+        None,
+    ));
     let (_shutdown, shutdown_rx) = tokio::sync::watch::channel(false);
     let app = nn_api::router(AppState {
         proxy: Arc::new(ProxyRuntime::new(proxy, store.clone(), true)),
@@ -39,7 +44,8 @@ async fn app() -> (Router, String) {
         shutdown: shutdown_rx,
         players: Default::default(),
         uploads: Default::default(),
-        content: Default::default(),
+        content,
+        notifier: Default::default(),
         servers: Default::default(),
     });
     let owner = auth
@@ -405,4 +411,87 @@ async fn the_audit_log_is_filtered_paged_and_for_admins() {
         activity.get("items").is_none(),
         "no server activity yet, and account changes aren't shown: {activity}"
     );
+}
+
+#[tokio::test]
+async fn discord_notifications_are_configured_by_admins() {
+    let (app, owner) = app().await;
+    let mut owner = Client::new(&app, Some(owner));
+    let fresh = owner
+        .ok("NotificationService/GetNotifications", json!({}))
+        .await;
+    assert!(fresh.get("webhookHint").is_none());
+    assert_eq!(fresh["events"]["crash"], true, "crashes are on by default");
+
+    let (status, body) = owner
+        .call(
+            "NotificationService/UpdateNotifications",
+            json!({ "webhookUrl": "https://evil.example/api/webhooks/1/x", "events": {} }),
+        )
+        .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
+    owner
+        .ok(
+            "NotificationService/UpdateNotifications",
+            json!({
+                "webhookUrl": "https://discord.com/api/webhooks/123/secret-token-abcdef",
+                "events": { "startStop": true, "playerJoin": true }
+            }),
+        )
+        .await;
+    let saved = owner
+        .ok("NotificationService/GetNotifications", json!({}))
+        .await;
+    assert_eq!(saved["webhookHint"], "…abcdef");
+    assert_eq!(saved["events"]["playerJoin"], true);
+    assert!(saved["events"].get("crash").is_none(), "turned off");
+    // Leaving the URL out keeps it.
+    owner
+        .ok(
+            "NotificationService/UpdateNotifications",
+            json!({ "events": { "crash": true } }),
+        )
+        .await;
+    let kept = owner
+        .ok("NotificationService/GetNotifications", json!({}))
+        .await;
+    assert_eq!(kept["webhookHint"], "…abcdef");
+    owner
+        .ok(
+            "NotificationService/UpdateNotifications",
+            json!({ "webhookUrl": "", "events": {} }),
+        )
+        .await;
+    let cleared = owner
+        .ok("NotificationService/GetNotifications", json!({}))
+        .await;
+    assert!(cleared.get("webhookHint").is_none());
+    let (status, _) = owner
+        .call("NotificationService/SendTestNotification", json!({}))
+        .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST, "no webhook to test");
+
+    let created = owner
+        .ok(
+            "UserService/CreateUser",
+            json!({ "username": "viewer", "role": "ROLE_VIEWER" }),
+        )
+        .await;
+    let mut viewer = Client::new(&app, None);
+    viewer
+        .ok(
+            "AuthService/Login",
+            json!({ "username": "viewer", "password": created["password"] }),
+        )
+        .await;
+    viewer
+        .ok(
+            "AccountService/ChangePassword",
+            json!({ "currentPassword": created["password"], "newPassword": "only looking here" }),
+        )
+        .await;
+    let (status, _) = viewer
+        .call("NotificationService/GetNotifications", json!({}))
+        .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
 }

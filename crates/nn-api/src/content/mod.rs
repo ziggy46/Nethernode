@@ -68,6 +68,11 @@ impl Content {
         self.cache_dir.as_ref().map(|d| d.join("icons"))
     }
 
+    /// The data key, for sealing other secrets.
+    pub(crate) fn secrets(&self) -> Option<&nn_auth::SecretBox> {
+        self.secrets.as_deref()
+    }
+
     /// The CurseForge API key, if one is set.
     pub fn curseforge_key(&self) -> Option<String> {
         self.curseforge_key

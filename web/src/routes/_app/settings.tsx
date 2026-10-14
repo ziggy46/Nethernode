@@ -14,6 +14,7 @@ import { useDocumentTitle } from "@/lib/use-document-title";
 export const Route = createFileRoute("/_app/settings")({ component: SettingsPage });
 
 const SecurityPanel = lazy(() => import("@/features/account/security-panel"));
+const DiscordPanel = lazy(() => import("@/features/notifications/discord-panel"));
 
 const CurseForgeKey = lazy(() =>
   import("@/features/catalog/curseforge-key").then((m) => ({ default: m.CurseForgeKey })),
@@ -64,6 +65,12 @@ function SettingsPage() {
         <Suspense fallback={<div className="h-48 animate-pulse rounded-lg bg-surface-subtle" />}>
           <SecurityPanel />
         </Suspense>
+
+        {canManage && (
+          <Suspense fallback={<div className="h-48 animate-pulse rounded-lg bg-surface-subtle" />}>
+            <DiscordPanel />
+          </Suspense>
+        )}
 
         {canManage && (
           <Panel>

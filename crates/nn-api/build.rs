@@ -16,6 +16,7 @@ fn main() {
             format!("{proto_root}/nethernode/v1/users.proto"),
             format!("{proto_root}/nethernode/v1/account.proto"),
             format!("{proto_root}/nethernode/v1/audit.proto"),
+            format!("{proto_root}/nethernode/v1/notifications.proto"),
             format!("{proto_root}/nethernode/v1/schedules.proto"),
         ])
         .includes(&[proto_root])
