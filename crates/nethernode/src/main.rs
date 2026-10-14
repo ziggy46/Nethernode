@@ -343,6 +343,16 @@ async fn reset_admin(config: Config, username: Option<String>) -> Result<()> {
     )?;
     writeln!(out, "New password: {password}")?;
     writeln!(out, "All of this account's sessions have been signed out.")?;
+    if user.totp_enabled {
+        writeln!(
+            out,
+            "Two-factor sign-in has been turned off; set it up again after signing in."
+        )?;
+    }
+    writeln!(
+        out,
+        "You'll be asked to choose a new password when you sign in."
+    )?;
     Ok(())
 }
 

@@ -826,8 +826,10 @@ impl Auth {
         Ok(())
     }
 
-    /// Sets a new random password for an owner account and signs out all of
-    /// its sessions. Used by the `reset-admin` CLI command.
+    /// Sets a new random password for an owner account, turns off its
+    /// two-factor sign-in (the phone may be what was lost), and signs out
+    /// all of its sessions. Used by the `reset-admin` CLI command, which
+    /// needs access to the host. The password must be changed at sign-in.
     ///
     /// With no `username`, resets the first owner. Returns the user and the
     /// new plaintext password, which is shown once and never stored.
@@ -842,9 +844,10 @@ impl Auth {
         let new_password = token::generate_password();
         let hash = hash_blocking(new_password.clone()).await?;
         self.store.set_password(&user.id, &hash, true).await?;
+        self.store.disable_totp(&user.id).await?;
         self.store.delete_sessions_for_user(&user.id).await?;
         self.limiter.record_success(&user.username);
-        let details = json!({ "via": "cli" });
+        let details = json!({ "via": "cli", "two_factor_was_on": user.totp_enabled });
         self.audit(
             None,
             "auth.reset_password",
@@ -1211,6 +1214,25 @@ mod tests {
         assert!(
             err.to_string().contains("expired") || matches!(err, AuthError::RateLimited { .. })
         );
+    }
+
+    #[tokio::test]
+    async fn the_command_line_reset_turns_two_factor_off() {
+        let auth = auth_with_key().await;
+        let owner = auth.setup("admin", PASSWORD, CLIENT).await.unwrap().user;
+        let enrollment = auth.begin_totp(&owner).await.unwrap();
+        auth.confirm_totp(&owner.id, &current_code(&enrollment.secret), CLIENT)
+            .await
+            .unwrap();
+        let (user, password) = auth.reset_owner_password(None).await.unwrap();
+        assert!(user.totp_enabled, "reports what it was before");
+        let issued = auth
+            .login("admin", &password, CLIENT)
+            .await
+            .unwrap()
+            .session()
+            .expect("no second factor after a reset");
+        assert!(issued.user.must_change_password && !issued.user.totp_enabled);
     }
 
     #[tokio::test]
