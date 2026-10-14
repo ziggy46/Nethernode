@@ -7,9 +7,9 @@
 *.db
 *.db-shm
 *.db-wal
-data/
-backups/
-tmp/
+/data/
+/backups/
+/tmp/
 
 # Rust
 /target/
@@ -20,6 +20,7 @@ node_modules/
 /web/test-results/
 /web/playwright-report/
 *.tsbuildinfo
+/web/.tanstack/
 
 # Editors / OS
 .DS_Store
