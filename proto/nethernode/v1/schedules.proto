@@ -52,6 +52,8 @@ message Schedule {
   optional int64 next_run_ms = 13;
   optional int64 last_run_ms = 14;
   string last_result = 15;
+  // When it runs, in words ("At 04:00").
+  string description = 16;
 }
 
 message ListSchedulesRequest {

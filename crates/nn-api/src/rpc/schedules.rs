@@ -74,6 +74,9 @@ fn proto_action(a: &str) -> pb::ScheduleAction {
 fn proto_schedule(s: Schedule, names: &HashMap<String, String>) -> pb::Schedule {
     let payload: Payload = serde_json::from_str(&s.payload_json).unwrap_or_default();
     pb::Schedule {
+        description: parse_cron(&s.cron)
+            .map(|c| c.describe())
+            .unwrap_or_default(),
         server_name: names.get(&s.server_id).cloned().unwrap_or_default(),
         action: proto_action(&s.action).into(),
         text: payload.text,

@@ -14,6 +14,8 @@ use crate::backups::{self, Kind};
 const TICK: Duration = Duration::from_secs(5);
 /// A run this late is "missed" (NetherNode was down), not just a slow tick.
 const LATE: i64 = 2 * 60 * 1000;
+/// How late a countdown warning can still be shown.
+const WARN_WINDOW: i64 = 2 * TICK.as_millis() as i64;
 
 /// Starts the runner.
 pub fn spawn(state: AppState) {
@@ -63,7 +65,13 @@ async fn check(
         if matches!(schedule.action.as_str(), "restart" | "stop") {
             for &minutes in &payload.warn_minutes {
                 let at = next - i64::from(minutes) * 60_000;
-                if now >= at && warned.insert((schedule.id.clone(), next, minutes)) {
+                // A warning whose moment has long passed (the schedule was just
+                // made, or NetherNode was down) is marked sent but not shown,
+                // so players never get a burst of stale countdowns.
+                if now >= at
+                    && warned.insert((schedule.id.clone(), next, minutes))
+                    && now - at < WARN_WINDOW
+                {
                     let _ = broadcast(
                         state,
                         &schedule.server_id,
@@ -79,7 +87,14 @@ async fn check(
     // Due. Work out the following run first, so a slow action can't run twice.
     let following = upcoming(&schedule, now);
     let missed = now - next > LATE;
-    if missed && matches!(schedule.action.as_str(), "command" | "broadcast") {
+    // Missed messages are stale, and a missed restart or stop would kick
+    // players without its countdown; backups and starts still catch up.
+    if missed
+        && matches!(
+            schedule.action.as_str(),
+            "command" | "broadcast" | "restart" | "stop"
+        )
+    {
         let _ = store
             .record_schedule_run(
                 &schedule.id,

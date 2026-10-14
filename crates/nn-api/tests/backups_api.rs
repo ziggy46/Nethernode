@@ -328,6 +328,12 @@ async fn schedules_are_checked_and_previewed() {
         .await;
     let id = list["schedules"][0]["id"].as_str().unwrap().to_owned();
     assert_eq!(list["schedules"][0]["serverName"], "SMP");
+    assert!(
+        list["schedules"][0]["description"]
+            .as_str()
+            .unwrap()
+            .contains("04:00")
+    );
     let (status, _) = h
         .call("ScheduleService", "DeleteSchedule", json!({ "id": id }))
         .await;

@@ -25,15 +25,43 @@ import {
 } from "@/components/page";
 import { ResourceMeter } from "@/components/resource-meter";
 import { Button } from "@/components/ui/button";
+import { backupsQuery } from "@/features/backups/api";
 import { DockerNotice, useDockerAvailable } from "@/features/servers/docker-notice";
 import { gb } from "@/features/servers/format";
 import { hostQuery, type LiveStats, liveStatsKey, serversQuery } from "@/features/servers/queries";
 import { ServerGrid } from "@/features/servers/server-grid";
+import { bytes } from "@/features/uploads/format";
+import { BackupStatus } from "@/gen/nethernode/v1/backups_pb";
 import { ServerStatus, type Server as ServerT } from "@/gen/nethernode/v1/servers_pb";
 import { errorMessage } from "@/lib/api";
 import { healthQuery } from "@/lib/health";
 import { useCanManage } from "@/lib/session";
+import { ago } from "@/lib/time";
 import { useDocumentTitle } from "@/lib/use-document-title";
+import { useNow } from "@/lib/use-now";
+
+/** The newest finished backup, from any server. */
+function LatestBackup() {
+  const backups = useQuery(backupsQuery());
+  const now = useNow();
+  const latest = backups.data?.backups.find((b) => b.status === BackupStatus.READY);
+  return (
+    <MetricCard
+      label="Latest backup"
+      icon={<ShieldCheck />}
+      value={latest ? ago(latest.createdAtMs, now) : backups.data ? "None" : "—"}
+      note={
+        backups.isError
+          ? "Couldn't check backups"
+          : !backups.data
+            ? "Checking backups…"
+            : latest
+              ? `${latest.serverName} · ${bytes(Number(latest.sizeBytes))}`
+              : "Back up from the Backups page"
+      }
+    />
+  );
+}
 
 /** Live samples for every running server, from the event stream. */
 function useLiveTotals(servers: ServerT[]) {
@@ -147,12 +175,7 @@ export function OverviewPage() {
               : "Host memory unknown"
           }
         />
-        <MetricCard
-          label="Latest backup"
-          icon={<ShieldCheck />}
-          value="None"
-          note="Backups arrive in a later update"
-        />
+        <LatestBackup />
       </div>
 
       <div className="grid grid-cols-[minmax(0,1fr)_var(--nn-right-rail-width)] gap-6 below-xl:gap-[18px] below-lg:grid-cols-1 below-md:gap-[22px]">

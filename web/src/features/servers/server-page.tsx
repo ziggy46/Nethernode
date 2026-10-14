@@ -20,14 +20,19 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { EmptyState, Footer, Panel, PanelHeader } from "@/components/page";
 import { ServerStatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
+import { BackupStatus } from "@/gen/nethernode/v1/backups_pb";
 import { type Server, ServerStatus } from "@/gen/nethernode/v1/servers_pb";
 import { errorMessage } from "@/lib/api";
 import { healthQuery } from "@/lib/health";
 import { useCanManage } from "@/lib/session";
+import { ago } from "@/lib/time";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { useNow } from "@/lib/use-now";
 import { cn } from "@/lib/utils";
 
+import { backupsQuery } from "../backups/api";
+import { BackupsPanel } from "../backups/backups-panel";
+import { useBackUpNow } from "../backups/use-back-up";
 import { ConsolePanel } from "../console/console-panel";
 import { FilesPanel } from "../files/files-panel";
 import { hasMods, ModsPanel } from "../mods/mods-panel";
@@ -143,11 +148,7 @@ export function ServerPage({ id }: { id: string }) {
           <ConfigurationTab server={s} />
         </Tabs.Content>
         <Tabs.Content value="backups">
-          <div className="rounded-lg border border-divider border-dashed bg-surface-subtle">
-            <EmptyState icon={<History />} title="No backups yet">
-              World snapshots and backup schedules arrive in a later update.
-            </EmptyState>
-          </div>
+          <BackupsPanel server={s} />
         </Tabs.Content>
       </Tabs.Root>
       <Footer version={health.data?.version} />
@@ -213,18 +214,44 @@ function ConsoleTab({ server }: { server: Server }) {
 
       <aside className="flex flex-col gap-[18px] below-lg:grid below-lg:grid-cols-2 below-lg:gap-[15px] below-sm:grid-cols-1">
         <Controls server={server} />
-        <Panel>
-          <PanelHeader title="Protect your world" icon={<ShieldCheck />} />
-          <p className="text-meta text-text-muted">
-            Snapshots of this server's world and configuration arrive in a later update.
-          </p>
-          <Button className="mt-2.5 w-full" disabled>
-            <History />
-            Create backup
-          </Button>
-        </Panel>
+        <ProtectPanel server={server} />
       </aside>
     </div>
+  );
+}
+
+function ProtectPanel({ server }: { server: Server }) {
+  const canManage = useCanManage();
+  const backups = useQuery(backupsQuery(server.id));
+  const backUp = useBackUpNow();
+  const now = useNow();
+  const latest = backups.data?.backups.find((b) => b.status === BackupStatus.READY);
+  const creating = backups.data?.backups.some((b) => b.status === BackupStatus.CREATING);
+  return (
+    <Panel>
+      <PanelHeader title="Protect your world" icon={<ShieldCheck />} />
+      <p className="text-meta text-text-muted">
+        {backups.isError
+          ? "Couldn't check this server's backups."
+          : backups.isPending
+            ? "Checking backups…"
+            : creating
+              ? "A backup is being made now."
+              : latest
+                ? `Last backup ${ago(latest.createdAtMs, now)}.`
+                : "No backups yet. A backup captures the world, mods, and configuration."}
+      </p>
+      {canManage && (
+        <Button
+          className="mt-2.5 w-full"
+          disabled={backUp.isPending || creating}
+          onClick={() => backUp.mutate(server)}
+        >
+          <History />
+          Create backup
+        </Button>
+      )}
+    </Panel>
   );
 }
 

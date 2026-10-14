@@ -17,7 +17,7 @@ const INVALIDATES: Record<string, string[][]> = {
   players_changed: [["players"]],
   proxy_connection_closed: [["proxy", "connections"]],
   proxy_listener_changed: [["proxy", "listeners"]],
-  server_status_changed: [["servers"], ["proxy", "routes"], ["players"]],
+  server_status_changed: [["servers"], ["proxy", "routes"], ["players"], ["schedules"]],
   server_players: [["servers"]],
   server_operation_failed: [["servers"]],
 };
@@ -95,6 +95,10 @@ function applyData(client: QueryClient, event: DataEvent) {
       jobFinished(event.job_id, { message: event.message, failed: event.failed });
       void client.invalidateQueries({ queryKey: ["files", event.server_id] });
       void client.invalidateQueries({ queryKey: ["mods", event.server_id] });
+      if (event.kind === "backup" || event.kind === "restore") {
+        void client.invalidateQueries({ queryKey: ["backups"] });
+        void client.invalidateQueries({ queryKey: ["schedules"] });
+      }
       break;
     case "upload_finished":
       uploadFinished(event.upload_id, {
