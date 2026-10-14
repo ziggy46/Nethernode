@@ -8,6 +8,7 @@
 
 mod adopt;
 mod archive;
+pub mod backup;
 mod error;
 mod owner;
 mod path;
