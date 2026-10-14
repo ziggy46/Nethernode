@@ -402,9 +402,11 @@ impl pb::ModService for ModRpc {
             let Some(project) = projects.get(&current.project_id) else {
                 continue;
             };
+            // A stable mod is only offered stable updates.
             let newer = latest
                 .get(&hash)
                 .filter(|v| v.id != current.id && v.published_ms > current.published_ms)
+                .filter(|v| v.channel == "release" || current.channel != "release")
                 .cloned();
             mods.push(pb::ModUpdate {
                 filename,

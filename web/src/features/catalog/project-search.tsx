@@ -45,7 +45,7 @@ export function ProjectIcon({
       height={size}
       loading="lazy"
       onError={() => setFailed(true)}
-      className={cn("shrink-0 rounded-md object-cover", className)}
+      className={cn("shrink-0 rounded-md bg-surface-subtle object-cover", className)}
       style={{ width: size, height: size }}
     />
   );
