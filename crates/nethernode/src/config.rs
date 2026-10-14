@@ -107,7 +107,7 @@ impl DataConfig {
 pub struct DockerConfig {
     /// Docker Engine endpoint.
     pub socket: String,
-    /// First host port (127.0.0.1) handed to servers for game and RCON.
+    /// First host port handed to servers for game and RCON.
     pub port_range_start: u16,
     /// Last host port handed to servers.
     pub port_range_end: u16,
@@ -115,6 +115,14 @@ pub struct DockerConfig {
     pub memory_overhead_percent: u32,
     /// Container memory beyond each server's Java heap, at least, in MiB.
     pub memory_overhead_min_mb: u32,
+    /// Where server ports are published and dialed. Loopback when NetherNode
+    /// shares the host's network (installed directly, or a container with
+    /// host networking); the Docker bridge gateway, usually 172.17.0.1, when
+    /// it runs in a bridge-networked container.
+    pub backend_ip: std::net::IpAddr,
+    /// The data folder's path on the Docker host, when NetherNode runs in a
+    /// container and can't work it out itself.
+    pub host_data_dir: Option<PathBuf>,
 }
 
 impl Default for DockerConfig {
@@ -125,6 +133,8 @@ impl Default for DockerConfig {
             port_range_end: 30999,
             memory_overhead_percent: 25,
             memory_overhead_min_mb: 1024,
+            backend_ip: std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
+            host_data_dir: None,
         }
     }
 }
@@ -257,7 +267,11 @@ mod tests {
             )?;
             jail.set_env("NETHERNODE_HTTP__BIND", "127.0.0.1:9100");
             jail.set_env("NETHERNODE_DATA__DIR", "/srv/nn");
+            jail.set_env("NETHERNODE_DOCKER__BACKEND_IP", "172.17.0.1");
+            jail.set_env("NETHERNODE_DOCKER__HOST_DATA_DIR", "/srv/host/nn");
             let config = Config::load(Path::new("nethernode.toml")).map_err(|e| *e)?;
+            assert_eq!(config.docker.backend_ip.to_string(), "172.17.0.1");
+            assert_eq!(config.docker.host_data_dir, Some(PathBuf::from("/srv/host/nn")));
             assert_eq!(config.http.bind.to_string(), "127.0.0.1:9100");
             assert_eq!(config.http.secure_cookies, SecureCookiesSetting::Always);
             assert!(!config.proxy.enabled);

@@ -57,6 +57,13 @@ pub struct OrchestratorConfig {
     pub player_poll: Duration,
     /// User and group servers run as. See [`default_run_as`].
     pub run_as: Option<(u32, u32)>,
+    /// Where `servers_dir` is on the Docker host, for bind mounts. `None`
+    /// finds it at connect time (see [`crate::host_path`]).
+    pub host_servers_dir: Option<PathBuf>,
+    /// Address server ports are published on, and dialed at: loopback when
+    /// NetherNode shares the host's network, the Docker bridge gateway
+    /// (e.g. 172.17.0.1) when it runs in a bridge-networked container.
+    pub backend_ip: std::net::IpAddr,
 }
 
 impl OrchestratorConfig {
@@ -71,6 +78,8 @@ impl OrchestratorConfig {
             default_idle_minutes: 10,
             player_poll: Duration::from_secs(15),
             run_as: default_run_as(),
+            host_servers_dir: None,
+            backend_ip: std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
         }
     }
 }
@@ -171,11 +180,30 @@ impl Orchestrator {
         store: Store,
         events: EventBus,
         secrets: Arc<SecretBox>,
-        config: OrchestratorConfig,
+        mut config: OrchestratorConfig,
     ) -> Result<Arc<Self>> {
         let docker = Docker::connect_with_socket(socket, 120, bollard::API_DEFAULT_VERSION)?;
         docker.ping().await?;
         std::fs::create_dir_all(&config.servers_dir)?;
+        if config.host_servers_dir.is_none() {
+            match crate::host_path::detect(&docker, &config.servers_dir).await {
+                crate::host_path::HostPath::Same => {}
+                crate::host_path::HostPath::Translated(host) => {
+                    tracing::info!(
+                        inside = %config.servers_dir.display(),
+                        host = %host.display(),
+                        "running in a container; server folders are mounted from the host path"
+                    );
+                    config.host_servers_dir = Some(host);
+                }
+                crate::host_path::HostPath::Unknown(why) => tracing::warn!(
+                    reason = %why,
+                    path = %config.servers_dir.display(),
+                    "running in a container but couldn't find the data folder's host path; servers \
+                     will only start if the host path is the same (set docker.host_data_dir to fix)"
+                ),
+            }
+        }
         Ok(Arc::new(Self {
             docker,
             store,
@@ -212,6 +240,11 @@ impl Orchestrator {
     /// Where servers' folders are.
     pub fn servers_dir(&self) -> &std::path::Path {
         &self.config.servers_dir
+    }
+
+    /// Where server ports are published and dialed.
+    pub fn backend_ip(&self) -> std::net::IpAddr {
+        self.config.backend_ip
     }
 
     pub(crate) fn runtime(&self, id: &str) -> Arc<Runtime> {
@@ -389,7 +422,8 @@ impl Orchestrator {
             let slug = self.unique_slug(name).await?;
             let used = self.store.used_ports().await?;
             let range = self.config.port_range.clone();
-            let ports = ports::allocate(range.clone(), &used, 2, ports::is_free_on_localhost)
+            let ip = self.config.backend_ip;
+            let ports = ports::allocate(range.clone(), &used, 2, |p| ports::is_free(ip, p))
                 .ok_or_else(|| {
                     OrchestratorError::NoPorts(format!("{}–{}", range.start(), range.end()))
                 })?;
@@ -563,7 +597,12 @@ impl Orchestrator {
             max_players: server.max_players,
             extra_env: &extra_env,
             run_as: self.config.run_as,
-            servers_dir: &self.config.servers_dir,
+            servers_dir: self
+                .config
+                .host_servers_dir
+                .as_deref()
+                .unwrap_or(&self.config.servers_dir),
+            publish_ip: self.config.backend_ip,
             modpack: modpack.as_ref(),
             curseforge_api_key: curseforge_key.as_deref(),
         }))
@@ -629,7 +668,8 @@ impl Orchestrator {
         let _guard = self.create_lock.lock().await;
         let used = self.store.used_ports().await?;
         let range = self.config.port_range.clone();
-        let port = ports::allocate(range.clone(), &used, 1, ports::is_free_on_localhost)
+        let ip = self.config.backend_ip;
+        let port = ports::allocate(range.clone(), &used, 1, |p| ports::is_free(ip, p))
             .and_then(|p| p.first().copied())
             .ok_or_else(|| {
                 OrchestratorError::NoPorts(format!("{}–{}", range.start(), range.end()))
@@ -706,7 +746,7 @@ impl Orchestrator {
         let port =
             u16::try_from(port).map_err(|_| OrchestratorError::InvalidInput("bad port".into()))?;
         Ok(Some((
-            std::net::SocketAddr::from(([127, 0, 0, 1], port)),
+            std::net::SocketAddr::new(self.config.backend_ip, port),
             self.secrets.open(sealed)?,
         )))
     }
@@ -990,9 +1030,13 @@ impl Orchestrator {
             .as_deref()
             .ok_or("no RCON password")?;
         let password = self.secrets.open(sealed).map_err(|e| e.to_string())?;
-        nn_players::Rcon::connect(("127.0.0.1", port), &password, Duration::from_secs(5))
-            .await
-            .map_err(|e| e.to_string())
+        nn_players::Rcon::connect(
+            std::net::SocketAddr::new(self.config.backend_ip, port),
+            &password,
+            Duration::from_secs(5),
+        )
+        .await
+        .map_err(|e| e.to_string())
     }
 
     /// Runs a console command over RCON and returns its output (often

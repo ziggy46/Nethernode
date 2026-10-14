@@ -21,7 +21,17 @@ pub fn allocate(
 
 /// Whether nothing on this host is listening on `127.0.0.1:port`.
 pub fn is_free_on_localhost(port: u16) -> bool {
-    std::net::TcpListener::bind(("127.0.0.1", port)).is_ok()
+    is_free(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST), port)
+}
+
+/// Whether nothing is listening on `ip:port`. An address that isn't this
+/// machine's (the Docker host's bridge gateway, seen from a container)
+/// can't be checked; Docker refuses a taken port when publishing anyway.
+pub fn is_free(ip: std::net::IpAddr, port: u16) -> bool {
+    match std::net::TcpListener::bind((ip, port)) {
+        Ok(_) => true,
+        Err(e) => e.kind() == std::io::ErrorKind::AddrNotAvailable,
+    }
 }
 
 #[cfg(test)]

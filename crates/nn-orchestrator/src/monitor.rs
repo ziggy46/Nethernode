@@ -82,7 +82,7 @@ async fn watch_health(orch: Arc<Orchestrator>, id: String, adopted: bool) {
     let Ok(port) = u16::try_from(server.internal_port) else {
         return;
     };
-    let addr = SocketAddr::from(([127, 0, 0, 1], port));
+    let addr = SocketAddr::new(orch.backend_ip(), port);
 
     // Readiness: first install can take minutes (downloading the server jar,
     // running the Forge installer), so there's no deadline; the container

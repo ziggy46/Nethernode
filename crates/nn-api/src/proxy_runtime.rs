@@ -18,6 +18,7 @@ pub struct ProxyRuntime {
     enabled: bool,
     // Serializes reloads so concurrent edits apply in order.
     reload_lock: Mutex<()>,
+    backend_ip: std::net::IpAddr,
 }
 
 impl ProxyRuntime {
@@ -29,7 +30,15 @@ impl ProxyRuntime {
             store,
             enabled,
             reload_lock: Mutex::new(()),
+            backend_ip: std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
         }
+    }
+
+    /// Dials servers at `ip` instead of loopback (see the `docker.backend_ip`
+    /// setting).
+    pub fn with_backend_ip(mut self, ip: std::net::IpAddr) -> Self {
+        self.backend_ip = ip;
+        self
     }
 
     /// The proxy.
@@ -90,7 +99,7 @@ impl ProxyRuntime {
             .filter_map(|s| {
                 let port = u16::try_from(s.internal_port).ok()?;
                 Some(BackendSpec {
-                    addr: SocketAddr::from(([127, 0, 0, 1], port)),
+                    addr: SocketAddr::new(self.backend_ip, port),
                     state: ServerState::from_status(&s.status),
                     server_id: s.id,
                     name: s.name,

@@ -223,11 +223,10 @@ async fn start_proxy(
     }
 
     let proxy = Proxy::new(hooks, events.clone(), Limits::default());
-    let runtime = Arc::new(ProxyRuntime::new(
-        proxy,
-        store.clone(),
-        config.proxy.enabled,
-    ));
+    let runtime = Arc::new(
+        ProxyRuntime::new(proxy, store.clone(), config.proxy.enabled)
+            .with_backend_ip(config.docker.backend_ip),
+    );
     for listener in runtime.reload().await? {
         if let ListenerState::Failed(error) = &listener.state {
             tracing::warn!(bind = %listener.spec.bind, %error, "proxy listener is not running; fix it in Proxy & routes");
@@ -271,6 +270,12 @@ async fn start_orchestrator(
     orch_config.port_range = config.docker.port_range_start..=config.docker.port_range_end;
     orch_config.memory_overhead_percent = config.docker.memory_overhead_percent;
     orch_config.memory_overhead_min_mb = config.docker.memory_overhead_min_mb;
+    orch_config.backend_ip = config.docker.backend_ip;
+    orch_config.host_servers_dir = config
+        .docker
+        .host_data_dir
+        .as_ref()
+        .map(|d| d.join("servers"));
     match Orchestrator::connect(
         &config.docker.socket,
         store.clone(),

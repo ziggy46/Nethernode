@@ -222,6 +222,8 @@ pub struct SpecInput<'a> {
     pub extra_env: &'a BTreeMap<String, String>,
     /// Host directory holding all servers' data (absolute).
     pub servers_dir: &'a Path,
+    /// Address game, RCON, and management ports are published on.
+    pub publish_ip: std::net::IpAddr,
     /// User and group the server runs as, so its files stay manageable by
     /// NetherNode; `None` keeps the image default.
     pub run_as: Option<(u32, u32)>,
@@ -327,22 +329,22 @@ pub fn build(input: &SpecInput<'_>) -> ContainerSpec {
         env.insert(var.into(), pin.into());
     }
 
-    let localhost = |port: u16| {
+    let publish = |port: u16| {
         Some(vec![PortBinding {
-            host_ip: Some("127.0.0.1".into()),
+            host_ip: Some(input.publish_ip.to_string()),
             host_port: Some(port.to_string()),
         }])
     };
     let mut port_bindings = HashMap::from([
-        (CONTAINER_GAME_PORT.to_owned(), localhost(input.game_port)),
-        (CONTAINER_RCON_PORT.to_owned(), localhost(input.rcon_port)),
+        (CONTAINER_GAME_PORT.to_owned(), publish(input.game_port)),
+        (CONTAINER_RCON_PORT.to_owned(), publish(input.rcon_port)),
     ]);
     let mut exposed = vec![
         CONTAINER_GAME_PORT.to_owned(),
         CONTAINER_RCON_PORT.to_owned(),
     ];
     if let Some(port) = input.mgmt_port {
-        port_bindings.insert(CONTAINER_MGMT_PORT.to_owned(), localhost(port));
+        port_bindings.insert(CONTAINER_MGMT_PORT.to_owned(), publish(port));
         exposed.push(CONTAINER_MGMT_PORT.to_owned());
     }
     let memory_bytes = memory_limit_mb_for(
@@ -443,6 +445,7 @@ mod tests {
             max_players: 20,
             extra_env: extra,
             servers_dir: dir,
+            publish_ip: std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
             run_as: None,
             modpack: None,
             curseforge_api_key: None,

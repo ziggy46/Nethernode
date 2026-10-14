@@ -6,6 +6,7 @@
 //! NetherNode restart, sleeps empty servers, and restarts crashed ones.
 
 mod error;
+pub mod host_path;
 pub mod java;
 mod lifecycle;
 mod monitor;
