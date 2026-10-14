@@ -50,7 +50,8 @@ enum Command {
     Serve,
     /// Apply database migrations and exit.
     Migrate,
-    /// Set a new random password for an owner account and sign out its sessions.
+    /// Set a new random password for an owner account, turn off its two-factor
+    /// sign-in, and sign out its sessions.
     ResetAdmin {
         /// Account to reset. Defaults to the first owner.
         #[arg(long)]
