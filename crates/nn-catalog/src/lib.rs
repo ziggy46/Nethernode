@@ -6,11 +6,17 @@
 //! down, older cached data is used rather than failing.
 
 mod cache;
+pub mod content;
+mod curseforge;
+mod modrinth;
 pub mod versions;
 
 use std::path::PathBuf;
 use std::time::Duration;
 
+pub use content::{
+    Platform, Project, ProjectKind, ProjectVersion, SearchPage, SearchQuery, VersionFile,
+};
 pub use versions::{LoaderVersion, McVersion, compare_versions};
 
 /// Identifies NetherNode to upstream APIs (Modrinth asks for this). No

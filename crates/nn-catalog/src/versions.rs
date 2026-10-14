@@ -216,7 +216,7 @@ impl Catalog {
     }
 }
 
-fn enc(segment: &str) -> String {
+pub(crate) fn enc(segment: &str) -> String {
     segment
         .bytes()
         .map(|b| {

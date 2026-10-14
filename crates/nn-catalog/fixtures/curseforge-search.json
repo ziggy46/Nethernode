@@ -1,0 +1,23 @@
+{
+  "data": [
+    {
+      "id": 285109,
+      "gameId": 432,
+      "name": "All the Mods 9",
+      "slug": "all-the-mods-9",
+      "links": { "websiteUrl": "https://www.curseforge.com/minecraft/modpacks/all-the-mods-9" },
+      "summary": "A kitchen-sink pack.",
+      "downloadCount": 12345678,
+      "authors": [{ "id": 1, "name": "ATMTeam" }],
+      "logo": { "thumbnailUrl": "https://media.forgecdn.net/avatars/thumbnails/1/2/256/256/a.png", "url": "https://media.forgecdn.net/avatars/1/2/a.png" },
+      "latestFilesIndexes": [
+        { "gameVersion": "1.20.1", "fileId": 5000001, "filename": "ATM9-0.3.5.zip", "releaseType": 1, "modLoader": 1 },
+        { "gameVersion": "1.20.1", "fileId": 5000000, "filename": "ATM9-0.3.4.zip", "releaseType": 1, "modLoader": 1 }
+      ],
+      "dateModified": "2026-09-01T10:00:00Z",
+      "classId": 4471,
+      "allowModDistribution": true
+    }
+  ],
+  "pagination": { "index": 0, "pageSize": 20, "resultCount": 1, "totalCount": 4321 }
+}

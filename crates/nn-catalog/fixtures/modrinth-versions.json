@@ -1,0 +1,102 @@
+[
+ {
+  "game_versions": [
+   "1.21.1"
+  ],
+  "loaders": [
+   "fabric"
+  ],
+  "environment": "client_and_server",
+  "id": "BpTjgzL8",
+  "project_id": "5FFgwNNP",
+  "author_id": "SZfGaTtq",
+  "featured": false,
+  "name": "Cobblemon Official Modpack [Fabric] 1.8.2",
+  "version_number": "1.8.2",
+  "changelog": "Updated to Cobblemon 1.8.2\n\nUpdated Mods:\n* Advanced Loot Info (ALI)\n* Balm\n* Bi",
+  "changelog_url": null,
+  "date_published": "2026-10-11T03:18:29.226421Z",
+  "downloads": 64661,
+  "version_type": "release",
+  "status": "listed",
+  "requested_status": null,
+  "files": [
+   {
+    "id": "cCVTtbEd",
+    "hashes": {
+     "sha512": "356d02d8846b83c2ba06ac44989304aa3de1d379d093bec3f90f08878a347c1d27fc57247123a1e2d6cfbd5d3675df487eb8e5d5351fab131f0af89134a5e122",
+     "sha1": "8a9fea4b6b83cf6a2799144f46ebb2325cd29e98"
+    },
+    "url": "https://cdn.modrinth.com/data/5FFgwNNP/versions/BpTjgzL8/Cobblemon%20Official%20Modpack%20%5BFabric%5D%201.8.2.mrpack",
+    "filename": "Cobblemon Official Modpack [Fabric] 1.8.2.mrpack",
+    "primary": true,
+    "size": 100855710,
+    "file_type": null
+   }
+  ],
+  "dependencies": [
+   {
+    "version_id": "iLFmg6WM",
+    "project_id": "yWSAtnfH",
+    "file_name": null,
+    "dependency_type": "embedded"
+   },
+   {
+    "version_id": "ubTNYZuL",
+    "project_id": "ZcR9weSm",
+    "file_name": null,
+    "dependency_type": "embedded"
+   }
+  ]
+ },
+ {
+  "game_versions": [
+   "1.21.1"
+  ],
+  "loaders": [
+   "fabric"
+  ],
+  "environment": "client_and_server",
+  "id": "Cqimd3JM",
+  "project_id": "5FFgwNNP",
+  "author_id": "SZfGaTtq",
+  "featured": false,
+  "name": "Cobblemon Official Modpack [Fabric] 1.8.1",
+  "version_number": "1.8.1",
+  "changelog": "Updated to Cobblemon 1.8.1\n\nUpdated Mods:\n* Just Enough Items (JEI)\n* Xaero's Mi",
+  "changelog_url": null,
+  "date_published": "2026-09-13T00:36:09.749124Z",
+  "downloads": 537960,
+  "version_type": "release",
+  "status": "listed",
+  "requested_status": null,
+  "files": [
+   {
+    "id": "EZDwpcpw",
+    "hashes": {
+     "sha512": "ae2429fd6ffd7ef00f19e0f8fa0121e2f24c81bd73786ae03c2b0337e3d99b916a10017b6f4aea145bcfa17562330d2e69e5c1a2caf623fa95b8e9cfb48ca928",
+     "sha1": "d889988c972796bc991c69ce1a7e971bf1c17559"
+    },
+    "url": "https://cdn.modrinth.com/data/5FFgwNNP/versions/Cqimd3JM/Cobblemon%20Modpack%20%5BFabric%5D%201.8.1.mrpack",
+    "filename": "Cobblemon Modpack [Fabric] 1.8.1.mrpack",
+    "primary": true,
+    "size": 100909813,
+    "file_type": null
+   }
+  ],
+  "dependencies": [
+   {
+    "version_id": "ubTNYZuL",
+    "project_id": "ZcR9weSm",
+    "file_name": null,
+    "dependency_type": "embedded"
+   },
+   {
+    "version_id": "kpkjWpa5",
+    "project_id": "uy4Cnpcm",
+    "file_name": null,
+    "dependency_type": "embedded"
+   }
+  ]
+ }
+]

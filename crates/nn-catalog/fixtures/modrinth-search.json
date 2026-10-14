@@ -1,0 +1,129 @@
+{
+ "hits": [
+  {
+   "project_id": "1KVo5zza",
+   "project_type": "modpack",
+   "all_project_types": [
+    "modpack"
+   ],
+   "slug": "fabulously-optimized",
+   "author": "robotkoer",
+   "author_id": "2avTeeAE",
+   "organization": "Fabulously Optimized",
+   "organization_id": "d8z9840y",
+   "title": "Fabulously Optimized",
+   "description": "Beautiful graphics, speedy performance and familiar features in a simple package. Wilderness Bound beta!",
+   "categories": [
+    "fabric",
+    "lightweight",
+    "multiplayer",
+    "optimization"
+   ],
+   "display_categories": [
+    "lightweight",
+    "multiplayer",
+    "optimization"
+   ],
+   "versions": [
+    "1.16.5",
+    "1.17.1",
+    "1.18.1",
+    "1.18.2",
+    "1.19",
+    "1.19.1",
+    "1.19.2",
+    "1.19.3",
+    "1.19.4",
+    "1.20",
+    "1.20.1",
+    "1.20.2",
+    "1.20.3",
+    "1.20.4",
+    "1.20.5",
+    "1.20.6",
+    "1.21",
+    "1.21.1",
+    "1.21.2",
+    "1.21.3",
+    "1.21.4",
+    "1.21.5",
+    "1.21.6",
+    "1.21.7",
+    "1.21.8",
+    "1.21.9",
+    "1.21.10",
+    "1.21.11",
+    "26.1",
+    "26.1.1",
+    "26.1.2",
+    "26.2",
+    "26.3"
+   ],
+   "downloads": 18569981,
+   "follows": 4960,
+   "icon_url": "https://cdn.modrinth.com/data/1KVo5zza/d8152911f8fd5d7e9a8c499fe89045af81fe816e_96.webp",
+   "date_created": "2022-02-10T06:28:19.045034+00:00",
+   "date_modified": "2026-10-11T12:00:33.020922+00:00",
+   "latest_version": "D35n5vLL",
+   "license": "BSD-3-Clause",
+   "client_side": "required",
+   "server_side": "unsupported",
+   "environment": [
+    "client_only"
+   ],
+   "disclosure_types": [],
+   "gallery": [],
+   "featured_gallery": null,
+   "color": 13813933
+  },
+  {
+   "project_id": "5FFgwNNP",
+   "project_type": "modpack",
+   "all_project_types": [
+    "modpack"
+   ],
+   "slug": "cobblemon-fabric",
+   "author": "CobbledStudios",
+   "author_id": "TKyBPHpN",
+   "organization": "Cobbled Studios",
+   "organization_id": "xDVugH2u",
+   "title": "Cobblemon Official Modpack [Fabric]",
+   "description": "The official modpack of the Cobblemon mod, for Fabric!",
+   "categories": [
+    "adventure",
+    "fabric",
+    "lightweight",
+    "multiplayer",
+    "optimization"
+   ],
+   "display_categories": [
+    "adventure",
+    "lightweight",
+    "multiplayer"
+   ],
+   "versions": [
+    "1.20.1",
+    "1.21.1"
+   ],
+   "downloads": 11259440,
+   "follows": 2699,
+   "icon_url": "https://cdn.modrinth.com/data/5FFgwNNP/e7f9ee2e9d361623847853fe2ddce42f519ee64f.png",
+   "date_created": "2023-02-09T23:43:12.944222+00:00",
+   "date_modified": "2026-10-11T03:18:23.240098+00:00",
+   "latest_version": "BpTjgzL8",
+   "license": "MPL-2.0",
+   "client_side": "required",
+   "server_side": "required",
+   "environment": [
+    "client_and_server"
+   ],
+   "disclosure_types": [],
+   "gallery": [],
+   "featured_gallery": null,
+   "color": 3415591
+  }
+ ],
+ "offset": 0,
+ "limit": 2,
+ "total_hits": 13449
+}

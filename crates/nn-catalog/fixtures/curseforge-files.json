@@ -1,0 +1,32 @@
+{
+  "data": [
+    {
+      "id": 5000001,
+      "modId": 285109,
+      "displayName": "All the Mods 9-0.3.5",
+      "fileName": "ATM9-0.3.5.zip",
+      "releaseType": 1,
+      "fileDate": "2026-09-01T10:00:00Z",
+      "fileLength": 4200000,
+      "downloadUrl": "https://edge.forgecdn.net/files/5000/1/ATM9-0.3.5.zip",
+      "gameVersions": ["1.20.1", "Forge"],
+      "hashes": [{ "value": "da39a3ee5e6b4b0d3255bfef95601890afd80709", "algo": 1 }, { "value": "d41d8cd98f00b204e9800998ecf8427e", "algo": 2 }],
+      "isServerPack": false,
+      "serverPackFileId": 5000002
+    },
+    {
+      "id": 4000000,
+      "modId": 285109,
+      "displayName": "Restricted jar",
+      "fileName": "restricted-1.0.jar",
+      "releaseType": 2,
+      "fileDate": "2026-08-01T10:00:00Z",
+      "fileLength": 100,
+      "downloadUrl": null,
+      "gameVersions": ["1.20.1", "NeoForge", "Server"],
+      "hashes": [],
+      "isServerPack": false
+    }
+  ],
+  "pagination": { "index": 0, "pageSize": 50, "resultCount": 2, "totalCount": 2 }
+}
