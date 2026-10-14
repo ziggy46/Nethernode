@@ -19,7 +19,7 @@ function SetupPage() {
   return (
     <AuthLayout
       title="Create the owner account"
-      description="This account has full control of NetherNode. You can invite others later."
+      description="This account has full control of NetherNode. You can add other people later."
       footer="Welcome to NetherNode. Your worlds, under control."
     >
       <SetupForm />

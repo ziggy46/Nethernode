@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "license": "MIT",
   "type": "module",
+  "packageManager": "pnpm@11.22.0",
   "scripts": {
     "dev": "vite",
     "build": "tsr generate && tsc -b && vite build",
@@ -15,6 +16,7 @@
     "check:hex": "node scripts/check-no-raw-hex.ts",
     "check:bundle": "node scripts/check-bundle-size.ts",
     "test": "vitest run",
+    "e2e": "playwright test",
     "gen": "cd .. && buf lint && buf generate"
   },
   "dependencies": {
@@ -51,6 +53,7 @@
     "@biomejs/biome": "^2.5.15",
     "@bufbuild/buf": "^1.73.0",
     "@bufbuild/protoc-gen-es": "^2.16.0",
+    "@playwright/test": "^1.64.0",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/router-cli": "^1.167.41",
     "@tanstack/router-plugin": "^1.168.43",
