@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file nethernode/v1/auth.proto.
  */
 export const file_nethernode_v1_auth: GenFile = /*@__PURE__*/
-  fileDesc("ChhuZXRoZXJub2RlL3YxL2F1dGgucHJvdG8SDW5ldGhlcm5vZGUudjEixgEKBFVzZXISCgoCaWQYASABKAkSEAoIdXNlcm5hbWUYAiABKAkSIQoEcm9sZRgDIAEoDjITLm5ldGhlcm5vZGUudjEuUm9sZRIVCg1jcmVhdGVkX2F0X21zGAQgASgDEh0KEGxhc3RfbG9naW5fYXRfbXMYBSABKANIAIgBARIcChRtdXN0X2NoYW5nZV9wYXNzd29yZBgGIAEoCBIUCgx0b3RwX2VuYWJsZWQYByABKAhCEwoRX2xhc3RfbG9naW5fYXRfbXMiMgoMU2V0dXBSZXF1ZXN0EhAKCHVzZXJuYW1lGAEgASgJEhAKCHBhc3N3b3JkGAIgASgJIjIKDVNldHVwUmVzcG9uc2USIQoEdXNlchgBIAEoCzITLm5ldGhlcm5vZGUudjEuVXNlciIyCgxMb2dpblJlcXVlc3QSEAoIdXNlcm5hbWUYASABKAkSEAoIcGFzc3dvcmQYAiABKAkiUwoNTG9naW5SZXNwb25zZRIhCgR1c2VyGAEgASgLMhMubmV0aGVybm9kZS52MS5Vc2VyEh8KF3NlY29uZF9mYWN0b3JfY2hhbGxlbmdlGAIgASgJIjYKE0ZpbmlzaFNpZ25JblJlcXVlc3QSEQoJY2hhbGxlbmdlGAEgASgJEgwKBGNvZGUYAiABKAkiOQoURmluaXNoU2lnbkluUmVzcG9uc2USIQoEdXNlchgBIAEoCzITLm5ldGhlcm5vZGUudjEuVXNlciJHChVDaGFuZ2VQYXNzd29yZFJlcXVlc3QSGAoQY3VycmVudF9wYXNzd29yZBgBIAEoCRIUCgxuZXdfcGFzc3dvcmQYAiABKAkiOwoWQ2hhbmdlUGFzc3dvcmRSZXNwb25zZRIhCgR1c2VyGAEgASgLMhMubmV0aGVybm9kZS52MS5Vc2VyInQKB1Nlc3Npb24SCgoCaWQYASABKAkSEgoKdXNlcl9hZ2VudBgCIAEoCRIKCgJpcBgDIAEoCRIVCg1jcmVhdGVkX2F0X21zGAQgASgDEhUKDWV4cGlyZXNfYXRfbXMYBSABKAMSDwoHY3VycmVudBgGIAEoCCIUChJHZXRTZWN1cml0eVJlcXVlc3QiigEKE0dldFNlY3VyaXR5UmVzcG9uc2USKAoIc2Vzc2lvbnMYASADKAsyFi5uZXRoZXJub2RlLnYxLlNlc3Npb24SFAoMdG90cF9lbmFibGVkGAIgASgIEhsKE3JlY292ZXJ5X2NvZGVzX2xlZnQYAyABKAMSFgoOdG90cF9hdmFpbGFibGUYBCABKAgiIgoUUmV2b2tlU2Vzc2lvblJlcXVlc3QSCgoCaWQYASABKAkiFwoVUmV2b2tlU2Vzc2lvblJlc3BvbnNlIhcKFUJlZ2luVG90cFNldHVwUmVxdWVzdCJNChZCZWdpblRvdHBTZXR1cFJlc3BvbnNlEg4KBnNlY3JldBgBIAEoCRITCgtvdHBhdXRoX3VyaRgCIAEoCRIOCgZxcl9zdmcYAyABKAkiJwoXQ29uZmlybVRvdHBTZXR1cFJlcXVlc3QSDAoEY29kZRgBIAEoCSIyChhDb25maXJtVG90cFNldHVwUmVzcG9uc2USFgoOcmVjb3ZlcnlfY29kZXMYASADKAkiJgoSRGlzYWJsZVRvdHBSZXF1ZXN0EhAKCHBhc3N3b3JkGAEgASgJIhUKE0Rpc2FibGVUb3RwUmVzcG9uc2UiDwoNTG9nb3V0UmVxdWVzdCIQCg5Mb2dvdXRSZXNwb25zZSILCglNZVJlcXVlc3QiLwoKTWVSZXNwb25zZRIhCgR1c2VyGAEgASgLMhMubmV0aGVybm9kZS52MS5Vc2VyKmEKBFJvbGUSFAoQUk9MRV9VTlNQRUNJRklFRBAAEg8KC1JPTEVfVklFV0VSEAESEgoOUk9MRV9NT0RFUkFUT1IQAhIOCgpST0xFX0FETUlOEAMSDgoKUk9MRV9PV05FUhAEMqUHCgtBdXRoU2VydmljZRJCCgVTZXR1cBIbLm5ldGhlcm5vZGUudjEuU2V0dXBSZXF1ZXN0GhwubmV0aGVybm9kZS52MS5TZXR1cFJlc3BvbnNlEkIKBUxvZ2luEhsubmV0aGVybm9kZS52MS5Mb2dpblJlcXVlc3QaHC5uZXRoZXJub2RlLnYxLkxvZ2luUmVzcG9uc2USVwoMRmluaXNoU2lnbkluEiIubmV0aGVybm9kZS52MS5GaW5pc2hTaWduSW5SZXF1ZXN0GiMubmV0aGVybm9kZS52MS5GaW5pc2hTaWduSW5SZXNwb25zZRJFCgZMb2dvdXQSHC5uZXRoZXJub2RlLnYxLkxvZ291dFJlcXVlc3QaHS5uZXRoZXJub2RlLnYxLkxvZ291dFJlc3BvbnNlEj4KAk1lEhgubmV0aGVybm9kZS52MS5NZVJlcXVlc3QaGS5uZXRoZXJub2RlLnYxLk1lUmVzcG9uc2UiA5ACARJdCg5DaGFuZ2VQYXNzd29yZBIkLm5ldGhlcm5vZGUudjEuQ2hhbmdlUGFzc3dvcmRSZXF1ZXN0GiUubmV0aGVybm9kZS52MS5DaGFuZ2VQYXNzd29yZFJlc3BvbnNlElkKC0dldFNlY3VyaXR5EiEubmV0aGVybm9kZS52MS5HZXRTZWN1cml0eVJlcXVlc3QaIi5uZXRoZXJub2RlLnYxLkdldFNlY3VyaXR5UmVzcG9uc2UiA5ACARJaCg1SZXZva2VTZXNzaW9uEiMubmV0aGVybm9kZS52MS5SZXZva2VTZXNzaW9uUmVxdWVzdBokLm5ldGhlcm5vZGUudjEuUmV2b2tlU2Vzc2lvblJlc3BvbnNlEl0KDkJlZ2luVG90cFNldHVwEiQubmV0aGVybm9kZS52MS5CZWdpblRvdHBTZXR1cFJlcXVlc3QaJS5uZXRoZXJub2RlLnYxLkJlZ2luVG90cFNldHVwUmVzcG9uc2USYwoQQ29uZmlybVRvdHBTZXR1cBImLm5ldGhlcm5vZGUudjEuQ29uZmlybVRvdHBTZXR1cFJlcXVlc3QaJy5uZXRoZXJub2RlLnYxLkNvbmZpcm1Ub3RwU2V0dXBSZXNwb25zZRJUCgtEaXNhYmxlVG90cBIhLm5ldGhlcm5vZGUudjEuRGlzYWJsZVRvdHBSZXF1ZXN0GiIubmV0aGVybm9kZS52MS5EaXNhYmxlVG90cFJlc3BvbnNlYgZwcm90bzM");
+  fileDesc("ChhuZXRoZXJub2RlL3YxL2F1dGgucHJvdG8SDW5ldGhlcm5vZGUudjEixgEKBFVzZXISCgoCaWQYASABKAkSEAoIdXNlcm5hbWUYAiABKAkSIQoEcm9sZRgDIAEoDjITLm5ldGhlcm5vZGUudjEuUm9sZRIVCg1jcmVhdGVkX2F0X21zGAQgASgDEh0KEGxhc3RfbG9naW5fYXRfbXMYBSABKANIAIgBARIcChRtdXN0X2NoYW5nZV9wYXNzd29yZBgGIAEoCBIUCgx0b3RwX2VuYWJsZWQYByABKAhCEwoRX2xhc3RfbG9naW5fYXRfbXMiMgoMU2V0dXBSZXF1ZXN0EhAKCHVzZXJuYW1lGAEgASgJEhAKCHBhc3N3b3JkGAIgASgJIjIKDVNldHVwUmVzcG9uc2USIQoEdXNlchgBIAEoCzITLm5ldGhlcm5vZGUudjEuVXNlciIyCgxMb2dpblJlcXVlc3QSEAoIdXNlcm5hbWUYASABKAkSEAoIcGFzc3dvcmQYAiABKAkiUwoNTG9naW5SZXNwb25zZRIhCgR1c2VyGAEgASgLMhMubmV0aGVybm9kZS52MS5Vc2VyEh8KF3NlY29uZF9mYWN0b3JfY2hhbGxlbmdlGAIgASgJIjYKE0ZpbmlzaFNpZ25JblJlcXVlc3QSEQoJY2hhbGxlbmdlGAEgASgJEgwKBGNvZGUYAiABKAkiOQoURmluaXNoU2lnbkluUmVzcG9uc2USIQoEdXNlchgBIAEoCzITLm5ldGhlcm5vZGUudjEuVXNlciIPCg1Mb2dvdXRSZXF1ZXN0IhAKDkxvZ291dFJlc3BvbnNlIgsKCU1lUmVxdWVzdCIvCgpNZVJlc3BvbnNlEiEKBHVzZXIYASABKAsyEy5uZXRoZXJub2RlLnYxLlVzZXIqYQoEUm9sZRIUChBST0xFX1VOU1BFQ0lGSUVEEAASDwoLUk9MRV9WSUVXRVIQARISCg5ST0xFX01PREVSQVRPUhACEg4KClJPTEVfQURNSU4QAxIOCgpST0xFX09XTkVSEAQy9QIKC0F1dGhTZXJ2aWNlEkIKBVNldHVwEhsubmV0aGVybm9kZS52MS5TZXR1cFJlcXVlc3QaHC5uZXRoZXJub2RlLnYxLlNldHVwUmVzcG9uc2USQgoFTG9naW4SGy5uZXRoZXJub2RlLnYxLkxvZ2luUmVxdWVzdBocLm5ldGhlcm5vZGUudjEuTG9naW5SZXNwb25zZRJXCgxGaW5pc2hTaWduSW4SIi5uZXRoZXJub2RlLnYxLkZpbmlzaFNpZ25JblJlcXVlc3QaIy5uZXRoZXJub2RlLnYxLkZpbmlzaFNpZ25JblJlc3BvbnNlEkUKBkxvZ291dBIcLm5ldGhlcm5vZGUudjEuTG9nb3V0UmVxdWVzdBodLm5ldGhlcm5vZGUudjEuTG9nb3V0UmVzcG9uc2USPgoCTWUSGC5uZXRoZXJub2RlLnYxLk1lUmVxdWVzdBoZLm5ldGhlcm5vZGUudjEuTWVSZXNwb25zZSIDkAIBYgZwcm90bzM");
 
 /**
  * A panel user.
@@ -198,276 +198,6 @@ export const FinishSignInResponseSchema: GenMessage<FinishSignInResponse> = /*@_
   messageDesc(file_nethernode_v1_auth, 6);
 
 /**
- * @generated from message nethernode.v1.ChangePasswordRequest
- */
-export type ChangePasswordRequest = Message<"nethernode.v1.ChangePasswordRequest"> & {
-  /**
-   * @generated from field: string current_password = 1;
-   */
-  currentPassword: string;
-
-  /**
-   * @generated from field: string new_password = 2;
-   */
-  newPassword: string;
-};
-
-/**
- * Describes the message nethernode.v1.ChangePasswordRequest.
- * Use `create(ChangePasswordRequestSchema)` to create a new message.
- */
-export const ChangePasswordRequestSchema: GenMessage<ChangePasswordRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_auth, 7);
-
-/**
- * @generated from message nethernode.v1.ChangePasswordResponse
- */
-export type ChangePasswordResponse = Message<"nethernode.v1.ChangePasswordResponse"> & {
-  /**
-   * @generated from field: nethernode.v1.User user = 1;
-   */
-  user?: User | undefined;
-};
-
-/**
- * Describes the message nethernode.v1.ChangePasswordResponse.
- * Use `create(ChangePasswordResponseSchema)` to create a new message.
- */
-export const ChangePasswordResponseSchema: GenMessage<ChangePasswordResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_auth, 8);
-
-/**
- * A signed-in browser.
- *
- * @generated from message nethernode.v1.Session
- */
-export type Session = Message<"nethernode.v1.Session"> & {
-  /**
-   * @generated from field: string id = 1;
-   */
-  id: string;
-
-  /**
-   * @generated from field: string user_agent = 2;
-   */
-  userAgent: string;
-
-  /**
-   * @generated from field: string ip = 3;
-   */
-  ip: string;
-
-  /**
-   * @generated from field: int64 created_at_ms = 4;
-   */
-  createdAtMs: bigint;
-
-  /**
-   * @generated from field: int64 expires_at_ms = 5;
-   */
-  expiresAtMs: bigint;
-
-  /**
-   * The session making this request.
-   *
-   * @generated from field: bool current = 6;
-   */
-  current: boolean;
-};
-
-/**
- * Describes the message nethernode.v1.Session.
- * Use `create(SessionSchema)` to create a new message.
- */
-export const SessionSchema: GenMessage<Session> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_auth, 9);
-
-/**
- * @generated from message nethernode.v1.GetSecurityRequest
- */
-export type GetSecurityRequest = Message<"nethernode.v1.GetSecurityRequest"> & {
-};
-
-/**
- * Describes the message nethernode.v1.GetSecurityRequest.
- * Use `create(GetSecurityRequestSchema)` to create a new message.
- */
-export const GetSecurityRequestSchema: GenMessage<GetSecurityRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_auth, 10);
-
-/**
- * @generated from message nethernode.v1.GetSecurityResponse
- */
-export type GetSecurityResponse = Message<"nethernode.v1.GetSecurityResponse"> & {
-  /**
-   * @generated from field: repeated nethernode.v1.Session sessions = 1;
-   */
-  sessions: Session[];
-
-  /**
-   * @generated from field: bool totp_enabled = 2;
-   */
-  totpEnabled: boolean;
-
-  /**
-   * @generated from field: int64 recovery_codes_left = 3;
-   */
-  recoveryCodesLeft: bigint;
-
-  /**
-   * False when the data key couldn't be loaded, so two-factor can't be set up.
-   *
-   * @generated from field: bool totp_available = 4;
-   */
-  totpAvailable: boolean;
-};
-
-/**
- * Describes the message nethernode.v1.GetSecurityResponse.
- * Use `create(GetSecurityResponseSchema)` to create a new message.
- */
-export const GetSecurityResponseSchema: GenMessage<GetSecurityResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_auth, 11);
-
-/**
- * @generated from message nethernode.v1.RevokeSessionRequest
- */
-export type RevokeSessionRequest = Message<"nethernode.v1.RevokeSessionRequest"> & {
-  /**
-   * @generated from field: string id = 1;
-   */
-  id: string;
-};
-
-/**
- * Describes the message nethernode.v1.RevokeSessionRequest.
- * Use `create(RevokeSessionRequestSchema)` to create a new message.
- */
-export const RevokeSessionRequestSchema: GenMessage<RevokeSessionRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_auth, 12);
-
-/**
- * @generated from message nethernode.v1.RevokeSessionResponse
- */
-export type RevokeSessionResponse = Message<"nethernode.v1.RevokeSessionResponse"> & {
-};
-
-/**
- * Describes the message nethernode.v1.RevokeSessionResponse.
- * Use `create(RevokeSessionResponseSchema)` to create a new message.
- */
-export const RevokeSessionResponseSchema: GenMessage<RevokeSessionResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_auth, 13);
-
-/**
- * @generated from message nethernode.v1.BeginTotpSetupRequest
- */
-export type BeginTotpSetupRequest = Message<"nethernode.v1.BeginTotpSetupRequest"> & {
-};
-
-/**
- * Describes the message nethernode.v1.BeginTotpSetupRequest.
- * Use `create(BeginTotpSetupRequestSchema)` to create a new message.
- */
-export const BeginTotpSetupRequestSchema: GenMessage<BeginTotpSetupRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_auth, 14);
-
-/**
- * @generated from message nethernode.v1.BeginTotpSetupResponse
- */
-export type BeginTotpSetupResponse = Message<"nethernode.v1.BeginTotpSetupResponse"> & {
-  /**
-   * Base32, for typing in by hand.
-   *
-   * @generated from field: string secret = 1;
-   */
-  secret: string;
-
-  /**
-   * @generated from field: string otpauth_uri = 2;
-   */
-  otpauthUri: string;
-
-  /**
-   * The link as a QR code (SVG document).
-   *
-   * @generated from field: string qr_svg = 3;
-   */
-  qrSvg: string;
-};
-
-/**
- * Describes the message nethernode.v1.BeginTotpSetupResponse.
- * Use `create(BeginTotpSetupResponseSchema)` to create a new message.
- */
-export const BeginTotpSetupResponseSchema: GenMessage<BeginTotpSetupResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_auth, 15);
-
-/**
- * @generated from message nethernode.v1.ConfirmTotpSetupRequest
- */
-export type ConfirmTotpSetupRequest = Message<"nethernode.v1.ConfirmTotpSetupRequest"> & {
-  /**
-   * @generated from field: string code = 1;
-   */
-  code: string;
-};
-
-/**
- * Describes the message nethernode.v1.ConfirmTotpSetupRequest.
- * Use `create(ConfirmTotpSetupRequestSchema)` to create a new message.
- */
-export const ConfirmTotpSetupRequestSchema: GenMessage<ConfirmTotpSetupRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_auth, 16);
-
-/**
- * @generated from message nethernode.v1.ConfirmTotpSetupResponse
- */
-export type ConfirmTotpSetupResponse = Message<"nethernode.v1.ConfirmTotpSetupResponse"> & {
-  /**
-   * @generated from field: repeated string recovery_codes = 1;
-   */
-  recoveryCodes: string[];
-};
-
-/**
- * Describes the message nethernode.v1.ConfirmTotpSetupResponse.
- * Use `create(ConfirmTotpSetupResponseSchema)` to create a new message.
- */
-export const ConfirmTotpSetupResponseSchema: GenMessage<ConfirmTotpSetupResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_auth, 17);
-
-/**
- * @generated from message nethernode.v1.DisableTotpRequest
- */
-export type DisableTotpRequest = Message<"nethernode.v1.DisableTotpRequest"> & {
-  /**
-   * @generated from field: string password = 1;
-   */
-  password: string;
-};
-
-/**
- * Describes the message nethernode.v1.DisableTotpRequest.
- * Use `create(DisableTotpRequestSchema)` to create a new message.
- */
-export const DisableTotpRequestSchema: GenMessage<DisableTotpRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_auth, 18);
-
-/**
- * @generated from message nethernode.v1.DisableTotpResponse
- */
-export type DisableTotpResponse = Message<"nethernode.v1.DisableTotpResponse"> & {
-};
-
-/**
- * Describes the message nethernode.v1.DisableTotpResponse.
- * Use `create(DisableTotpResponseSchema)` to create a new message.
- */
-export const DisableTotpResponseSchema: GenMessage<DisableTotpResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_auth, 19);
-
-/**
  * @generated from message nethernode.v1.LogoutRequest
  */
 export type LogoutRequest = Message<"nethernode.v1.LogoutRequest"> & {
@@ -478,7 +208,7 @@ export type LogoutRequest = Message<"nethernode.v1.LogoutRequest"> & {
  * Use `create(LogoutRequestSchema)` to create a new message.
  */
 export const LogoutRequestSchema: GenMessage<LogoutRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_auth, 20);
+  messageDesc(file_nethernode_v1_auth, 7);
 
 /**
  * @generated from message nethernode.v1.LogoutResponse
@@ -491,7 +221,7 @@ export type LogoutResponse = Message<"nethernode.v1.LogoutResponse"> & {
  * Use `create(LogoutResponseSchema)` to create a new message.
  */
 export const LogoutResponseSchema: GenMessage<LogoutResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_auth, 21);
+  messageDesc(file_nethernode_v1_auth, 8);
 
 /**
  * @generated from message nethernode.v1.MeRequest
@@ -504,7 +234,7 @@ export type MeRequest = Message<"nethernode.v1.MeRequest"> & {
  * Use `create(MeRequestSchema)` to create a new message.
  */
 export const MeRequestSchema: GenMessage<MeRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_auth, 22);
+  messageDesc(file_nethernode_v1_auth, 9);
 
 /**
  * @generated from message nethernode.v1.MeResponse
@@ -521,7 +251,7 @@ export type MeResponse = Message<"nethernode.v1.MeResponse"> & {
  * Use `create(MeResponseSchema)` to create a new message.
  */
 export const MeResponseSchema: GenMessage<MeResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_auth, 23);
+  messageDesc(file_nethernode_v1_auth, 10);
 
 /**
  * A panel user's role. Each role includes the permissions of those below it.
@@ -622,69 +352,6 @@ export const AuthService: GenService<{
     methodKind: "unary";
     input: typeof MeRequestSchema;
     output: typeof MeResponseSchema;
-  },
-  /**
-   * Changes the signed-in user's password and ends their other sessions.
-   * The only call (with Me and Logout) allowed while a password change is
-   * required.
-   *
-   * @generated from rpc nethernode.v1.AuthService.ChangePassword
-   */
-  changePassword: {
-    methodKind: "unary";
-    input: typeof ChangePasswordRequestSchema;
-    output: typeof ChangePasswordResponseSchema;
-  },
-  /**
-   * The signed-in user's sessions and two-factor status.
-   *
-   * @generated from rpc nethernode.v1.AuthService.GetSecurity
-   */
-  getSecurity: {
-    methodKind: "unary";
-    input: typeof GetSecurityRequestSchema;
-    output: typeof GetSecurityResponseSchema;
-  },
-  /**
-   * Ends one of the signed-in user's other sessions.
-   *
-   * @generated from rpc nethernode.v1.AuthService.RevokeSession
-   */
-  revokeSession: {
-    methodKind: "unary";
-    input: typeof RevokeSessionRequestSchema;
-    output: typeof RevokeSessionResponseSchema;
-  },
-  /**
-   * Starts two-factor enrollment: a secret to add to an authenticator app.
-   *
-   * @generated from rpc nethernode.v1.AuthService.BeginTotpSetup
-   */
-  beginTotpSetup: {
-    methodKind: "unary";
-    input: typeof BeginTotpSetupRequestSchema;
-    output: typeof BeginTotpSetupResponseSchema;
-  },
-  /**
-   * Turns two-factor sign-in on with a code from the app. Returns recovery
-   * codes, shown once.
-   *
-   * @generated from rpc nethernode.v1.AuthService.ConfirmTotpSetup
-   */
-  confirmTotpSetup: {
-    methodKind: "unary";
-    input: typeof ConfirmTotpSetupRequestSchema;
-    output: typeof ConfirmTotpSetupResponseSchema;
-  },
-  /**
-   * Turns two-factor sign-in off. Needs the current password.
-   *
-   * @generated from rpc nethernode.v1.AuthService.DisableTotp
-   */
-  disableTotp: {
-    methodKind: "unary";
-    input: typeof DisableTotpRequestSchema;
-    output: typeof DisableTotpResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_nethernode_v1_auth, 0);

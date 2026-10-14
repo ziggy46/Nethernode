@@ -19,6 +19,7 @@ import { Route as AppModpacksRouteImport } from './routes/_app/modpacks'
 import { Route as AppPlayersRouteImport } from './routes/_app/players'
 import { Route as AppProxyRouteImport } from './routes/_app/proxy'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
+import { Route as AppUsersRouteImport } from './routes/_app/users'
 import { Route as AppServersIndexRouteImport } from './routes/_app/servers/index'
 import { Route as AppServersServerIdRouteImport } from './routes/_app/servers/$serverId'
 
@@ -71,6 +72,11 @@ const AppSettingsRoute = AppSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AppRoute,
 } as any)
+const AppUsersRoute = AppUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppServersIndexRoute = AppServersIndexRouteImport.update({
   id: '/servers/',
   path: '/servers/',
@@ -92,6 +98,7 @@ export interface FileRoutesByFullPath {
   '/players': typeof AppPlayersRoute
   '/proxy': typeof AppProxyRoute
   '/settings': typeof AppSettingsRoute
+  '/users': typeof AppUsersRoute
   '/servers/$serverId': typeof AppServersServerIdRoute
   '/servers/': typeof AppServersIndexRoute
 }
@@ -104,6 +111,7 @@ export interface FileRoutesByTo {
   '/players': typeof AppPlayersRoute
   '/proxy': typeof AppProxyRoute
   '/settings': typeof AppSettingsRoute
+  '/users': typeof AppUsersRoute
   '/': typeof AppIndexRoute
   '/servers/$serverId': typeof AppServersServerIdRoute
   '/servers': typeof AppServersIndexRoute
@@ -119,6 +127,7 @@ export interface FileRoutesById {
   '/_app/players': typeof AppPlayersRoute
   '/_app/proxy': typeof AppProxyRoute
   '/_app/settings': typeof AppSettingsRoute
+  '/_app/users': typeof AppUsersRoute
   '/_app/': typeof AppIndexRoute
   '/_app/servers/$serverId': typeof AppServersServerIdRoute
   '/_app/servers/': typeof AppServersIndexRoute
@@ -135,6 +144,7 @@ export interface FileRouteTypes {
     | '/players'
     | '/proxy'
     | '/settings'
+    | '/users'
     | '/servers/$serverId'
     | '/servers/'
   fileRoutesByTo: FileRoutesByTo
@@ -147,6 +157,7 @@ export interface FileRouteTypes {
     | '/players'
     | '/proxy'
     | '/settings'
+    | '/users'
     | '/'
     | '/servers/$serverId'
     | '/servers'
@@ -161,6 +172,7 @@ export interface FileRouteTypes {
     | '/_app/players'
     | '/_app/proxy'
     | '/_app/settings'
+    | '/_app/users'
     | '/_app/'
     | '/_app/servers/$serverId'
     | '/_app/servers/'
@@ -244,6 +256,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/users': {
+      id: '/_app/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof AppUsersRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/servers/': {
       id: '/_app/servers/'
       path: '/servers'
@@ -268,6 +287,7 @@ interface AppRouteChildren {
   AppPlayersRoute: typeof AppPlayersRoute
   AppProxyRoute: typeof AppProxyRoute
   AppSettingsRoute: typeof AppSettingsRoute
+  AppUsersRoute: typeof AppUsersRoute
   AppIndexRoute: typeof AppIndexRoute
   AppServersServerIdRoute: typeof AppServersServerIdRoute
   AppServersIndexRoute: typeof AppServersIndexRoute
@@ -280,6 +300,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPlayersRoute: AppPlayersRoute,
   AppProxyRoute: AppProxyRoute,
   AppSettingsRoute: AppSettingsRoute,
+  AppUsersRoute: AppUsersRoute,
   AppIndexRoute: AppIndexRoute,
   AppServersServerIdRoute: AppServersServerIdRoute,
   AppServersIndexRoute: AppServersIndexRoute,

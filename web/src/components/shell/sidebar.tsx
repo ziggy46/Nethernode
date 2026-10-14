@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Box, CircleAlert, CircleCheck, Settings } from "lucide-react";
 import { Logo, Wordmark } from "@/components/brand";
 import { serversQuery } from "@/features/servers/queries";
+import { Role } from "@/gen/nethernode/v1/auth_pb";
 import { healthQuery } from "@/lib/health";
 import { ROLE_LABELS, useCurrentUser } from "@/lib/session";
 import { cn } from "@/lib/utils";
@@ -85,34 +86,37 @@ function NavSection({
   onNavigate: () => void;
 }) {
   const servers = useQuery(serversQuery);
+  const owner = useCurrentUser().role === Role.OWNER;
   return (
     <>
       <p className="mb-[9px] px-[13px] font-[650] text-[10px] text-text-muted uppercase tracking-[1.5px]">
         {label}
       </p>
       <nav aria-label={`${label} navigation`} className="mb-[27px] flex flex-col gap-1">
-        {items.map(({ to, label: text, icon: Icon }) => (
-          <Link
-            key={to}
-            to={to}
-            onClick={onNavigate}
-            activeOptions={{ exact: to === "/" }}
-            className={cn(
-              "flex items-center gap-3 rounded-md px-[13px] py-[11px] text-nav text-text-secondary transition-colors duration-(--nn-transition)",
-              "hover:bg-nav-hover hover:text-text-primary",
-              "data-[status=active]:bg-nav-active data-[status=active]:text-nav-active-foreground data-[status=active]:shadow-[inset_3px_0_var(--color-primary)]",
-            )}
-          >
-            <Icon className="size-[18px]" aria-hidden />
-            {text}
-            {to === "/servers" && servers.data && servers.data.length > 0 && (
-              <span className="ml-auto rounded-xs bg-surface-elevated px-1.5 text-meta text-text-secondary">
-                {servers.data.length}
-                <span className="sr-only"> servers</span>
-              </span>
-            )}
-          </Link>
-        ))}
+        {items
+          .filter((item) => owner || !item.ownerOnly)
+          .map(({ to, label: text, icon: Icon }) => (
+            <Link
+              key={to}
+              to={to}
+              onClick={onNavigate}
+              activeOptions={{ exact: to === "/" }}
+              className={cn(
+                "flex items-center gap-3 rounded-md px-[13px] py-[11px] text-nav text-text-secondary transition-colors duration-(--nn-transition)",
+                "hover:bg-nav-hover hover:text-text-primary",
+                "data-[status=active]:bg-nav-active data-[status=active]:text-nav-active-foreground data-[status=active]:shadow-[inset_3px_0_var(--color-primary)]",
+              )}
+            >
+              <Icon className="size-[18px]" aria-hidden />
+              {text}
+              {to === "/servers" && servers.data && servers.data.length > 0 && (
+                <span className="ml-auto rounded-xs bg-surface-elevated px-1.5 text-meta text-text-secondary">
+                  {servers.data.length}
+                  <span className="sr-only"> servers</span>
+                </span>
+              )}
+            </Link>
+          ))}
       </nav>
     </>
   );

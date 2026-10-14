@@ -7,13 +7,16 @@ import {
   Network,
   Server,
   Settings,
+  UserCog,
   Users,
 } from "lucide-react";
 
 export interface NavItem {
-  to: "/" | "/servers" | "/players" | "/proxy" | "/modpacks" | "/backups" | "/host" | "/settings";
+  to: "/" | "/servers" | "/players" | "/proxy" | "/modpacks" | "/backups" | "/host" | "/users" | "/settings";
   label: string;
   icon: LucideIcon;
+  /** Shown only to owners. */
+  ownerOnly?: boolean;
 }
 
 export const WORKSPACE_NAV: NavItem[] = [
@@ -27,6 +30,7 @@ export const WORKSPACE_NAV: NavItem[] = [
 
 export const SYSTEM_NAV: NavItem[] = [
   { to: "/host", label: "Host node", icon: Cpu },
+  { to: "/users", label: "Users", icon: UserCog, ownerOnly: true },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
