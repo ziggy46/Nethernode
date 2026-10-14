@@ -756,3 +756,37 @@ async fn zips_can_extract_after_upload() {
         b"{}"
     );
 }
+
+#[tokio::test]
+async fn a_connection_dropping_after_the_last_byte_still_finishes() {
+    let h = harness().await;
+    let url = h.create(10, &[("filename", Some("edge.bin"))]).await;
+    let mut events = h.state.events.subscribe();
+    let (tx, rx) = tokio::sync::mpsc::channel::<Result<Bytes, std::io::Error>>(4);
+    tx.send(Ok(Bytes::from_static(b"0123456789")))
+        .await
+        .unwrap();
+    tx.send(Err(std::io::Error::other("dropped at the end")))
+        .await
+        .unwrap();
+    drop(tx);
+    let req = h
+        .request("PATCH", &url, &h.owner)
+        .header(header::CONTENT_TYPE, "application/offset+octet-stream")
+        .header("upload-offset", "0")
+        .body(Body::from_stream(
+            tokio_stream::wrappers::ReceiverStream::new(rx),
+        ))
+        .unwrap();
+    h.send(req).await;
+    assert!(matches!(
+        finished(&mut events).await,
+        Event::UploadFinished { failed: false, .. }
+    ));
+    assert_eq!(
+        std::fs::read(h.root.join("edge.bin")).unwrap(),
+        b"0123456789"
+    );
+    // Asking afterwards reports it complete.
+    assert_eq!(offset_of(&h.head(&url).await), 10);
+}

@@ -312,6 +312,11 @@ pub(crate) async fn offset(
         let upload = load(&state, &user, &id).await?;
         match upload.status.as_str() {
             status::UPLOADING | status::FINISHING | status::DONE => {
+                // Complete but never placed (a crash between recording the
+                // last chunk and starting to finish): finish it now.
+                if upload.status == status::UPLOADING && upload.received == upload.total_size {
+                    start_finishing(&state, upload.clone()).await?;
+                }
                 let mut response = tus(StatusCode::OK);
                 set_offset(&mut response, &upload, upload.received);
                 if upload.status == status::UPLOADING {
@@ -462,23 +467,18 @@ async fn patch_inner(
     {
         return Err(tus(StatusCode::GONE));
     }
+    // Every byte is in, even if the connection dropped right at the end.
+    if now_received == total {
+        let mut upload = upload.clone();
+        upload.received = now_i64;
+        start_finishing(state, upload).await?;
+    }
     if written.interrupted {
         // The client is gone; it'll ask where to resume with HEAD.
         return Err(refuse(
             StatusCode::BAD_REQUEST,
             "the connection dropped mid-chunk",
         ));
-    }
-    if now_received == total
-        && store
-            .transition_upload(id, status::UPLOADING, status::FINISHING, None)
-            .await
-            .map_err(internal)?
-    {
-        state.uploads.forget(id);
-        let mut upload = upload.clone();
-        upload.received = now_i64;
-        finish::spawn(state.clone(), upload);
     }
 
     let mut response = tus(StatusCode::NO_CONTENT);
@@ -487,6 +487,22 @@ async fn patch_inner(
         set_expires(&mut response, expires_at);
     }
     Ok(response)
+}
+
+/// Moves a fully received upload to `finishing` and places it in the
+/// background. Only the caller that wins the transition starts the work.
+async fn start_finishing(state: &AppState, upload: Upload) -> Result<(), Response> {
+    if state
+        .auth
+        .store()
+        .transition_upload(&upload.id, status::UPLOADING, status::FINISHING, None)
+        .await
+        .map_err(internal)?
+    {
+        state.uploads.forget(&upload.id);
+        finish::spawn(state.clone(), upload);
+    }
+    Ok(())
 }
 
 /// `DELETE /api/uploads/{id}`
