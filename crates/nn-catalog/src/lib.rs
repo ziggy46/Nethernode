@@ -8,6 +8,7 @@
 mod cache;
 pub mod content;
 mod curseforge;
+pub mod jar;
 mod modrinth;
 pub mod versions;
 
@@ -97,9 +98,26 @@ impl Default for Endpoints {
     }
 }
 
+/// Hosts mod and modpack files are downloaded from.
+const DOWNLOAD_HOSTS: &[&str] = &[
+    "cdn.modrinth.com",
+    "edge.forgecdn.net",
+    "mediafilez.forgecdn.net",
+    "media.forgecdn.net",
+];
+
+/// Whether `url` is an https URL on one of the download hosts.
+pub fn download_allowed(url: &reqwest::Url) -> bool {
+    url.scheme() == "https"
+        && url.port().is_none()
+        && url.host_str().is_some_and(|h| DOWNLOAD_HOSTS.contains(&h))
+}
+
 /// The catalog client.
 pub struct Catalog {
     http: reqwest::Client,
+    /// For files: only follows redirects to other download hosts.
+    downloads: reqwest::Client,
     cache: cache::Cache,
     endpoints: Endpoints,
 }
@@ -118,11 +136,86 @@ impl Catalog {
             .timeout(REQUEST_TIMEOUT)
             .build()
             .unwrap_or_default();
+        let downloads = reqwest::Client::builder()
+            .user_agent(USER_AGENT)
+            .connect_timeout(REQUEST_TIMEOUT)
+            .redirect(reqwest::redirect::Policy::custom(|attempt| {
+                if attempt.previous().len() < 5 && download_allowed(attempt.url()) {
+                    attempt.follow()
+                } else {
+                    attempt.stop()
+                }
+            }))
+            .build()
+            .unwrap_or_default();
         Self {
             http,
+            downloads,
             cache: cache::Cache::new(cache_dir, CACHE_TTL),
             endpoints,
         }
+    }
+
+    /// Downloads a mod or modpack file of at most `max` bytes from the
+    /// platforms' file hosts, checking it against the hashes given.
+    pub async fn download(&self, file: &VersionFile, max: u64) -> Result<Vec<u8>, Error> {
+        use sha1::Digest as _;
+        let url = file.url.as_deref().ok_or_else(|| {
+            Error::NotConfigured(format!(
+                "{}'s author doesn't allow other apps to download it; download it from the website and upload it",
+                file.filename
+            ))
+        })?;
+        let parsed =
+            reqwest::Url::parse(url).map_err(|_| Error::Upstream("bad download link".into()))?;
+        if !download_allowed(&parsed) {
+            return Err(Error::Upstream(format!(
+                "won't download from {}",
+                parsed.host_str().unwrap_or("there")
+            )));
+        }
+        if file.size > max {
+            return Err(Error::Upstream(format!("{} is too large", file.filename)));
+        }
+        let mut response = self.downloads.get(parsed).send().await.map_err(|e| {
+            Error::Upstream(format!(
+                "downloading {}: {}",
+                file.filename,
+                e.without_url()
+            ))
+        })?;
+        if !response.status().is_success() {
+            return Err(Error::Upstream(format!(
+                "downloading {}: {}",
+                file.filename,
+                response.status()
+            )));
+        }
+        let mut data = Vec::with_capacity(usize::try_from(file.size.min(max)).unwrap_or(0));
+        while let Some(chunk) = response.chunk().await.map_err(|e| {
+            Error::Upstream(format!(
+                "downloading {}: {}",
+                file.filename,
+                e.without_url()
+            ))
+        })? {
+            if (data.len() + chunk.len()) as u64 > max {
+                return Err(Error::Upstream(format!("{} is too large", file.filename)));
+            }
+            data.extend_from_slice(&chunk);
+        }
+        let matches = match (&file.sha512, &file.sha1) {
+            (Some(want), _) => hex::encode(sha2::Sha512::digest(&data)).eq_ignore_ascii_case(want),
+            (None, Some(want)) => hex::encode(sha1::Sha1::digest(&data)).eq_ignore_ascii_case(want),
+            (None, None) => true,
+        };
+        if !matches {
+            return Err(Error::Upstream(format!(
+                "{} didn't download intact (checksum mismatch)",
+                file.filename
+            )));
+        }
+        Ok(data)
     }
 
     /// The HTTP client (with NetherNode's user agent and timeouts).

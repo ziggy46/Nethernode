@@ -93,6 +93,20 @@ pub struct ProjectVersion {
     pub published_ms: i64,
     /// Its files.
     pub files: Vec<VersionFile>,
+    /// Other projects it needs or works with.
+    #[serde(default)]
+    pub dependencies: Vec<Dependency>,
+}
+
+/// Another project a version depends on.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Dependency {
+    /// The project, when given.
+    pub project_id: Option<String>,
+    /// A specific version, when given.
+    pub version_id: Option<String>,
+    /// Needed for the mod to work (not just optional or incompatible).
+    pub required: bool,
 }
 
 impl ProjectVersion {

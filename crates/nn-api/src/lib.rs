@@ -157,6 +157,7 @@ pub fn router(state: AppState) -> Router {
         .route("/ws/servers/{id}/console", get(console::console))
         .route("/api/players/{uuid}/head", get(players::heads::head))
         .route("/api/catalog/icon", get(content::icons::icon))
+        .route("/api/servers/{id}/mods/icon", get(content::icons::mod_icon))
         .nest(RPC_PREFIX, rpc_routes)
         .fallback(spa::serve)
         .layer(from_fn_with_state(

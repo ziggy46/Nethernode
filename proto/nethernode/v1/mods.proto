@@ -1,0 +1,133 @@
+syntax = "proto3";
+
+package nethernode.v1;
+
+import "nethernode/v1/catalog.proto";
+
+// Mods on modded servers (Fabric, Quilt, Forge, NeoForge, and modpacks):
+// what's in the mods folder, installing from Modrinth or CurseForge,
+// turning mods on and off, updates, and removal. Changes apply when the
+// server next starts. Installs run in the background: watch /api/events for
+// `file_job_progress` and `file_job_finished`.
+service ModService {
+  // The server's mods, read from the jars themselves.
+  rpc ListMods(ListModsRequest) returns (ListModsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Looks up mods on Modrinth (by file hash) and newer versions for this
+  // server's Minecraft version and loader.
+  rpc CheckModUpdates(CheckModUpdatesRequest) returns (CheckModUpdatesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Downloads a mod (and, from Modrinth, what it requires) into mods/.
+  rpc InstallMod(InstallModRequest) returns (InstallModResponse);
+  // Replaces a mod with another version of it.
+  rpc UpdateMod(UpdateModRequest) returns (UpdateModResponse);
+  // Turns a mod off (renames it to .jar.disabled) or back on.
+  rpc SetModEnabled(SetModEnabledRequest) returns (SetModEnabledResponse);
+  // Moves a mod to the trash.
+  rpc DeleteMod(DeleteModRequest) returns (DeleteModResponse);
+}
+
+message InstalledMod {
+  // File name in mods/, including .disabled when it's off.
+  string filename = 1;
+  bool enabled = 2;
+  uint64 size = 3;
+  int64 modified_ms = 4;
+  // From the jar; empty when it doesn't say.
+  string name = 5;
+  string version = 6;
+  string description = 7;
+  repeated string authors = 8;
+  // fabric, quilt, forge, or neoforge, by its metadata.
+  string loader = 9;
+  // The jar has an icon: GET /api/servers/{id}/mods/icon?file=<filename>.
+  bool has_icon = 10;
+  // Fabric/Quilt: client, server, or *.
+  string environment = 11;
+}
+
+// A mod CurseForge won't let other apps download, which the pack needs.
+message ManualDownload {
+  string mod = 1;
+  string version_name = 2;
+  string filename = 3;
+  // Where to download it in a browser.
+  string download_page = 4;
+  // Already uploaded into downloads/.
+  bool present = 5;
+}
+
+message ListModsRequest {
+  string server_id = 1;
+}
+
+message ListModsResponse {
+  // False for servers without mods (vanilla, Paper, Purpur).
+  bool supported = 1;
+  // The mod loader that runs them (for a modpack, the pack's).
+  string loader = 2;
+  string mc_version = 3;
+  repeated InstalledMod mods = 4;
+  // CurseForge modpacks: files to download by hand into `downloads_folder`.
+  repeated ManualDownload manual_downloads = 5;
+  string downloads_folder = 6;
+}
+
+message ModUpdate {
+  string filename = 1;
+  // The Modrinth project the file belongs to.
+  Project project = 2;
+  // Set when a newer version exists for this server.
+  optional ProjectVersion latest = 3;
+}
+
+message CheckModUpdatesRequest {
+  string server_id = 1;
+}
+
+message CheckModUpdatesResponse {
+  // Only mods Modrinth recognizes.
+  repeated ModUpdate mods = 1;
+}
+
+message InstallModRequest {
+  string server_id = 1;
+  Platform platform = 2;
+  string project_id = 3;
+  // Empty: the newest version for this server.
+  string version_id = 4;
+}
+
+message InstallModResponse {
+  string job_id = 1;
+}
+
+message UpdateModRequest {
+  string server_id = 1;
+  string filename = 2;
+  // A Modrinth version of the same project.
+  string version_id = 3;
+}
+
+message UpdateModResponse {
+  string job_id = 1;
+}
+
+message SetModEnabledRequest {
+  string server_id = 1;
+  string filename = 2;
+  bool enabled = 3;
+}
+
+message SetModEnabledResponse {
+  string filename = 1;
+}
+
+message DeleteModRequest {
+  string server_id = 1;
+  string filename = 2;
+}
+
+message DeleteModResponse {}

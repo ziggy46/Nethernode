@@ -2,6 +2,7 @@
 //! project icons.
 
 pub(crate) mod icons;
+pub(crate) mod manual;
 pub(crate) mod modpacks;
 
 use std::path::PathBuf;

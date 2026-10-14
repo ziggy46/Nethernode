@@ -6,8 +6,8 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::content::{
-    MOD_LOADERS, Platform, Project, ProjectKind, ProjectVersion, SearchPage, SearchQuery,
-    VersionFile, millis,
+    Dependency, MOD_LOADERS, Platform, Project, ProjectKind, ProjectVersion, SearchPage,
+    SearchQuery, VersionFile, millis,
 };
 use crate::versions::parse_json;
 use crate::{Catalog, Error};
@@ -54,6 +54,15 @@ struct Version {
     version_type: String,
     date_published: String,
     files: Vec<File>,
+    #[serde(default)]
+    dependencies: Vec<Dep>,
+}
+
+#[derive(Deserialize)]
+struct Dep {
+    project_id: Option<String>,
+    version_id: Option<String>,
+    dependency_type: String,
 }
 
 #[derive(Deserialize)]
@@ -89,6 +98,15 @@ fn version(v: Version) -> ProjectVersion {
                 sha1: f.hashes.get("sha1").cloned(),
                 sha512: f.hashes.get("sha512").cloned(),
                 primary: f.primary,
+            })
+            .collect(),
+        dependencies: v
+            .dependencies
+            .into_iter()
+            .map(|d| Dependency {
+                project_id: d.project_id,
+                version_id: d.version_id,
+                required: d.dependency_type == "required",
             })
             .collect(),
     }

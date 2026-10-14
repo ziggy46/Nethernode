@@ -3,7 +3,8 @@
 use serde::Deserialize;
 
 use crate::content::{
-    Platform, Project, ProjectKind, ProjectVersion, SearchPage, SearchQuery, VersionFile, millis,
+    Dependency, Platform, Project, ProjectKind, ProjectVersion, SearchPage, SearchQuery,
+    VersionFile, millis,
 };
 use crate::versions::{enc, parse_json};
 use crate::{Catalog, Error};
@@ -91,6 +92,16 @@ struct File {
     game_versions: Vec<String>,
     #[serde(default)]
     hashes: Vec<Hash>,
+    #[serde(default)]
+    dependencies: Vec<FileDependency>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FileDependency {
+    mod_id: u64,
+    /// 3: required.
+    relation_type: u32,
 }
 
 #[derive(Deserialize)]
@@ -200,6 +211,15 @@ fn version(f: File) -> ProjectVersion {
             sha512: None,
             primary: true,
         }],
+        dependencies: f
+            .dependencies
+            .iter()
+            .map(|d| Dependency {
+                project_id: Some(d.mod_id.to_string()),
+                version_id: None,
+                required: d.relation_type == 3,
+            })
+            .collect(),
     }
 }
 

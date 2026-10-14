@@ -188,3 +188,40 @@ mod tests {
         assert_eq!(image_type(b"RIFF\0\0\0\0WEBPVP8"), Some("image/webp"));
     }
 }
+
+#[derive(serde::Deserialize)]
+pub(crate) struct ModIconQuery {
+    file: String,
+}
+
+/// `GET /api/servers/{id}/mods/icon?file=…`: the icon inside a mod jar.
+pub(crate) async fn mod_icon(
+    State(state): State<AppState>,
+    user: Option<Extension<CurrentUser>>,
+    axum::extract::Path(server_id): axum::extract::Path<String>,
+    Query(query): Query<ModIconQuery>,
+) -> Response {
+    if let Err(e) = crate::files_http::authorize(user) {
+        return e.into_response();
+    }
+    let Ok(path) = crate::rpc::mods::mod_path(&query.file) else {
+        return StatusCode::BAD_REQUEST.into_response();
+    };
+    let files = match crate::files::open(&state, &server_id).await {
+        Ok((_, files)) => files,
+        Err(e) => return e.into_response(),
+    };
+    let found = tokio::task::spawn_blocking(move || {
+        let (file, _) = files.open_read(&path).ok()?;
+        let info = nn_catalog::jar::read_mod_info(std::io::BufReader::new(file))?;
+        let (file, _) = files.open_read(&path).ok()?;
+        nn_catalog::jar::read_icon(std::io::BufReader::new(file), info.icon.as_deref()?)
+    })
+    .await
+    .ok()
+    .flatten();
+    match found {
+        Some(bytes) => image(bytes),
+        None => StatusCode::NOT_FOUND.into_response(),
+    }
+}
