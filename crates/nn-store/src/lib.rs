@@ -26,7 +26,7 @@ pub mod settings;
 pub mod uploads;
 pub mod users;
 
-pub use audit::NewAuditEntry;
+pub use audit::{AuditEntry, AuditFilter, NewAuditEntry};
 pub use backups::{Backup, Schedule, ScheduleInput};
 pub use player_admin::{CachedProfile, NewPlayerBan, PlayerBan, PlayerSummary};
 pub use players::{NewPlayerSession, PlayerSession};

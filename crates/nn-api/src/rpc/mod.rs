@@ -9,12 +9,13 @@ use nn_store::NewAuditEntry;
 use crate::AppState;
 use crate::middleware::CurrentUser;
 use crate::proto::nethernode::v1::{
-    AccountServiceExt, AuthServiceExt, BackupServiceExt, CatalogServiceExt, FileServiceExt,
-    ModServiceExt, PlayerServiceExt, ProxyServiceExt, ScheduleServiceExt, ServerServiceExt,
-    UserServiceExt,
+    AccountServiceExt, AuditServiceExt, AuthServiceExt, BackupServiceExt, CatalogServiceExt,
+    FileServiceExt, ModServiceExt, PlayerServiceExt, ProxyServiceExt, ScheduleServiceExt,
+    ServerServiceExt, UserServiceExt,
 };
 
 mod account;
+mod audit;
 mod auth;
 pub(crate) mod backups;
 pub(crate) mod catalog;
@@ -30,6 +31,7 @@ mod users;
 pub(crate) fn register(router: ConnectRouter, state: &AppState) -> ConnectRouter {
     let router = Arc::new(auth::AuthRpc::new(state.clone())).register(router);
     let router = Arc::new(account::AccountRpc::new(state.clone())).register(router);
+    let router = Arc::new(audit::AuditRpc::new(state.clone())).register(router);
     let router = Arc::new(servers::ServerRpc::new(state.clone())).register(router);
     let router = Arc::new(files::FileRpc::new(state.clone())).register(router);
     let router = Arc::new(players::PlayerRpc::new(state.clone())).register(router);

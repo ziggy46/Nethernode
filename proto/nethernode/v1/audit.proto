@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+package nethernode.v1;
+
+// The audit log: who did what, and when.
+service AuditService {
+  // Filtered, newest first. Administrators and owners.
+  rpc ListAudit(ListAuditRequest) returns (ListAuditResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // Recent server, backup, and player activity for the dashboard, without
+  // addresses or other details. Anyone signed in.
+  rpc ListActivity(ListActivityRequest) returns (ListActivityResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+message AuditEntry {
+  string id = 1;
+  // Dotted action name, such as `server.start`.
+  string action = 2;
+  // Empty for NetherNode itself (schedules, expiring bans).
+  string user_id = 3;
+  string username = 4;
+  string target_type = 5;
+  string target_id = 6;
+  // The target's name, when it has one.
+  string target_name = 7;
+  // The action's details as a JSON object.
+  string details_json = 8;
+  int64 created_at_ms = 9;
+}
+
+message AuditActor {
+  string id = 1;
+  string username = 2;
+}
+
+message ListAuditRequest {
+  // An action family: auth, user, server, player, file, mod, backup,
+  // schedule, proxy, or settings. Empty for all.
+  string category = 1;
+  optional string user_id = 2;
+  // Actions on this server, including its players, files, and backups.
+  optional string server_id = 3;
+  // For the next page: the last entry ID seen.
+  optional string before_id = 4;
+  // Default 50, at most 200.
+  uint32 limit = 5;
+}
+
+message ListAuditResponse {
+  repeated AuditEntry entries = 1;
+  // Set when there may be more.
+  optional string next_before_id = 2;
+  // Everyone who can appear in the log, for filtering.
+  repeated AuditActor actors = 3;
+}
+
+message ActivityItem {
+  string id = 1;
+  string action = 2;
+  // Who did it; empty for NetherNode itself.
+  string actor = 3;
+  string server_name = 4;
+  // A short, safe note: a schedule's result, a player's name.
+  string note = 5;
+  int64 created_at_ms = 6;
+}
+
+message ListActivityRequest {
+  // Default 8, at most 30.
+  uint32 limit = 1;
+}
+
+message ListActivityResponse {
+  repeated ActivityItem items = 1;
+}

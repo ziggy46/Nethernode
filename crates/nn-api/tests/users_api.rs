@@ -329,3 +329,80 @@ async fn there_is_always_an_owner() {
         .await;
     assert_eq!(status, StatusCode::BAD_REQUEST, "the only owner again");
 }
+
+#[tokio::test]
+async fn the_audit_log_is_filtered_paged_and_for_admins() {
+    let (app, owner) = app().await;
+    let mut owner = Client::new(&app, Some(owner));
+    let created = owner
+        .ok(
+            "UserService/CreateUser",
+            json!({ "username": "watcher", "role": "ROLE_VIEWER" }),
+        )
+        .await;
+    let watcher_id = created["user"]["id"].as_str().unwrap().to_owned();
+    owner
+        .ok("UserService/ResetUserPassword", json!({ "id": watcher_id }))
+        .await;
+
+    let all = owner.ok("AuditService/ListAudit", json!({})).await;
+    let actions: Vec<&str> = all["entries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e["action"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        actions,
+        ["user.reset_password", "user.create", "auth.setup"],
+        "newest first"
+    );
+    assert_eq!(all["entries"][0]["username"], "owner");
+    assert_eq!(all["entries"][0]["targetName"], "watcher");
+    assert!(all["actors"].as_array().unwrap().len() == 2);
+
+    let users = owner
+        .ok(
+            "AuditService/ListAudit",
+            json!({ "category": "user", "limit": 1 }),
+        )
+        .await;
+    assert_eq!(users["entries"].as_array().unwrap().len(), 1);
+    let next = users["nextBeforeId"].as_str().unwrap();
+    let page = owner
+        .ok(
+            "AuditService/ListAudit",
+            json!({ "category": "user", "limit": 1, "beforeId": next }),
+        )
+        .await;
+    assert_eq!(page["entries"][0]["action"], "user.create");
+    let (status, _) = owner
+        .call("AuditService/ListAudit", json!({ "category": "nope" }))
+        .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+
+    // Viewers see the activity feed, not the log.
+    let mut watcher = Client::new(&app, None);
+    let reset = owner
+        .ok("UserService/ResetUserPassword", json!({ "id": watcher_id }))
+        .await;
+    watcher
+        .ok(
+            "AuthService/Login",
+            json!({ "username": "watcher", "password": reset["password"] }),
+        )
+        .await;
+    watcher
+        .ok(
+            "AccountService/ChangePassword",
+            json!({ "currentPassword": reset["password"], "newPassword": "watching closely" }),
+        )
+        .await;
+    let (status, _) = watcher.call("AuditService/ListAudit", json!({})).await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    let activity = watcher.ok("AuditService/ListActivity", json!({})).await;
+    assert!(
+        activity.get("items").is_none(),
+        "no server activity yet, and account changes aren't shown: {activity}"
+    );
+}
