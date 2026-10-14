@@ -1,16 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { LogOut, Settings, UserRound } from "lucide-react";
+import { Box, LogOut, Settings, UserRound } from "lucide-react";
 import type * as React from "react";
+import { lazy, Suspense } from "react";
 
 import { Footer, PageHeader, Panel, PanelHeader } from "@/components/page";
 import { useSignOut } from "@/components/shell/use-sign-out";
 import { Button } from "@/components/ui/button";
 import { healthQuery } from "@/lib/health";
-import { ROLE_LABELS, useCurrentUser } from "@/lib/session";
+import { ROLE_LABELS, useCanManage, useCurrentUser } from "@/lib/session";
 import { useDocumentTitle } from "@/lib/use-document-title";
 
 export const Route = createFileRoute("/_app/settings")({ component: SettingsPage });
+
+const CurseForgeKey = lazy(() =>
+  import("@/features/catalog/curseforge-key").then((m) => ({ default: m.CurseForgeKey })),
+);
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
 
@@ -23,6 +28,7 @@ function SettingsPage() {
   const user = useCurrentUser();
   const signOut = useSignOut();
   const health = useQuery(healthQuery);
+  const canManage = useCanManage();
 
   return (
     <>
@@ -52,6 +58,22 @@ function SettingsPage() {
             </Button>
           </Row>
         </Panel>
+
+        {canManage && (
+          <Panel>
+            <PanelHeader title="Modpacks and mods" icon={<Box />} />
+            <div className="py-[15px] first-of-type:pt-0 pb-0">
+              <p className="font-[550] text-label">CurseForge API key</p>
+              <p className="mt-[3px] mb-3 text-meta text-text-muted">
+                Lets NetherNode search CurseForge and install from it. It's stored encrypted and passed to
+                CurseForge modpack servers.
+              </p>
+              <Suspense fallback={<div className="h-9 animate-pulse rounded-md bg-surface-subtle" />}>
+                <CurseForgeKey />
+              </Suspense>
+            </div>
+          </Panel>
+        )}
 
         <Panel>
           <PanelHeader title="General preferences" icon={<Settings />} />

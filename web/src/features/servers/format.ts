@@ -30,9 +30,12 @@ const LOADER_NAMES: Record<string, string> = {
   forge: "Forge",
   neoforge: "NeoForge",
   quilt: "Quilt",
+  modrinth: "Modrinth modpack",
+  curseforge: "CurseForge modpack",
 };
 
-export const LOADERS = Object.keys(LOADER_NAMES);
+/** Server software you can pick directly (not modpacks). */
+export const LOADERS = ["vanilla", "paper", "purpur", "fabric", "forge", "neoforge", "quilt"];
 
 export function loaderName(loader: string): string {
   return LOADER_NAMES[loader] ?? loader;

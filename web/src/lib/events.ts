@@ -94,6 +94,7 @@ function applyData(client: QueryClient, event: DataEvent) {
     case "file_job_finished":
       jobFinished(event.job_id, { message: event.message, failed: event.failed });
       void client.invalidateQueries({ queryKey: ["files", event.server_id] });
+      void client.invalidateQueries({ queryKey: ["mods", event.server_id] });
       break;
     case "upload_finished":
       uploadFinished(event.upload_id, {
@@ -103,6 +104,7 @@ function applyData(client: QueryClient, event: DataEvent) {
         failed: event.failed,
       });
       void client.invalidateQueries({ queryKey: ["files", event.server_id] });
+      void client.invalidateQueries({ queryKey: ["mods", event.server_id] });
       void client.invalidateQueries({ queryKey: ["uploads"] });
       break;
     case "server_status_changed":

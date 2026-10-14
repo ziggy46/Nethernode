@@ -99,8 +99,8 @@ export function ServerCard({ server, now }: { server: Server; now: number }) {
           <ServerIcon className="ml-auto size-[13px] shrink-0 text-text-muted" aria-hidden />
         </div>
         <p className="flex flex-wrap items-center gap-1.5 text-meta text-text-muted">
-          <span className="rounded-xs bg-surface-elevated px-[5px] py-px text-text-secondary">
-            {loaderName(server.loader)}
+          <span className="max-w-[16ch] truncate rounded-xs bg-surface-elevated px-[5px] py-px text-text-secondary">
+            {server.modpack?.title ?? loaderName(server.loader)}
           </span>
           <span>{versionLabel(server.mcVersion)}</span>
           <span aria-hidden>·</span>

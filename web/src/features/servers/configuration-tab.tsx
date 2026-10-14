@@ -69,6 +69,7 @@ export function ConfigurationTab({ server }: { server: Server }) {
   const queryClient = useQueryClient();
   const canManage = useCanManage();
   const [form, setForm] = useState(() => fromServer(server));
+  const isModpack = server.modpack !== undefined;
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
   const ids = {
@@ -241,9 +242,10 @@ export function ConfigurationTab({ server }: { server: Server }) {
                     <Select
                       id={ids.loader}
                       value={form.loader}
+                      disabled={isModpack}
                       onChange={(e) => set("loader", e.target.value)}
                     >
-                      {LOADERS.map((l) => (
+                      {(isModpack ? [form.loader] : LOADERS).map((l) => (
                         <option key={l} value={l}>
                           {loaderName(l)}
                         </option>
@@ -254,6 +256,8 @@ export function ConfigurationTab({ server }: { server: Server }) {
                     label="Minecraft version"
                     className="[&_input]:font-mono"
                     value={form.mcVersion}
+                    disabled={isModpack}
+                    hint={isModpack ? "Set by the modpack." : undefined}
                     onChange={(e) => set("mcVersion", e.target.value)}
                     error={errors.version}
                   />

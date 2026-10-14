@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 
 import { ConsolePanel } from "../console/console-panel";
 import { FilesPanel } from "../files/files-panel";
+import { hasMods, ModsPanel } from "../mods/mods-panel";
 import { PlayersPanel } from "../players/players-panel";
 import { ConfigurationTab } from "./configuration-tab";
 import { useDockerAvailable } from "./docker-notice";
@@ -84,7 +85,10 @@ export function ServerPage({ id }: { id: string }) {
           <p className="mb-1.5 font-[650] text-eyebrow text-primary uppercase">Server workspace</p>
           <h1 className="mb-[7px] truncate font-[650] text-page below-md:text-[25px]">{s.name}</h1>
           <p className="text-label text-text-muted">
-            {loaderName(s.loader)} {versionLabel(s.mcVersion)}
+            {s.modpack
+              ? `${s.modpack.title}${s.modpack.versionName ? ` ${s.modpack.versionName}` : ""} · Minecraft`
+              : loaderName(s.loader)}{" "}
+            {versionLabel(s.mcVersion)}
             {address && (
               <>
                 {" · "}
@@ -107,6 +111,7 @@ export function ServerPage({ id }: { id: string }) {
           {[
             ["console", "Console"],
             ["players", "Players"],
+            ...(hasMods(s) ? [["mods", "Mods"]] : []),
             ["files", "Files"],
             ["configuration", "Configuration"],
             ["backups", "Backups"],
@@ -126,6 +131,11 @@ export function ServerPage({ id }: { id: string }) {
         <Tabs.Content value="players">
           <PlayersPanel server={s} />
         </Tabs.Content>
+        {hasMods(s) && (
+          <Tabs.Content value="mods">
+            <ModsPanel server={s} />
+          </Tabs.Content>
+        )}
         <Tabs.Content value="files" forceMount className="data-[state=inactive]:hidden">
           {filesVisited && <FilesPanel server={s} />}
         </Tabs.Content>
