@@ -1,0 +1,132 @@
+//! What the panel and an agent say to each other. JSON, each message
+//! prefixed with its length (big-endian `u32`), at most [`MAX_MESSAGE`].
+
+use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+
+/// Largest message accepted.
+pub const MAX_MESSAGE: usize = 64 * 1024;
+
+/// The agent's first message once the link is encrypted.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Hello {
+    /// [`crate::PROTOCOL`].
+    pub protocol: u32,
+    /// The agent's NetherNode version.
+    pub version: String,
+    /// The join code, on the agent's first connection.
+    pub join: Option<JoinProof>,
+}
+
+/// Proof that the agent was given a join code.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct JoinProof {
+    /// The code's ID.
+    pub code_id: String,
+    /// The code's secret, hex encoded.
+    pub secret: String,
+}
+
+impl std::fmt::Debug for JoinProof {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("JoinProof")
+            .field("code_id", &self.code_id)
+            .finish_non_exhaustive()
+    }
+}
+
+/// The panel's answer to [`Hello`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum Welcome {
+    /// The agent is this node.
+    Accepted {
+        /// The node's ID.
+        node_id: String,
+        /// The node's name.
+        name: String,
+    },
+    /// Not a node this panel knows (removed, or a bad join code).
+    Rejected {
+        /// Why, for the agent's log.
+        reason: String,
+    },
+}
+
+/// Facts about the agent's machine.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HostReport {
+    /// Docker could be reached.
+    pub docker_available: bool,
+    /// Why not, when it couldn't.
+    pub docker_error: String,
+    /// Host name.
+    pub hostname: String,
+    /// Operating system.
+    pub operating_system: String,
+    /// Docker engine version.
+    pub docker_version: String,
+    /// Logical CPUs.
+    pub cpus: u32,
+    /// Total memory in bytes.
+    pub memory_bytes: u64,
+    /// Disk holding servers and backups: total bytes.
+    pub disk_total_bytes: Option<u64>,
+    /// And free bytes.
+    pub disk_free_bytes: Option<u64>,
+}
+
+/// Messages on the control stream, from the agent.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum AgentMessage {
+    /// Sent every [`HEARTBEAT`]; the panel counts a node offline after
+    /// three missed.
+    Heartbeat {
+        /// The machine right now.
+        host: HostReport,
+    },
+}
+
+/// How often the agent sends a heartbeat.
+pub const HEARTBEAT: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// Writes one message.
+pub async fn send<W, T>(out: &mut W, message: &T) -> std::io::Result<()>
+where
+    W: AsyncWrite + Unpin,
+    T: Serialize,
+{
+    let body = serde_json::to_vec(message)?;
+    if body.len() > MAX_MESSAGE {
+        return Err(std::io::Error::other("message too large"));
+    }
+    out.write_u32(body.len() as u32).await?;
+    out.write_all(&body).await?;
+    out.flush().await
+}
+
+/// Reads one message. `Ok(None)` when the stream ends between messages.
+pub async fn recv<R, T>(input: &mut R) -> std::io::Result<Option<T>>
+where
+    R: AsyncRead + Unpin,
+    T: DeserializeOwned,
+{
+    let len = match input.read_u32().await {
+        Ok(len) => len as usize,
+        Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => return Ok(None),
+        Err(e) => return Err(e),
+    };
+    if len > MAX_MESSAGE {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "message too large",
+        ));
+    }
+    let mut body = vec![0u8; len];
+    input.read_exact(&mut body).await?;
+    serde_json::from_slice(&body)
+        .map(Some)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
+}
