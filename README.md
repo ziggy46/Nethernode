@@ -4,6 +4,8 @@
 
 <p align="center">A fast, self-hosted Minecraft server manager.</p>
 
+<p align="center"><a href="docs/site/src/content/docs/reference/install-count.md"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fnethernode-installs.pages.dev%2Fbadge.json" alt="Active installs (opt-in)"></a></p>
+
 NetherNode is a single binary that runs a web panel, manages Minecraft servers
 as Docker containers, and routes players to the right server by hostname
 through one public port.

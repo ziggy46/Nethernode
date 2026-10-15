@@ -37,8 +37,8 @@ settings, or usage.
 
 ## What the counter keeps
 
-The counter is a small open-source Cloudflare Worker (`counter/` in the
-repository). It stores each install ID, its version, and the day of the last
+The counter is a small open-source Cloudflare Pages project
+(`counter/` in the repository) at `https://nethernode-installs.pages.dev`. It stores each install ID, its version, and the day of the last
 report, and forgets an install after 90 days without one. It keeps no
 request logs and doesn't store IP addresses, though like any web request,
 the connection itself comes from your address. The badge counts IDs heard

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NetherNode install counter</title>
+    <style>
+      body { margin: 0; padding: 2rem 1rem; background: #100c18; color: #ece8f2; font: 16px/1.6 system-ui, sans-serif; }
+      main { max-width: 38rem; margin: 0 auto; }
+      h1 { font-size: 1.4rem; }
+      code { background: #1f1830; padding: 0.1em 0.35em; border-radius: 4px; }
+      a { color: #f2701c; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>NetherNode install counter</h1>
+      <p>
+        NetherNode installs can opt in to being counted. Once a day they send a random install ID, made on their
+        machine, and their version number: nothing else.
+      </p>
+      <p>
+        This counts how many installs reported in the last 30 days. It stores only the ID, the version, and the day
+        of the last report, forgets an install after 90 days without one, and keeps no request logs or IP addresses.
+      </p>
+      <p>Current count: <code>/badge.json</code></p>
+    </main>
+  </body>
+</html>

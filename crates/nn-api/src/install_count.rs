@@ -17,7 +17,7 @@ use tokio::sync::Notify;
 use crate::AppState;
 
 /// Where reports go unless configured otherwise.
-pub const DEFAULT_URL: &str = "https://nethernode-installs.SUBDOMAIN.workers.dev/ping";
+pub const DEFAULT_URL: &str = "https://nethernode-installs.pages.dev/ping";
 
 const ENABLED_KEY: &str = "install_count.enabled";
 const ID_KEY: &str = "install_count.id";

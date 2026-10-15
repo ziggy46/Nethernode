@@ -1,16 +1,8 @@
-# The NetherNode install counter. See README.md for setup and deployment.
+# The NetherNode install counter, as a Cloudflare Pages project with
+# Functions. See README.md for setup and deployment.
 name = "nethernode-installs"
-main = "src/index.ts"
+pages_build_output_dir = "public"
 compatibility_date = "2026-10-01"
-workers_dev = true
-
-# Forget installs that stopped reporting.
-[triggers]
-crons = ["17 3 * * *"]
-
-# No request logs are kept.
-[observability]
-enabled = false
 
 [[d1_databases]]
 binding = "DB"

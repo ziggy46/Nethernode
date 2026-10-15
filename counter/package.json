@@ -6,8 +6,8 @@
   "type": "module",
   "packageManager": "pnpm@11.22.0",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "dev": "wrangler pages dev",
+    "deploy": "wrangler pages deploy",
     "test": "vitest run"
   },
   "devDependencies": {
