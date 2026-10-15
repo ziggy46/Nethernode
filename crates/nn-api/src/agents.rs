@@ -21,7 +21,7 @@ use futures_util::{Sink, SinkExt, Stream, StreamExt};
 use http::StatusCode;
 use nn_auth::SecretBox;
 use nn_events::{Event, EventBus};
-use nn_link::messages::{self, AgentMessage, HostReport};
+use nn_link::messages::{self, AgentMessage, HostReport, StreamKind};
 use nn_link::{Handshaken, Keypair, PROTOCOL, Session};
 use nn_store::{NewAuditEntry, Node, Store};
 use serde_json::json;
@@ -51,6 +51,7 @@ pub struct Live {
 
 /// The panel's links to agents.
 pub struct Agents {
+    nodes: nn_node::Nodes,
     store: Option<Store>,
     events: EventBus,
     key: Option<Keypair>,
@@ -70,6 +71,7 @@ impl Default for Agents {
 impl Agents {
     fn unavailable(events: EventBus, reason: &str) -> Self {
         Self {
+            nodes: nn_node::Nodes::default(),
             store: None,
             events,
             key: None,
@@ -81,7 +83,12 @@ impl Agents {
     }
 
     /// Loads the panel's key pair, making one the first time.
-    pub async fn load(store: Store, events: EventBus, secrets: Option<&SecretBox>) -> Self {
+    pub async fn load(
+        store: Store,
+        events: EventBus,
+        secrets: Option<&SecretBox>,
+        nodes: nn_node::Nodes,
+    ) -> Self {
         let Some(secrets) = secrets else {
             return Self::default();
         };
@@ -93,6 +100,7 @@ impl Agents {
             }
         };
         Self {
+            nodes,
             store: Some(store),
             events,
             key: Some(key),
@@ -118,11 +126,12 @@ impl Agents {
         self.lock().get(node_id).cloned()
     }
 
-    /// Disconnects a node's agent (the node was removed).
+    /// Disconnects a node's agent and forgets the node (it was removed).
     pub fn disconnect(&self, node_id: &str) {
         if let Some(live) = self.lock().remove(node_id) {
             live.session.close();
         }
+        self.nodes.forget(node_id);
     }
 
     fn lock(&self) -> std::sync::MutexGuard<'_, HashMap<String, Live>> {
@@ -237,7 +246,7 @@ impl Agents {
     }
 
     /// Serves an admitted agent until its link ends.
-    async fn run(&self, store: &Store, admitted: Admitted) {
+    async fn run(self: &Arc<Self>, store: &Store, admitted: Admitted) {
         let Admitted {
             node,
             version,
@@ -257,42 +266,89 @@ impl Agents {
         if let Some(old) = self.lock().insert(node.id.clone(), live) {
             old.session.close();
         }
+        let remote = self.nodes.remote(&node.id);
+        remote.set_name(&node.name);
+        let compatible = compatible(env!("CARGO_PKG_VERSION"), &version);
+        // An agent on another version reports in but runs nothing.
+        if compatible {
+            remote.attach(session.clone());
+        }
         let _ = store
             .node_seen(&node.id, &version, None, nn_store::now_ms())
             .await;
         self.publish(&node.id, true);
         tracing::info!(node = %node.id, %version, "an agent connected");
 
-        if let Ok(Some(mut control)) = tokio::time::timeout(SILENCE, inbound.next()).await {
-            loop {
-                let message =
-                    tokio::time::timeout(SILENCE, messages::recv::<_, AgentMessage>(&mut control))
-                        .await;
-                match message {
-                    Ok(Ok(Some(AgentMessage::Heartbeat { host }))) => {
-                        let json = serde_json::to_string(&host).ok();
-                        if let Some(live) = self.lock().get_mut(&node.id)
-                            && live.generation == generation
-                        {
-                            live.host = Some(host);
+        let heard = Arc::new(tokio::sync::Notify::new());
+        let accept = {
+            let (agents, store, node_id, remote, session, heard) = (
+                self.clone(),
+                store.clone(),
+                node.id.clone(),
+                remote.clone(),
+                session.clone(),
+                heard.clone(),
+            );
+            tokio::spawn(async move {
+                while let Some(mut stream) = inbound.next().await {
+                    let kind = tokio::time::timeout(
+                        HANDSHAKE_TIMEOUT,
+                        messages::recv::<_, StreamKind>(&mut stream),
+                    )
+                    .await;
+                    match kind {
+                        Ok(Ok(Some(StreamKind::Control))) => {
+                            let (agents, store, node_id, remote, session, heard) = (
+                                agents.clone(),
+                                store.clone(),
+                                node_id.clone(),
+                                remote.clone(),
+                                session.clone(),
+                                heard.clone(),
+                            );
+                            tokio::spawn(async move {
+                                agents
+                                    .heartbeats(
+                                        stream, &store, &node_id, &remote, generation, &heard,
+                                    )
+                                    .await;
+                                session.close();
+                            });
                         }
-                        let _ = store
-                            .node_seen(&node.id, &version, json.as_deref(), nn_store::now_ms())
-                            .await;
-                    }
-                    Ok(Ok(None)) => break,
-                    Ok(Err(e)) => {
-                        tracing::info!(node = %node.id, error = %e, "an agent's link broke");
-                        break;
-                    }
-                    Err(_) => {
-                        tracing::info!(node = %node.id, "an agent went quiet; closing its link");
-                        break;
+                        Ok(Ok(Some(StreamKind::Events))) if compatible => {
+                            let (agents, store, node_id, remote) = (
+                                agents.clone(),
+                                store.clone(),
+                                node_id.clone(),
+                                remote.clone(),
+                            );
+                            tokio::spawn(async move {
+                                agents
+                                    .server_events(stream, &store, &node_id, &remote)
+                                    .await;
+                            });
+                        }
+                        _ => {}
                     }
                 }
-            }
-        }
-        session.close();
+            })
+        };
+        // An agent that never says anything is closed like a quiet one.
+        let quiet = {
+            let session = session.clone();
+            tokio::spawn(async move {
+                if tokio::time::timeout(SILENCE, heard.notified())
+                    .await
+                    .is_err()
+                {
+                    session.close();
+                }
+            })
+        };
+        session.closed().await;
+        accept.abort();
+        quiet.abort();
+
         let mut links = self.lock();
         if links
             .get(&node.id)
@@ -300,8 +356,165 @@ impl Agents {
         {
             links.remove(&node.id);
             drop(links);
+            remote.detach();
             self.publish(&node.id, false);
             tracing::info!(node = %node.id, "an agent disconnected");
+        }
+    }
+
+    /// Reads heartbeats until the agent goes quiet or leaves.
+    async fn heartbeats(
+        &self,
+        mut control: nn_link::LinkStream,
+        store: &Store,
+        node_id: &str,
+        remote: &nn_node::RemoteNode,
+        generation: u64,
+        heard: &tokio::sync::Notify,
+    ) {
+        loop {
+            let message =
+                tokio::time::timeout(SILENCE, messages::recv::<_, AgentMessage>(&mut control))
+                    .await;
+            match message {
+                Ok(Ok(Some(AgentMessage::Heartbeat { host }))) => {
+                    heard.notify_one();
+                    let json = serde_json::to_string(&host).ok();
+                    remote.set_host(remote_host(&host));
+                    if let Some(live) = self.lock().get_mut(node_id)
+                        && live.generation == generation
+                    {
+                        live.host = Some(host);
+                    }
+                    let version = self
+                        .lock()
+                        .get(node_id)
+                        .map(|l| l.version.clone())
+                        .unwrap_or_default();
+                    let _ = store
+                        .node_seen(node_id, &version, json.as_deref(), nn_store::now_ms())
+                        .await;
+                }
+                Ok(Ok(None)) => return,
+                Ok(Err(e)) => {
+                    tracing::info!(node = %node_id, error = %e, "an agent's link broke");
+                    return;
+                }
+                Err(_) => {
+                    tracing::info!(node = %node_id, "an agent went quiet; closing its link");
+                    return;
+                }
+            }
+        }
+    }
+
+    /// Keeps the panel's copies of the agent's servers in step, and passes
+    /// its events on. An agent only ever speaks for its own servers.
+    async fn server_events(
+        &self,
+        mut stream: nn_link::LinkStream,
+        store: &Store,
+        node_id: &str,
+        remote: &nn_node::RemoteNode,
+    ) {
+        use nn_node::protocol::AgentEvent;
+        let mut mine: std::collections::HashSet<String> = match store.list_servers().await {
+            Ok(servers) => servers
+                .into_iter()
+                .filter(|s| s.node_id == node_id)
+                .map(|s| s.id)
+                .collect(),
+            Err(_) => return,
+        };
+        loop {
+            let event = match messages::recv::<_, AgentEvent>(&mut stream).await {
+                Ok(Some(event)) => event,
+                Ok(None) => return,
+                Err(e) => {
+                    tracing::info!(node = %node_id, error = %e, "an agent's events stopped");
+                    return;
+                }
+            };
+            match event {
+                AgentEvent::Servers { servers } => {
+                    let reported: std::collections::HashSet<String> =
+                        servers.iter().map(|s| s.id.clone()).collect();
+                    for server in servers {
+                        self.mirror(store, node_id, &mut mine, server).await;
+                    }
+                    // Gone while the panel wasn't listening.
+                    for id in mine.clone().difference(&reported) {
+                        self.unmirror(store, node_id, &mut mine, id).await;
+                    }
+                }
+                AgentEvent::Server { server } => {
+                    self.mirror(store, node_id, &mut mine, *server).await;
+                }
+                AgentEvent::Removed { id } => {
+                    self.unmirror(store, node_id, &mut mine, &id).await;
+                }
+                AgentEvent::Event { event } => {
+                    let about = serde_json::to_value(&event).ok().and_then(|v| {
+                        v.get("server_id")
+                            .and_then(|id| id.as_str().map(str::to_owned))
+                    });
+                    if about.is_some_and(|id| mine.contains(&id)) {
+                        remote.apply(&event);
+                        self.events.publish(event);
+                    }
+                }
+            }
+        }
+    }
+
+    async fn mirror(
+        &self,
+        store: &Store,
+        node_id: &str,
+        mine: &mut std::collections::HashSet<String>,
+        server: nn_store::Server,
+    ) {
+        // Never a server that belongs somewhere else.
+        if !mine.contains(&server.id) {
+            match store.find_server(&server.id).await {
+                Ok(None) => {}
+                Ok(Some(existing)) if existing.node_id == node_id => {}
+                _ => {
+                    tracing::warn!(node = %node_id, server = %server.id, "an agent reported a server that isn't its own; ignored");
+                    return;
+                }
+            }
+        }
+        match store.upsert_server_mirror(&server, node_id).await {
+            Ok(()) => {
+                mine.insert(server.id);
+            }
+            Err(e) => {
+                tracing::warn!(node = %node_id, server = %server.id, error = %e, "couldn't record a server from an agent");
+            }
+        }
+    }
+
+    async fn unmirror(
+        &self,
+        store: &Store,
+        node_id: &str,
+        mine: &mut std::collections::HashSet<String>,
+        id: &str,
+    ) {
+        if !mine.remove(id) {
+            return;
+        }
+        match store.delete_server(id).await {
+            Ok(_) => {
+                self.events.publish(Event::ServerStatusChanged {
+                    server_id: id.to_owned(),
+                    status: "deleted".into(),
+                });
+            }
+            Err(e) => {
+                tracing::warn!(node = %node_id, server = %id, error = %e, "couldn't forget a server an agent deleted");
+            }
         }
     }
 
@@ -408,6 +621,24 @@ impl Sink<Bytes> for WsFrames {
 
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
         self.0.poll_close_unpin(cx).map_err(io::Error::other)
+    }
+}
+
+/// An agent's heartbeat, as the node layer keeps it.
+fn remote_host(host: &HostReport) -> nn_node::RemoteHost {
+    nn_node::RemoteHost {
+        docker: if host.docker_available {
+            Ok(nn_orchestrator::HostInfo {
+                hostname: host.hostname.clone(),
+                operating_system: host.operating_system.clone(),
+                docker_version: host.docker_version.clone(),
+                cpus: host.cpus,
+                memory_bytes: host.memory_bytes,
+            })
+        } else {
+            Err(host.docker_error.clone())
+        },
+        disk: host.disk_total_bytes.zip(host.disk_free_bytes),
     }
 }
 

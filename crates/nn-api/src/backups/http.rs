@@ -28,6 +28,7 @@ pub(crate) async fn download(
         }
     };
     match super::node_of(&state, &backup)
+        .await
         .open_backup(&backup.file_name)
         .await
     {

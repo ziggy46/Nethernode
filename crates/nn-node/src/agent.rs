@@ -14,8 +14,10 @@ use std::time::{Duration, Instant};
 
 use bytes::Bytes;
 use futures_util::{Sink, SinkExt, Stream, StreamExt};
-use nn_link::messages::{self, AgentMessage, Hello, HostReport, JoinProof, Welcome};
-use nn_link::{JoinToken, Keypair, LinkError, PROTOCOL, Session};
+use nn_events::Event;
+use nn_link::messages::{self, AgentMessage, Hello, HostReport, JoinProof, StreamKind, Welcome};
+use nn_link::{Inbound, JoinToken, Keypair, LinkError, LinkStream, PROTOCOL, Session};
+use nn_store::Server;
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
@@ -24,6 +26,7 @@ use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 
 use crate::Node;
+use crate::protocol::{AgentEvent, LogLine, RemoteError, Reply, Request};
 
 const STATE_FILE: &str = "agent.json";
 /// Wait after the panel turns a joined agent away before asking again.
@@ -179,7 +182,7 @@ pub async fn run(args: AgentArgs, node: Node) -> Result<(), AgentError> {
             join,
         };
         match connect(&url, &key, &panel_key, &hello).await {
-            Ok((node_id, name, session)) => {
+            Ok((node_id, name, session, inbound)) => {
                 if state.is_none() {
                     let joined = AgentState {
                         panel_url: url.clone(),
@@ -194,7 +197,7 @@ pub async fn run(args: AgentArgs, node: Node) -> Result<(), AgentError> {
                 }
                 tracing::info!(panel = %url, node = %name, "connected to the panel");
                 let started = Instant::now();
-                serve(&session, &node).await;
+                serve(&session, inbound, &node).await;
                 tracing::warn!(panel = %url, "lost the connection to the panel; reconnecting");
                 if started.elapsed() >= STABLE {
                     backoff = Duration::from_secs(1);
@@ -235,33 +238,43 @@ pub async fn connect(
     key: &Keypair,
     panel_key: &[u8; 32],
     hello: &Hello,
-) -> Result<(String, String, Session), LinkError> {
+) -> Result<(String, String, Session, Inbound), LinkError> {
     let timed_out =
         |what: &str| io::Error::new(io::ErrorKind::TimedOut, format!("{what} timed out"));
     // A dead network would otherwise wait out the system's TCP timeout.
     let frames = tokio::time::timeout(Duration::from_secs(20), dial(panel_url))
         .await
         .map_err(|_| timed_out("connecting to the panel"))??;
-    let (welcome, session, _inbound) = tokio::time::timeout(
+    let (welcome, session, inbound) = tokio::time::timeout(
         Duration::from_secs(20),
         nn_link::connect(frames, key, panel_key, hello),
     )
     .await
     .map_err(|_| timed_out("the handshake"))??;
     match welcome {
-        Welcome::Accepted { node_id, name } => Ok((node_id, name, session)),
+        Welcome::Accepted { node_id, name } => Ok((node_id, name, session, inbound)),
         Welcome::Rejected { reason } => Err(LinkError::Rejected(reason)),
     }
 }
 
-/// Keeps the control stream going until the link drops.
-async fn serve(session: &Session, node: &Node) {
-    let mut control = match session.open().await {
+/// Serves the panel until the link drops: heartbeats on the control
+/// stream, the panel's requests, and this machine's events.
+async fn serve(session: &Session, mut inbound: Inbound, node: &Node) {
+    let mut control = match open(session, StreamKind::Control).await {
         Ok(stream) => stream,
         Err(e) => {
             tracing::warn!(error = %e, "couldn't open the control stream");
             return;
         }
+    };
+    let events = tokio::spawn(forward_events(session.clone(), node.clone()));
+    let requests = {
+        let node = node.clone();
+        tokio::spawn(async move {
+            while let Some(stream) = inbound.next().await {
+                tokio::spawn(handle(stream, node.clone()));
+            }
+        })
     };
     let mut tick = tokio::time::interval(messages::HEARTBEAT);
     loop {
@@ -277,6 +290,180 @@ async fn serve(session: &Session, node: &Node) {
         }
     }
     session.close();
+    events.abort();
+    requests.abort();
+}
+
+/// Opens a stream to the panel, saying what it's for.
+async fn open(session: &Session, kind: StreamKind) -> io::Result<LinkStream> {
+    let mut stream = session.open().await?;
+    messages::send(&mut stream, &kind).await?;
+    Ok(stream)
+}
+
+/// This machine's servers.
+async fn servers(node: &Node) -> crate::Result<Vec<Server>> {
+    let Node::Local(local) = node else {
+        return Ok(Vec::new());
+    };
+    Ok(local.orchestrator()?.servers().await?)
+}
+
+/// Tells the panel about every change to this machine's servers, and passes
+/// on this machine's events.
+async fn forward_events(session: Session, node: Node) {
+    let Node::Local(local) = &node else {
+        return;
+    };
+    // Subscribe first, so nothing between the snapshot and the stream is lost.
+    let mut events = local.events.subscribe();
+    let Ok(mut stream) = open(&session, StreamKind::Events).await else {
+        return;
+    };
+    let snapshot = |servers: crate::Result<Vec<Server>>| AgentEvent::Servers {
+        servers: servers.unwrap_or_default(),
+    };
+    if messages::send(&mut stream, &snapshot(servers(&node).await))
+        .await
+        .is_err()
+    {
+        return;
+    }
+    loop {
+        let event = match events.recv().await {
+            Ok(event) => event,
+            Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
+                if messages::send(&mut stream, &snapshot(servers(&node).await))
+                    .await
+                    .is_err()
+                {
+                    return;
+                }
+                continue;
+            }
+            Err(tokio::sync::broadcast::error::RecvError::Closed) => return,
+        };
+        if let Event::ServerStatusChanged { server_id, status } = &event {
+            let change = if status == "deleted" {
+                Some(AgentEvent::Removed {
+                    id: server_id.clone(),
+                })
+            } else {
+                match local.orchestrator() {
+                    Ok(o) => o
+                        .server(server_id)
+                        .await
+                        .ok()
+                        .map(|server| AgentEvent::Server {
+                            server: Box::new(server),
+                        }),
+                    Err(_) => None,
+                }
+            };
+            if let Some(change) = change
+                && messages::send(&mut stream, &change).await.is_err()
+            {
+                return;
+            }
+        }
+        if messages::send(&mut stream, &AgentEvent::Event { event })
+            .await
+            .is_err()
+        {
+            return;
+        }
+    }
+}
+
+/// Answers one request from the panel.
+async fn handle(mut stream: LinkStream, node: Node) {
+    let request = match messages::recv::<_, Request>(&mut stream).await {
+        Ok(Some(request)) => request,
+        Ok(None) => return,
+        Err(e) => {
+            tracing::debug!(error = %e, "a request from the panel didn't make sense");
+            return;
+        }
+    };
+    if let Request::Logs { id } = &request {
+        return follow_logs(stream, &node, id).await;
+    }
+    let reply = answer(&node, request).await;
+    let _ = messages::send(&mut stream, &reply).await;
+}
+
+fn reply<T: Serialize>(result: crate::Result<T>) -> Reply {
+    result
+        .map(|value| serde_json::to_value(value).unwrap_or(serde_json::Value::Null))
+        .map_err(|e| RemoteError::from(&e))
+}
+
+async fn answer(node: &Node, request: Request) -> Reply {
+    match request {
+        Request::ListServers => reply(servers(node).await),
+        Request::Create { input } => reply(node.create(input).await),
+        Request::Start { id } => reply(node.start(&id).await),
+        Request::Wake { id } => reply(node.wake(&id).await),
+        Request::Stop { id, sleep } => reply(node.stop(&id, sleep).await),
+        Request::Restart { id } => reply(node.restart(&id).await),
+        Request::Kill { id } => reply(node.kill(&id).await),
+        Request::Update { id, settings } => reply(node.update(&id, settings).await),
+        Request::Delete { id, delete_data } => reply(node.delete(&id, delete_data).await),
+        Request::ContainerRunning { id } => reply(node.container_running(&id).await),
+        Request::RestartRequired { id } => {
+            let required = match node {
+                Node::Local(local) => match local.orchestrator() {
+                    Ok(o) => match o.server(&id).await {
+                        Ok(server) => o.restart_required(&server).await,
+                        Err(_) => false,
+                    },
+                    Err(_) => false,
+                },
+                Node::Remote(_) => false,
+            };
+            reply(Ok(required))
+        }
+        Request::StatsHistory { id } => reply(Ok(node.stats_history(&id).await)),
+        Request::Command { id, command } => reply(node.command(&id, &command).await),
+        Request::SetCurseforgeKey { key } => {
+            node.set_curseforge_key(key);
+            reply(Ok(()))
+        }
+        Request::Logs { .. } => unreachable!("handled by follow_logs"),
+    }
+}
+
+/// Sends a server's console backlog, then each new line.
+async fn follow_logs(mut stream: LinkStream, node: &Node, id: &str) {
+    let logs = match node.subscribe_logs(id).await {
+        Ok(logs) => logs,
+        Err(e) => {
+            let _ = messages::send(&mut stream, &reply::<()>(Err(e))).await;
+            return;
+        }
+    };
+    let backlog: Vec<&str> = logs.backlog.iter().map(|l| &**l).collect();
+    if messages::send(&mut stream, &reply(Ok(backlog)))
+        .await
+        .is_err()
+    {
+        return;
+    }
+    let mut lines = logs.lines;
+    loop {
+        match lines.recv().await {
+            Ok(line) => {
+                let line = LogLine {
+                    line: line.to_string(),
+                };
+                if messages::send(&mut stream, &line).await.is_err() {
+                    return;
+                }
+            }
+            Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
+            Err(tokio::sync::broadcast::error::RecvError::Closed) => return,
+        }
+    }
 }
 
 /// This machine, for the panel.

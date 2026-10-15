@@ -14,7 +14,7 @@ pub const DEFAULT_CAPACITY: usize = 1024;
 ///
 /// New variants are added as later phases introduce servers, players, and
 /// the proxy.
-#[derive(Debug, Clone, Serialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, serde::Deserialize, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 #[non_exhaustive]
 pub enum Event {

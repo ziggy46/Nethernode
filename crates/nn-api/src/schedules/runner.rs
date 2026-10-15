@@ -217,7 +217,7 @@ pub(crate) async fn run(
 
 /// Shows a message to everyone on a running server.
 pub(crate) async fn broadcast(state: &AppState, server_id: &str, text: &str) -> Result<(), String> {
-    let node = state.nodes.for_server_id(server_id);
+    let node = state.nodes.for_server_id(server_id).await;
     if node.unavailable().is_some() {
         return Err("Docker isn't available".into());
     }

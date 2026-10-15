@@ -151,11 +151,11 @@ impl StoreProxyHooks {
 impl ProxyHooks for StoreProxyHooks {
     fn wake<'a>(&'a self, server_id: &'a str) -> BoxFuture<'a, WakeOutcome> {
         Box::pin(async move {
-            let node = self
-                .nodes
-                .get()
-                .map(|nodes| nodes.for_server_id(server_id).clone())
-                .filter(|node| node.unavailable().is_none());
+            let node = match self.nodes.get() {
+                Some(nodes) => Some(nodes.for_server_id(server_id).await),
+                None => None,
+            }
+            .filter(|node| node.unavailable().is_none());
             let Some(node) = node else {
                 tracing::info!(server = %server_id, "wake-on-connect requested, but Docker isn't available");
                 return WakeOutcome::Unavailable;

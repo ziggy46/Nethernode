@@ -94,6 +94,7 @@ export function ServerPage({ id }: { id: string }) {
               ? `${s.modpack.title}${s.modpack.versionName ? ` ${s.modpack.versionName}` : ""} · Minecraft`
               : loaderName(s.loader)}{" "}
             {versionLabel(s.mcVersion)}
+            {s.nodeId !== "local" && ` · on ${s.nodeName}`}
             {address && (
               <>
                 {" · "}
@@ -102,7 +103,7 @@ export function ServerPage({ id }: { id: string }) {
             )}
           </p>
         </div>
-        <ServerStatusBadge status={s.status} />
+        <ServerStatusBadge status={s.status} nodeOffline={s.nodeOffline} />
       </div>
 
       <Tabs.Root
@@ -171,7 +172,7 @@ function ConsoleTab({ server }: { server: Server }) {
               <SquareTerminal className="size-4" aria-hidden />
               Server console
               <span className="ml-auto">
-                <ServerStatusBadge status={server.status} />
+                <ServerStatusBadge status={server.status} nodeOffline={server.nodeOffline} />
               </span>
             </div>
             <div className="flex min-h-[220px] flex-col items-center justify-center gap-3 p-8 text-center">

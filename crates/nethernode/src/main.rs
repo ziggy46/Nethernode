@@ -116,7 +116,10 @@ async fn serve(config: Config) -> Result<()> {
     let events = EventBus::default();
     let hooks = StoreProxyHooks::new(store.clone());
     let proxy = start_proxy(&config, &store, &events, hooks.clone()).await?;
-    let nodes = Nodes::new(start_orchestrator(&config, &store, &events, secrets.clone()).await);
+    let nodes = Nodes::new(
+        start_orchestrator(&config, &store, &events, secrets.clone()).await,
+        Some(store.clone()),
+    );
     hooks.set_nodes(nodes.clone());
     spawn_proxy_reloader(proxy.clone(), &events);
 
@@ -141,7 +144,13 @@ async fn serve(config: Config) -> Result<()> {
     let notifier = Arc::new(nn_api::notify::Notifier::default());
     notifier.load(&store, secrets.as_deref()).await;
     let agents = Arc::new(
-        nn_api::agents::Agents::load(store.clone(), events.clone(), secrets.as_deref()).await,
+        nn_api::agents::Agents::load(
+            store.clone(),
+            events.clone(),
+            secrets.as_deref(),
+            nodes.clone(),
+        )
+        .await,
     );
     let install_count = Arc::new(nn_api::install_count::InstallCount::new(
         config.install_count.url.clone(),
@@ -232,8 +241,10 @@ async fn agent(config: Config, join: Option<String>, code: Option<String>) -> Re
         .map(Arc::new)
         .context("loading the data key")?;
     let events = EventBus::default();
-    let node =
-        nn_node::Nodes::new(start_orchestrator(&config, &store, &events, Some(secrets)).await);
+    let node = nn_node::Nodes::new(
+        start_orchestrator(&config, &store, &events, Some(secrets)).await,
+        Some(store.clone()),
+    );
     let args = nn_node::agent::AgentArgs {
         dir: config.data.dir.clone(),
         panel_url: join,

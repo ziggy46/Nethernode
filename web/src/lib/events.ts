@@ -16,7 +16,7 @@ const INVALIDATES: Record<string, string[][]> = {
   player_left: [["proxy", "connections"], ["players"]],
   players_changed: [["players"], ["activity"]],
   proxy_connection_closed: [["proxy", "connections"]],
-  node_changed: [["nodes"]],
+  node_changed: [["nodes"], ["servers"]],
   proxy_listener_changed: [["proxy", "listeners"]],
   server_status_changed: [["servers"], ["proxy", "routes"], ["players"], ["schedules"], ["activity"]],
   server_players: [["servers"]],

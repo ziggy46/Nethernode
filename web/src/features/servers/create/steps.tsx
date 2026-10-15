@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, Input, Select } from "@/components/ui/field";
 import { Platform, ProjectKind } from "@/gen/nethernode/v1/catalog_pb";
+import { type Node, NodeStatus } from "@/gen/nethernode/v1/nodes_pb";
 import { errorMessage, proxyClient } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -389,13 +390,16 @@ function KeylessCurseForge({ draft, update }: { draft: Draft; update: Update }) 
 export function ResourcesStep({
   draft,
   update,
+  machines,
   hostMemory,
 }: {
   draft: Draft;
   update: Update;
+  machines: Node[];
   hostMemory?: number;
 }) {
   const id = useId();
+  const machineId = useId();
   const max = Math.max(
     4096,
     Math.min(32768, hostMemory ? Math.floor(hostMemory / 1048576 / 512) * 512 : 16384),
@@ -405,6 +409,20 @@ export function ResourcesStep({
   const limit = memoryLimitBytes(draft.memoryMb, draft.software === "modpack" ? "modrinth" : draft.software);
   return (
     <div>
+      {machines.length > 1 && (
+        <div className="mb-5">
+          <Label htmlFor={machineId}>Machine</Label>
+          <Select id={machineId} value={draft.nodeId} onChange={(e) => update({ nodeId: e.target.value })}>
+            {machines.map((m) => (
+              <option key={m.id} value={m.id} disabled={m.status !== NodeStatus.ONLINE || m.updateNeeded}>
+                {m.name}
+                {m.status !== NodeStatus.ONLINE ? " (offline)" : m.updateNeeded ? " (needs an update)" : ""}
+              </option>
+            ))}
+          </Select>
+          <Hint>Players still join through this panel, whichever machine runs the server.</Hint>
+        </div>
+      )}
       <Label htmlFor={id}>Memory for Minecraft (Java heap): {gb(draft.memoryMb)}</Label>
       <input
         id={id}

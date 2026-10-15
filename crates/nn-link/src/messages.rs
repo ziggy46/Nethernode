@@ -89,6 +89,16 @@ pub enum AgentMessage {
     },
 }
 
+/// The first message on every stream the agent opens: what it's for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StreamKind {
+    /// Heartbeats ([`AgentMessage`]).
+    Control,
+    /// Changes to the agent's servers, and its events.
+    Events,
+}
+
 /// How often the agent sends a heartbeat.
 pub const HEARTBEAT: std::time::Duration = std::time::Duration::from_secs(10);
 

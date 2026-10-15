@@ -104,7 +104,7 @@ pub fn default_run_as() -> Option<(u32, u32)> {
 }
 
 /// Fields for creating a server.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct CreateServer {
     /// Display name.
     pub name: String,
@@ -126,10 +126,19 @@ pub struct CreateServer {
     pub start_after_create: bool,
     /// The modpack to install, for the `modrinth` and `curseforge` loaders.
     pub modpack: Option<spec::Modpack>,
+    /// The slug to use, when the panel chose it (servers on other machines
+    /// get slugs unique across the panel). Otherwise one is made from the
+    /// name.
+    #[serde(default)]
+    pub slug: Option<String>,
+    /// Ports not to use, because servers on other machines have them (the
+    /// panel keeps ports unique across machines).
+    #[serde(default)]
+    pub avoid_ports: Vec<i64>,
 }
 
 /// Docker host facts for the UI.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct HostInfo {
     /// Docker host name.
     pub hostname: String,
@@ -289,6 +298,16 @@ impl Orchestrator {
 
     // ----- queries -----
 
+    /// One of this machine's servers.
+    pub async fn server(&self, id: &str) -> Result<Server> {
+        self.load(id).await
+    }
+
+    /// This machine's servers.
+    pub async fn servers(&self) -> Result<Vec<Server>> {
+        Ok(self.store.list_local_servers().await?)
+    }
+
     /// Players from the last status ping, while running.
     pub fn players(&self, id: &str) -> Option<Players> {
         self.runtimes
@@ -419,8 +438,19 @@ impl Orchestrator {
 
         let server = {
             let _guard = self.create_lock.lock().await;
-            let slug = self.unique_slug(name).await?;
-            let used = self.store.used_ports().await?;
+            let slug = match input.slug {
+                Some(slug) => {
+                    if slugify(&slug) != slug || self.store.slug_exists(&slug).await? {
+                        return Err(OrchestratorError::InvalidInput(format!(
+                            "the slug {slug} is taken or invalid"
+                        )));
+                    }
+                    slug
+                }
+                None => self.unique_slug(name).await?,
+            };
+            let mut used = self.store.used_ports().await?;
+            used.extend(input.avoid_ports.iter().copied());
             let range = self.config.port_range.clone();
             let ip = self.config.backend_ip;
             let ports = ports::allocate(range.clone(), &used, 2, |p| ports::is_free(ip, p))

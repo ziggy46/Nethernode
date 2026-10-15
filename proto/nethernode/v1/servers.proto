@@ -101,6 +101,11 @@ message Server {
   // Set when the server is installed from a modpack (loader `modrinth` or
   // `curseforge`).
   optional Modpack modpack = 16;
+  // The node it runs on ("local" for the panel's own machine).
+  string node_id = 17;
+  string node_name = 18;
+  // Its node's agent isn't connected, so it can't be managed right now.
+  bool node_offline = 19;
 }
 
 // Settings an admin can change after creation.
@@ -159,6 +164,8 @@ message CreateServerRequest {
   // Minecraft version comes from the pack, except for CurseForge packs
   // without an API key set, where `mc_version` must say which it is.
   ModpackSource modpack = 10;
+  // The node to create it on; empty for the panel's own machine.
+  string node_id = 11;
 }
 
 message CreateServerResponse {

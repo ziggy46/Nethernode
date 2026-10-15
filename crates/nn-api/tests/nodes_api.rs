@@ -33,7 +33,12 @@ async fn app() -> (Router, String, String) {
     let key = Arc::new(SecretBox::from_hex_key(&"ab".repeat(32)).unwrap());
     let auth =
         Arc::new(Auth::new(store.clone(), AuthConfig::default()).with_secrets(Some(key.clone())));
-    let agents = Arc::new(Agents::load(store.clone(), events.clone(), Some(&key)).await);
+    let nodes = Nodes::new(
+        nn_node::LocalNode::without_docker("not connected", None, events.clone()),
+        Some(store.clone()),
+    );
+    let agents =
+        Arc::new(Agents::load(store.clone(), events.clone(), Some(&key), nodes.clone()).await);
     let (_shutdown, shutdown_rx) = tokio::sync::watch::channel(false);
     let app = nn_api::router(AppState {
         proxy: Arc::new(ProxyRuntime::new(proxy, store.clone(), true)),
@@ -48,7 +53,7 @@ async fn app() -> (Router, String, String) {
         notifier: Default::default(),
         install_count: Default::default(),
         agents,
-        nodes: Default::default(),
+        nodes,
     });
     let owner = auth
         .setup("owner", PASSWORD, Default::default())
@@ -206,6 +211,32 @@ async fn an_agent_joins_reconnects_and_is_removed() {
     // That machine's agent has no Docker in this test, and says so.
     assert!(online["host"]["dockerError"].as_str().is_some());
     assert!(dir.path().join("agent.json").exists());
+
+    // A server for that machine is its agent's to create: here it has no
+    // Docker, and says so.
+    let (status, body) = admin
+        .call(
+            "ServerService/CreateServer",
+            json!({ "name": "Far away", "loader": "vanilla", "mcVersion": "1.21.4",
+                    "memoryMb": 1024, "eulaAccepted": true, "nodeId": id }),
+        )
+        .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
+    assert!(
+        body["message"]
+            .as_str()
+            .unwrap()
+            .contains("Docker isn't available"),
+        "{body}"
+    );
+    let (status, _) = admin
+        .call(
+            "ServerService/CreateServer",
+            json!({ "name": "Nowhere", "loader": "vanilla", "mcVersion": "1.21.4",
+                    "memoryMb": 1024, "eulaAccepted": true, "nodeId": "no-such-node" }),
+        )
+        .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
     let (status, _) = admin
         .call("NodeService/RegenerateJoinCode", json!({ "id": id }))
         .await;

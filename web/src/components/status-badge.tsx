@@ -60,8 +60,18 @@ const SERVER_STATUS: Record<ServerStatus, { tone: Tone; label: string }> = {
   [ServerStatus.CRASHED]: { tone: "danger", label: "Crashed" },
 };
 
-/** Server lifecycle badge, per 06-design-system §3.4. */
-export function ServerStatusBadge({ status }: { status: ServerStatus }) {
+/**
+ * Server lifecycle badge, per 06-design-system §3.4. A server whose machine
+ * is offline says so instead: its last known status may be stale.
+ */
+export function ServerStatusBadge({ status, nodeOffline }: { status: ServerStatus; nodeOffline?: boolean }) {
+  if (nodeOffline) {
+    return (
+      <Badge tone="muted" icon={<CircleAlert className="size-3" aria-hidden />}>
+        Machine offline
+      </Badge>
+    );
+  }
   const { tone, label } = SERVER_STATUS[status];
   const icon =
     status === ServerStatus.SLEEPING ? (

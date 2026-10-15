@@ -16,6 +16,9 @@ use crate::files::{file_error, open};
 use crate::proto::nethernode::v1 as pb;
 use crate::rpc::{audit, require, store_error};
 
+/// Serializes server creation across machines.
+static CREATE_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 pub(crate) struct ServerRpc {
     state: AppState,
 }
@@ -65,11 +68,27 @@ impl ServerRpc {
                 _ => {}
             }
         }
+        out.node_names = self
+            .state
+            .auth
+            .store()
+            .list_nodes()
+            .await
+            .map_err(store_error)?
+            .into_iter()
+            .map(|n| (n.id, n.name))
+            .collect();
         Ok(out)
     }
 
     async fn to_proto(&self, server: Server, hostnames: &Hostnames) -> pb::Server {
         let node = self.state.nodes.for_server(&server);
+        let node_offline = matches!(&node, Node::Remote(r) if !r.is_online());
+        let node_name = hostnames
+            .node_names
+            .get(&server.node_id)
+            .cloned()
+            .unwrap_or_else(|| server.node_id.clone());
         let players = node.players(&server.id);
         let restart_required = node.restart_required(&server).await;
         pb::Server {
@@ -84,6 +103,9 @@ impl ServerRpc {
             sleep_when_empty: server.sleep_when_empty,
             created_at_ms: server.created_at,
             last_started_at_ms: server.last_started_at,
+            node_offline,
+            node_name,
+            node_id: server.node_id,
             id: server.id,
             name: server.name,
             slug: server.slug,
@@ -91,6 +113,37 @@ impl ServerRpc {
             loader: server.loader,
             ..Default::default()
         }
+    }
+
+    /// Creates a server on `node`. Servers on other machines get a slug and
+    /// ports unique across the panel, and are mirrored here.
+    async fn create_on(
+        &self,
+        node: &Node,
+        node_id: &str,
+        mut input: CreateServer,
+    ) -> Result<Server, ConnectError> {
+        // One create at a time, so slugs and ports chosen here stay unique.
+        let _guard = CREATE_LOCK.lock().await;
+        if node.is_local() {
+            return node.create(input).await.map_err(node_error);
+        }
+        let store = self.state.auth.store();
+        let base = nn_orchestrator::slugify(&input.name);
+        let mut slug = base.clone();
+        let mut n = 2;
+        while store.slug_exists(&slug).await.map_err(store_error)? {
+            slug = format!("{base}-{n}");
+            n += 1;
+        }
+        input.slug = Some(slug);
+        input.avoid_ports = store.used_ports().await.map_err(store_error)?;
+        let server = node.create(input).await.map_err(node_error)?;
+        store
+            .upsert_server_mirror(&server, node_id)
+            .await
+            .map_err(store_error)?;
+        Ok(server)
     }
 
     /// Runs a lifecycle operation in the background, reporting failures as
@@ -120,6 +173,8 @@ impl ServerRpc {
 struct Hostnames {
     exact: HashMap<String, Vec<String>>,
     slug_domains: Vec<String>,
+    /// Node names by ID.
+    node_names: HashMap<String, String>,
 }
 
 impl Hostnames {
@@ -235,8 +290,25 @@ pub(crate) fn node_error(err: NodeError) -> ConnectError {
     match err {
         NodeError::Unavailable(_) => ConnectError::failed_precondition(err.to_string()),
         NodeError::Orchestrator(e) => orchestrator_error(e),
-        NodeError::NoDataFolder => ConnectError::unavailable(err.to_string()),
+        NodeError::NoDataFolder | NodeError::Offline(_) => {
+            ConnectError::unavailable(err.to_string())
+        }
         NodeError::File(e) => crate::files::file_error(e),
+        NodeError::NotYet(_) => ConnectError::failed_precondition(err.to_string()),
+        NodeError::Remote(e) => {
+            use nn_node::protocol::ErrorKind;
+            match e.kind {
+                ErrorKind::NotFound => ConnectError::not_found(e.message),
+                ErrorKind::InvalidState => ConnectError::failed_precondition(e.message),
+                ErrorKind::InvalidInput => ConnectError::invalid_argument(e.message),
+                ErrorKind::NoPorts => ConnectError::resource_exhausted(e.message),
+                ErrorKind::Command | ErrorKind::Unavailable => ConnectError::unavailable(e.message),
+                ErrorKind::Internal => {
+                    tracing::error!(error = %e.message, "a server operation failed on another machine");
+                    ConnectError::internal(e.message)
+                }
+            }
+        }
     }
 }
 
@@ -402,8 +474,22 @@ impl pb::ServerService for ServerRpc {
         request: ServiceRequest<'_, pb::CreateServerRequest>,
     ) -> ServiceResult<pb::CreateServerResponse> {
         let user = require(&ctx, Permission::ManageServers)?.clone();
-        // New servers go on this machine until there's a choice of nodes.
-        let node = self.state.nodes.local().clone();
+        let node_id = match request.node_id.trim() {
+            "" => nn_store::LOCAL_NODE,
+            id => id,
+        };
+        if self
+            .state
+            .auth
+            .store()
+            .find_node(node_id)
+            .await
+            .map_err(store_error)?
+            .is_none()
+        {
+            return Err(ConnectError::invalid_argument("no such node"));
+        }
+        let node = self.state.nodes.get(node_id);
         if let Some(e) = node.unavailable() {
             return Err(node_error(e));
         }
@@ -441,8 +527,10 @@ impl pb::ServerService for ServerRpc {
             eula_accepted: request.eula_accepted,
             sleep_when_empty: request.sleep_when_empty,
             start_after_create: request.start_after_create,
+            slug: None,
+            avoid_ports: Vec::new(),
         };
-        let server = node.create(input).await.map_err(node_error)?;
+        let server = self.create_on(&node, node_id, input).await?;
         let pack = server
             .modpack_json
             .as_deref()
@@ -482,6 +570,14 @@ impl pb::ServerService for ServerRpc {
             .update(request.id, settings)
             .await
             .map_err(node_error)?;
+        if !node.is_local() {
+            self.state
+                .auth
+                .store()
+                .upsert_server_mirror(&server, &current.node_id)
+                .await
+                .map_err(store_error)?;
+        }
         audit(
             &self.state,
             &user,
@@ -504,10 +600,22 @@ impl pb::ServerService for ServerRpc {
     ) -> ServiceResult<pb::DeleteServerResponse> {
         let user = require(&ctx, Permission::ManageServers)?.clone();
         let server = self.load(request.id).await?;
-        self.node(&server)?
-            .delete(&server.id, request.delete_data)
+        let node = self.node(&server)?;
+        node.delete(&server.id, request.delete_data)
             .await
             .map_err(node_error)?;
+        if !node.is_local() {
+            self.state
+                .auth
+                .store()
+                .delete_server(&server.id)
+                .await
+                .map_err(store_error)?;
+            self.state.events.publish(Event::ServerStatusChanged {
+                server_id: server.id.clone(),
+                status: "deleted".into(),
+            });
+        }
         self.state.proxy.reload().await.map_err(store_error)?;
         let details = json!({ "name": server.name, "deleted_data": request.delete_data });
         audit(
@@ -637,7 +745,9 @@ impl pb::ServerService for ServerRpc {
             .state
             .nodes
             .for_server_id(request.id)
+            .await
             .stats_history(request.id)
+            .await
             .into_iter()
             .map(|s| pb::StatSample {
                 at_ms: s.at_ms,

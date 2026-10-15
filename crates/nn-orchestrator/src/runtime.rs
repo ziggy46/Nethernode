@@ -20,7 +20,7 @@ pub const MAX_CRASH_RESTARTS: usize = 3;
 pub const CRASH_WINDOW: Duration = Duration::from_secs(10 * 60);
 
 /// A resource sample.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct StatSample {
     /// Unix ms.
     pub at_ms: i64,
@@ -37,7 +37,7 @@ pub struct StatSample {
 }
 
 /// Player counts from the last successful status ping.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Players {
     /// Online.
     pub online: u32,

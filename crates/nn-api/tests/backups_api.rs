@@ -57,11 +57,10 @@ async fn harness() -> Harness {
         notifier: Default::default(),
         install_count: Default::default(),
         agents: Default::default(),
-        nodes: Nodes::new(LocalNode::without_docker(
-            "not connected",
-            Some(servers_dir.clone()),
-            events.clone(),
-        )),
+        nodes: Nodes::new(
+            LocalNode::without_docker("not connected", Some(servers_dir.clone()), events.clone()),
+            Some(store.clone()),
+        ),
     });
     let owner = auth
         .setup("owner", "correct horse battery", Default::default())

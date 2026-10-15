@@ -46,6 +46,8 @@ export interface Draft {
   sleep: boolean;
   startNow: boolean;
   eula: boolean;
+  /** Which machine runs it ("local" for this one). */
+  nodeId: string;
 }
 
 export const newDraft = (preset?: Partial<Draft>): Draft => ({
@@ -65,6 +67,7 @@ export const newDraft = (preset?: Partial<Draft>): Draft => ({
   sleep: true,
   startNow: true,
   eula: false,
+  nodeId: "local",
   ...preset,
 });
 

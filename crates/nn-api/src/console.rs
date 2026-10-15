@@ -77,11 +77,11 @@ pub(crate) async fn console(
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     };
-    let node = state.nodes.for_server(&server).clone();
-    let logs = match node.subscribe_logs(&server_id) {
+    let node = state.nodes.for_server(&server);
+    let logs = match node.subscribe_logs(&server_id).await {
         Ok(logs) => logs,
-        Err(_) => {
-            return (StatusCode::SERVICE_UNAVAILABLE, "Docker isn't available").into_response();
+        Err(e) => {
+            return (StatusCode::SERVICE_UNAVAILABLE, e.to_string()).into_response();
         }
     };
     match ws {

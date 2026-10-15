@@ -257,10 +257,11 @@ pub(crate) async fn start_restore(
 /// The node holding a backup's archive.
 // TODO(multi-node step 6): record the node with the backup, since a
 // backup outlives its server.
-pub(crate) fn node_of<'a>(state: &'a AppState, backup: &Backup) -> &'a nn_node::Node {
+pub(crate) async fn node_of(state: &AppState, backup: &Backup) -> nn_node::Node {
     state
         .nodes
         .for_server_id(backup.server_id.as_deref().unwrap_or_default())
+        .await
 }
 
 /// Deletes a backup's file and record.
@@ -271,6 +272,7 @@ pub(crate) async fn delete(state: &AppState, backup: &Backup) -> Result<(), Conn
         ));
     }
     node_of(state, backup)
+        .await
         .delete_backup(&backup.file_name)
         .await
         .map_err(ConnectError::internal)?;

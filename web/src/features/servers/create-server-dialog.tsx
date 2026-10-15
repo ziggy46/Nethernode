@@ -14,7 +14,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ErrorAlert } from "@/components/ui/field";
+import { nodesQuery } from "@/features/nodes/queries";
 import { Platform } from "@/gen/nethernode/v1/catalog_pb";
+import { NodeStatus } from "@/gen/nethernode/v1/nodes_pb";
 import { errorMessage, proxyClient, serverClient } from "@/lib/api";
 import { healthQuery } from "@/lib/health";
 import { useCanManage } from "@/lib/session";
@@ -58,6 +60,11 @@ export function CreateServerDialog({
     staleTime: 60_000,
     enabled: open,
   });
+  // Machines that have joined (one waiting to join can't run anything yet).
+  const machines = (useQuery({ ...nodesQuery, enabled: open }).data?.nodes ?? []).filter(
+    (n) => n.status !== NodeStatus.WAITING,
+  );
+  const machine = machines.find((n) => n.id === draft.nodeId);
   const [draft, setDraft] = useState(() => newDraft(preset));
   const [step, setStep] = useState(0);
   const update = useCallback((patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch })), []);
@@ -130,6 +137,7 @@ export function CreateServerDialog({
         eulaAccepted: draft.eula,
         sleepWhenEmpty: draft.sleep,
         startAfterCreate: draft.startNow,
+        nodeId: draft.nodeId === "local" ? "" : draft.nodeId,
         modpack:
           isPack && pack
             ? { platform: pack.platform, project: pack.project, versionId: pack.versionId }
@@ -261,7 +269,12 @@ export function CreateServerDialog({
               <ResourcesStep
                 draft={draft}
                 update={update}
-                hostMemory={Number(host.data?.memoryBytes ?? 0) || undefined}
+                machines={machines}
+                hostMemory={
+                  Number(
+                    (draft.nodeId === "local" ? host.data?.memoryBytes : machine?.host?.memoryBytes) ?? 0,
+                  ) || undefined
+                }
               />
             )}
             {step === 3 && <NetworkStep draft={draft} update={update} canManageProxy={canManageProxy} />}

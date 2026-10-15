@@ -73,7 +73,7 @@ export function ServerCard({ server, now }: { server: Server; now: number }) {
         <WorldBanner theme={server.settings?.cardTheme ?? 0} />
         <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-(--world-fade) to-transparent" />
         <div className="absolute top-3 left-[13px]">
-          <ServerStatusBadge status={server.status} />
+          <ServerStatusBadge status={server.status} nodeOffline={server.nodeOffline} />
         </div>
         <Button
           asChild
@@ -105,6 +105,12 @@ export function ServerCard({ server, now }: { server: Server; now: number }) {
           <span>{versionLabel(server.mcVersion)}</span>
           <span aria-hidden>·</span>
           <span>{subtitle(server, now)}</span>
+          {server.nodeId !== "local" && (
+            <>
+              <span aria-hidden>·</span>
+              <span>on {server.nodeName}</span>
+            </>
+          )}
         </p>
 
         <div className="mt-[13px] flex min-h-5 items-center gap-[5px] font-mono text-meta text-text-secondary">

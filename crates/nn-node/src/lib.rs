@@ -1,8 +1,8 @@
 //! The machines that run Minecraft servers.
 //!
 //! The panel never reaches Docker or a server's folder directly: it asks the
-//! server's [`Node`]. Today every node is this machine ([`LocalNode`]); a
-//! remote agent becomes another kind of node without callers changing.
+//! server's [`Node`]: this machine ([`LocalNode`]), or another one through
+//! its agent ([`RemoteNode`]).
 //!
 //! The rule that keeps that possible: everything a [`Node`] method takes or
 //! returns is plain data (server IDs, paths inside a server's folder, bytes,
@@ -19,16 +19,21 @@ use nn_orchestrator::{
     BeforeStart, CreateServer, HostInfo, Orchestrator, OrchestratorError, Players, StatSample,
 };
 use nn_players::{MgmtClient, MgmtError};
-use nn_store::{Server, ServerSettings};
+use nn_store::{LOCAL_NODE, Server, ServerSettings, Store};
 use tokio::sync::broadcast;
+
+use crate::protocol::Request;
 
 pub mod agent;
 mod backups;
 mod folder;
 pub mod jobs;
+pub mod protocol;
+mod remote;
 
 pub use backups::{Archive, Restored};
 pub use folder::{FileReader, Folder};
+pub use remote::{RemoteHost, RemoteNode};
 
 /// Why a node operation failed.
 #[derive(Debug, thiserror::Error)]
@@ -47,6 +52,15 @@ pub enum NodeError {
     /// A file operation failed.
     #[error(transparent)]
     File(#[from] FileError),
+    /// The node's agent isn't connected.
+    #[error("{0} is offline. Its servers can be managed again once its agent reconnects.")]
+    Offline(String),
+    /// The agent tried and failed.
+    #[error(transparent)]
+    Remote(#[from] protocol::RemoteError),
+    /// Something servers on other machines can't do yet.
+    #[error("{0} isn't available for servers on other machines yet.")]
+    NotYet(&'static str),
 }
 
 /// Result alias.
@@ -136,105 +150,203 @@ impl LocalNode {
 pub enum Node {
     /// This machine.
     Local(Arc<LocalNode>),
+    /// Another machine, through its agent.
+    Remote(Arc<RemoteNode>),
 }
 
 impl Node {
-    fn local(&self) -> &LocalNode {
+    /// This machine, or an error for features other machines don't have yet.
+    fn as_local(&self, feature: &'static str) -> Result<&LocalNode> {
         match self {
-            Self::Local(node) => node,
+            Self::Local(node) => Ok(node),
+            Self::Remote(_) => Err(NodeError::NotYet(feature)),
         }
+    }
+
+    /// Whether this is the panel's own machine.
+    pub fn is_local(&self) -> bool {
+        matches!(self, Self::Local(_))
     }
 
     /// Why servers can't be managed on this node right now, if they can't.
     pub fn unavailable(&self) -> Option<NodeError> {
-        self.local().orchestrator().err()
+        match self {
+            Self::Local(node) => node.orchestrator().err(),
+            Self::Remote(node) if !node.is_online() => Some(NodeError::Offline(node.name())),
+            Self::Remote(node) => match node.host().map(|h| h.docker) {
+                Some(Err(reason)) => Some(NodeError::Unavailable(reason.into())),
+                _ => None,
+            },
+        }
     }
 
     // ----- lifecycle -----
 
     /// Creates a server and installs it in the background.
     pub async fn create(&self, input: CreateServer) -> Result<Server> {
-        Ok(self.local().orchestrator()?.create(input).await?)
+        match self {
+            Self::Local(node) => Ok(node.orchestrator()?.create(input).await?),
+            Self::Remote(node) => node.call(Request::Create { input }).await,
+        }
     }
 
     /// Starts a stopped server.
     pub async fn start(&self, id: &str) -> Result<()> {
-        Ok(self.local().orchestrator()?.start(id).await?)
+        match self {
+            Self::Local(node) => Ok(node.orchestrator()?.start(id).await?),
+            Self::Remote(node) => node.call(Request::Start { id: id.into() }).await,
+        }
     }
 
     /// Starts a sleeping server for a player who's joining.
     pub async fn wake(&self, id: &str) -> Result<()> {
-        Ok(self.local().orchestrator()?.wake(id).await?)
+        match self {
+            Self::Local(node) => Ok(node.orchestrator()?.wake(id).await?),
+            Self::Remote(node) => node.call(Request::Wake { id: id.into() }).await,
+        }
     }
 
     /// Stops a server, or puts it to sleep.
     pub async fn stop(&self, id: &str, sleep: bool) -> Result<()> {
-        Ok(self.local().orchestrator()?.stop(id, sleep).await?)
+        match self {
+            Self::Local(node) => Ok(node.orchestrator()?.stop(id, sleep).await?),
+            Self::Remote(node) => {
+                node.call(Request::Stop {
+                    id: id.into(),
+                    sleep,
+                })
+                .await
+            }
+        }
     }
 
     /// Stops and starts a server.
     pub async fn restart(&self, id: &str) -> Result<()> {
-        Ok(self.local().orchestrator()?.restart(id).await?)
+        match self {
+            Self::Local(node) => Ok(node.orchestrator()?.restart(id).await?),
+            Self::Remote(node) => node.call(Request::Restart { id: id.into() }).await,
+        }
     }
 
     /// Stops a server at once, without saving.
     pub async fn kill(&self, id: &str) -> Result<()> {
-        Ok(self.local().orchestrator()?.kill(id).await?)
+        match self {
+            Self::Local(node) => Ok(node.orchestrator()?.kill(id).await?),
+            Self::Remote(node) => node.call(Request::Kill { id: id.into() }).await,
+        }
     }
 
     /// Changes a server's settings. Returns the server and whether it needs
     /// a restart for them to take effect.
     pub async fn update(&self, id: &str, settings: ServerSettings) -> Result<(Server, bool)> {
-        Ok(self.local().orchestrator()?.update(id, settings).await?)
+        match self {
+            Self::Local(node) => Ok(node.orchestrator()?.update(id, settings).await?),
+            Self::Remote(node) => {
+                node.call(Request::Update {
+                    id: id.into(),
+                    settings,
+                })
+                .await
+            }
+        }
     }
 
     /// Deletes a server, and with `delete_data` its files.
     pub async fn delete(&self, id: &str, delete_data: bool) -> Result<()> {
-        Ok(self.local().orchestrator()?.delete(id, delete_data).await?)
+        match self {
+            Self::Local(node) => Ok(node.orchestrator()?.delete(id, delete_data).await?),
+            Self::Remote(node) => {
+                node.call(Request::Delete {
+                    id: id.into(),
+                    delete_data,
+                })
+                .await
+            }
+        }
     }
 
     // ----- status -----
 
     /// Whether the server's container is running.
     pub async fn container_running(&self, id: &str) -> Result<bool> {
-        Ok(self.local().orchestrator()?.container_running(id).await?)
+        match self {
+            Self::Local(node) => Ok(node.orchestrator()?.container_running(id).await?),
+            Self::Remote(node) => node.call(Request::ContainerRunning { id: id.into() }).await,
+        }
     }
 
     /// Whether the server's settings changed since its container was made.
     pub async fn restart_required(&self, server: &Server) -> bool {
-        match self.local().orchestrator() {
-            Ok(orchestrator) => orchestrator.restart_required(server).await,
-            Err(_) => false,
+        match self {
+            Self::Local(node) => match node.orchestrator() {
+                Ok(orchestrator) => orchestrator.restart_required(server).await,
+                Err(_) => false,
+            },
+            Self::Remote(node) => node
+                .call(Request::RestartRequired {
+                    id: server.id.clone(),
+                })
+                .await
+                .unwrap_or(false),
         }
     }
 
     /// Players from the last status check, while running.
     pub fn players(&self, id: &str) -> Option<Players> {
-        self.local().orchestrator().ok()?.players(id)
+        match self {
+            Self::Local(node) => node.orchestrator().ok()?.players(id),
+            Self::Remote(node) => node.players(id),
+        }
     }
 
     /// Up to an hour of resource samples, oldest first.
-    pub fn stats_history(&self, id: &str) -> Vec<StatSample> {
-        self.local()
-            .orchestrator()
-            .map(|o| o.stats_history(id))
-            .unwrap_or_default()
+    pub async fn stats_history(&self, id: &str) -> Vec<StatSample> {
+        match self {
+            Self::Local(node) => node
+                .orchestrator()
+                .map(|o| o.stats_history(id))
+                .unwrap_or_default(),
+            Self::Remote(node) => node
+                .call(Request::StatsHistory { id: id.into() })
+                .await
+                .unwrap_or_default(),
+        }
     }
 
     /// The newest resource sample.
     pub fn latest_stats(&self, id: &str) -> Option<StatSample> {
-        self.local().orchestrator().ok()?.latest_stats(id)
+        match self {
+            Self::Local(node) => node.orchestrator().ok()?.latest_stats(id),
+            Self::Remote(node) => node.latest_stats(id),
+        }
     }
 
     /// Facts about the machine's Docker host.
     pub async fn host_info(&self) -> Result<HostInfo> {
-        Ok(self.local().orchestrator()?.host_info().await?)
+        match self {
+            Self::Local(node) => Ok(node.orchestrator()?.host_info().await?),
+            Self::Remote(node) => {
+                if !node.is_online() {
+                    return Err(NodeError::Offline(node.name()));
+                }
+                match node.host().map(|h| h.docker) {
+                    Some(Ok(info)) => Ok(info),
+                    Some(Err(reason)) => Err(NodeError::Unavailable(reason.into())),
+                    None => Err(NodeError::Unavailable("not reported yet".into())),
+                }
+            }
+        }
     }
 
     /// Total and free bytes on the disk holding servers and backups.
     pub fn disk_space(&self) -> Option<(u64, u64)> {
-        let dir = self.local().servers_dir.as_deref()?;
-        nn_uploads::disk_space(dir.parent().unwrap_or(dir))
+        match self {
+            Self::Local(node) => {
+                let dir = node.servers_dir.as_deref()?;
+                nn_uploads::disk_space(dir.parent().unwrap_or(dir))
+            }
+            Self::Remote(node) => node.host()?.disk,
+        }
     }
 
     // ----- files -----
@@ -242,30 +354,49 @@ impl Node {
     /// The server's folder. Fails if it doesn't exist yet (servers create it
     /// on their first start).
     pub async fn folder(&self, server: &Server) -> Result<Folder> {
-        self.local().open_folder(server).await
+        self.as_local("Files")?.open_folder(server).await
     }
 
     // ----- console and protocols -----
 
     /// The server's console output.
-    pub fn subscribe_logs(&self, id: &str) -> Result<LogSubscription> {
-        let (backlog, lines) = self.local().orchestrator()?.subscribe_logs(id);
-        Ok(LogSubscription { backlog, lines })
+    pub async fn subscribe_logs(&self, id: &str) -> Result<LogSubscription> {
+        match self {
+            Self::Local(node) => {
+                let (backlog, lines) = node.orchestrator()?.subscribe_logs(id);
+                Ok(LogSubscription { backlog, lines })
+            }
+            Self::Remote(node) => node.logs(id).await,
+        }
     }
 
     /// Runs a console command (over RCON) and returns its output.
     pub async fn command(&self, id: &str, command: &str) -> Result<String> {
-        Ok(self.local().orchestrator()?.command(id, command).await?)
+        match self {
+            Self::Local(node) => Ok(node.orchestrator()?.command(id, command).await?),
+            Self::Remote(node) => {
+                node.call(Request::Command {
+                    id: id.into(),
+                    command: command.into(),
+                })
+                .await
+            }
+        }
     }
 
     /// A connection to the server's management protocol, or `None` if it
-    /// hasn't started with one.
+    /// hasn't started with one (or, for now, runs on another machine:
+    /// commands go over RCON instead).
     pub async fn management(
         &self,
         id: &str,
         timeout: Duration,
     ) -> Option<std::result::Result<MgmtClient, MgmtError>> {
-        let orchestrator = self.local().orchestrator().ok()?;
+        let orchestrator = self
+            .as_local("The management protocol")
+            .ok()?
+            .orchestrator()
+            .ok()?;
         let (addr, secret) = orchestrator.management(id).await.ok().flatten()?;
         Some(MgmtClient::connect(addr, &secret, timeout).await)
     }
@@ -274,8 +405,20 @@ impl Node {
 
     /// The CurseForge API key, for installing CurseForge modpacks.
     pub fn set_curseforge_key(&self, key: Option<String>) {
-        if let Ok(orchestrator) = self.local().orchestrator() {
-            orchestrator.set_curseforge_key(key);
+        match self {
+            Self::Local(node) => {
+                if let Ok(orchestrator) = node.orchestrator() {
+                    orchestrator.set_curseforge_key(key);
+                }
+            }
+            Self::Remote(node) => {
+                let node = node.clone();
+                tokio::spawn(async move {
+                    if let Err(e) = node.call::<()>(Request::SetCurseforgeKey { key }).await {
+                        tracing::debug!(node = %node.id(), error = %e, "couldn't pass on the CurseForge key");
+                    }
+                });
+            }
         }
     }
 }
@@ -285,15 +428,20 @@ impl Node {
 pub struct Nodes {
     local: Node,
     local_node: Arc<LocalNode>,
+    remotes: Arc<std::sync::Mutex<std::collections::HashMap<String, Arc<RemoteNode>>>>,
+    store: Option<Store>,
 }
 
 impl Nodes {
-    /// The panel's own machine as the only node.
-    pub fn new(local: LocalNode) -> Self {
+    /// This machine, with no others yet. `store` says which node each
+    /// server is on.
+    pub fn new(local: LocalNode, store: Option<Store>) -> Self {
         let local_node = Arc::new(local);
         Self {
             local: Node::Local(local_node.clone()),
             local_node,
+            remotes: Arc::default(),
+            store,
         }
     }
 
@@ -307,29 +455,79 @@ impl Nodes {
         &self.local_node
     }
 
+    /// Another machine, by node ID.
+    pub fn remote(&self, node_id: &str) -> Arc<RemoteNode> {
+        self.remotes
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .entry(node_id.to_owned())
+            .or_insert_with(|| Arc::new(RemoteNode::new(node_id)))
+            .clone()
+    }
+
+    /// Forgets a removed machine.
+    pub fn forget(&self, node_id: &str) {
+        let removed = self
+            .remotes
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(node_id);
+        if let Some(node) = removed {
+            node.detach();
+        }
+    }
+
+    /// The node with this ID.
+    pub fn get(&self, node_id: &str) -> Node {
+        if node_id == LOCAL_NODE {
+            self.local.clone()
+        } else {
+            Node::Remote(self.remote(node_id))
+        }
+    }
+
     /// The node `server` runs on.
-    pub fn for_server(&self, _server: &Server) -> &Node {
-        &self.local
+    pub fn for_server(&self, server: &Server) -> Node {
+        self.get(&server.node_id)
+    }
+
+    /// The node the server with `id` runs on (this machine if it's gone).
+    pub async fn for_server_id(&self, id: &str) -> Node {
+        let node_id = match &self.store {
+            Some(store) => store
+                .find_server(id)
+                .await
+                .ok()
+                .flatten()
+                .map(|s| s.node_id),
+            None => None,
+        };
+        self.get(node_id.as_deref().unwrap_or(LOCAL_NODE))
     }
 
     /// Gives every node the CurseForge API key, for CurseForge modpacks.
     pub fn set_curseforge_key(&self, key: Option<String>) {
-        self.local.set_curseforge_key(key);
-    }
-
-    /// The node the server with `id` runs on.
-    pub fn for_server_id(&self, _id: &str) -> &Node {
-        &self.local
+        self.local.set_curseforge_key(key.clone());
+        let remotes: Vec<_> = self
+            .remotes
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .values()
+            .filter(|n| n.is_online())
+            .cloned()
+            .collect();
+        for node in remotes {
+            Node::Remote(node).set_curseforge_key(key.clone());
+        }
     }
 }
 
 impl Default for Nodes {
     /// No Docker and no data folder: nothing works, and says why.
     fn default() -> Self {
-        Self::new(LocalNode::without_docker(
-            "not connected",
+        Self::new(
+            LocalNode::without_docker("not connected", None, EventBus::default()),
             None,
-            EventBus::default(),
-        ))
+        )
     }
 }
