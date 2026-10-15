@@ -151,6 +151,20 @@ impl InstallCount {
         Ok(())
     }
 
+    /// Deletes the install ID, as turning counting off promises. Covers the
+    /// configuration turning it off too (the switch already does this).
+    async fn forget(&self, store: &Store) {
+        if store
+            .get_setting::<String>(ID_KEY)
+            .await
+            .ok()
+            .flatten()
+            .is_some()
+        {
+            let _ = store.delete_setting(ID_KEY).await;
+        }
+    }
+
     async fn report(&self, store: &Store) {
         let result = async {
             let id = self.id(store).await.map_err(|e| e.to_string())?;
@@ -200,6 +214,8 @@ pub fn spawn(state: AppState) {
             }
             if counter.enabled(&store).await {
                 counter.report(&store).await;
+            } else {
+                counter.forget(&store).await;
             }
             wait = DAY + Duration::from_secs(rand::rng().random_range(0..=3600));
         }
