@@ -17,6 +17,11 @@ test("first run creates the owner and explains that Docker is missing", async ({
   await page.getByLabel("Password", { exact: true }).fill(OWNER.password);
   await page.getByLabel("Confirm password").fill(OWNER.password);
   await page.getByRole("button", { name: /Create/ }).click();
+  // Next, the optional domain.
+  await expect(page.getByRole("heading", { name: "Do you have a domain?" })).toBeVisible();
+  await page.getByLabel("Your domain").fill("Example.COM");
+  await expect(page.getByText("smp.example.com")).toBeVisible();
+  await page.getByRole("button", { name: "Save and continue" }).click();
   await expect(page.getByRole("heading", { name: "Your worlds, under control." })).toBeVisible();
   await expect(page.getByText("Docker isn't available")).toBeVisible();
   noCsp();
@@ -43,6 +48,18 @@ test("every page loads without breaking the content security policy", async ({ p
     await expect(page.locator("main h1").first()).toBeVisible();
   }
   noCsp();
+});
+
+test("the domain from setup is in Settings and the DNS helper", async ({ page }) => {
+  await signIn(page, OWNER.username, OWNER.password);
+  await page.goto("/settings");
+  await expect(page.getByRole("listitem").filter({ hasText: "example.com" }).first()).toBeVisible();
+  await page.getByLabel("Add a domain").fill("not a domain");
+  await page.getByRole("button", { name: "Add domain" }).click();
+  await expect(page.getByText("Enter a domain like example.com")).toBeVisible();
+  await page.getByLabel("Add a domain").fill("mc.example.net");
+  await page.getByRole("button", { name: "Add domain" }).click();
+  await expect(page.getByText("mc.example.net added.")).toBeVisible();
 });
 
 test("pages without servers say so plainly", async ({ page }) => {

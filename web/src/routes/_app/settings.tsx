@@ -16,6 +16,7 @@ export const Route = createFileRoute("/_app/settings")({ component: SettingsPage
 
 const SecurityPanel = lazy(() => import("@/features/account/security-panel"));
 const DiscordPanel = lazy(() => import("@/features/notifications/discord-panel"));
+const DomainsPanel = lazy(() => import("@/features/domains/domains-panel"));
 const InstallCountPanel = lazy(() => import("@/features/install-count/install-count-panel"));
 
 const CurseForgeKey = lazy(() =>
@@ -67,6 +68,12 @@ function SettingsPage() {
         <Suspense fallback={<div className="h-48 animate-pulse rounded-lg bg-surface-subtle" />}>
           <SecurityPanel />
         </Suspense>
+
+        {canManage && (
+          <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-surface-subtle" />}>
+            <DomainsPanel />
+          </Suspense>
+        )}
 
         {canManage && (
           <Suspense fallback={<div className="h-48 animate-pulse rounded-lg bg-surface-subtle" />}>

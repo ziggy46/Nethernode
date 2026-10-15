@@ -10,11 +10,12 @@ export interface DnsRecord {
 export const MINECRAFT_PORT = 25565;
 
 /**
- * The DNS records players need for `routes`: an A (or AAAA) record per
- * hostname, and an SRV record for exact hostnames when the proxy listens on
- * a port other than 25565, so players don't have to type it.
+ * The DNS records players need: a wildcard A (or AAAA) record per domain,
+ * an A record per hostname outside those domains, and an SRV record for
+ * exact hostnames when the proxy listens on a port other than 25565, so
+ * players don't have to type it.
  */
-export function dnsRecords(routes: Route[], listeners: Listener[]): DnsRecord[] {
+export function dnsRecords(routes: Route[], listeners: Listener[], domains: string[] = []): DnsRecord[] {
   const records: DnsRecord[] = [];
   const seen = new Set<string>();
   const add = (r: DnsRecord) => {
@@ -28,7 +29,13 @@ export function dnsRecords(routes: Route[], listeners: Listener[]): DnsRecord[] 
     (p) => p !== MINECRAFT_PORT,
   );
   const named = routes.filter((r) => r.kind === RouteKind.EXACT || r.kind === RouteKind.WILDCARD);
+  // One wildcard record per domain covers every name under it.
+  const covered = (host: string) => domains.some((d) => host.endsWith(`.${d}`));
+  for (const domain of domains) {
+    add({ type: "A", name: `*.${domain}`, value: "This machine's public IP address" });
+  }
   for (const route of named) {
+    if (covered(route.hostname.replace(/^\*\./, "x."))) continue;
     add({ type: "A", name: route.hostname, value: "This machine's public IP address" });
   }
   for (const route of named.filter((r) => r.kind === RouteKind.EXACT)) {

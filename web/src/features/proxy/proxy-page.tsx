@@ -26,6 +26,7 @@ import { useCanManage } from "@/lib/session";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { cn } from "@/lib/utils";
 
+import { domainsQuery } from "../domains/queries";
 import { dnsRecords, MINECRAFT_PORT, wildcardNeedsPort } from "./dns";
 import { ListenerDialog, PROXY_PROTOCOL_WARNING } from "./listener-dialog";
 import { connectionsQuery, listenersQuery, routesQuery, serversQuery } from "./queries";
@@ -559,8 +560,9 @@ function ConnectionsPanel() {
 function DnsPanel() {
   const routes = useQuery(routesQuery);
   const listeners = useQuery(listenersQuery);
+  const domains = useQuery(domainsQuery);
   if (!routes.data || !listeners.data) return null;
-  const records = dnsRecords(routes.data, listeners.data);
+  const records = dnsRecords(routes.data, listeners.data, domains.data);
   if (records.length === 0) return null;
   return (
     <Panel className="mt-6">

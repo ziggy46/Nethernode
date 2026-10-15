@@ -18,7 +18,11 @@ export interface PackChoice {
   loader: string;
 }
 
-export type NetworkMode = "default" | "hostname" | "port";
+/**
+ * How players reach the server: a name on one of the admin's domains, a
+ * full hostname of its own, a port of its own, or nothing yet.
+ */
+export type NetworkMode = "domain" | "hostname" | "port" | "later";
 
 export interface Draft {
   software: Software;
@@ -29,6 +33,12 @@ export interface Draft {
   pack?: PackChoice;
   memoryMb: number;
   network: NetworkMode;
+  /** For "domain": the part before the domain; empty uses the server's name. */
+  subdomain: string;
+  /** For "domain": which domain; empty is the default (first) one. */
+  domain: string;
+  /** For "domain": the domain itself, with nothing in front. */
+  apex: boolean;
   hostname: string;
   port: string;
   name: string;
@@ -44,7 +54,10 @@ export const newDraft = (preset?: Partial<Draft>): Draft => ({
   loaderVersion: "",
   snapshots: false,
   memoryMb: 4096,
-  network: "default",
+  network: "domain",
+  subdomain: "",
+  domain: "",
+  apex: false,
   hostname: "",
   port: "",
   name: "",
@@ -82,6 +95,26 @@ export function slugPreview(name: string): string {
   }
   slug = slug.replace(/-+$/, "");
   return slug || "server";
+}
+
+/** The name players use for a "domain" address, or null without a domain. */
+export function domainAddress(draft: Draft, domains: string[]): string | null {
+  const domain = draft.domain || domains[0];
+  if (!domain) return null;
+  if (draft.apex) return domain;
+  const sub =
+    draft.subdomain.trim().toLowerCase() || slugPreview(draft.name || draft.pack?.title || "server");
+  return `${sub}.${domain}`;
+}
+
+/** Why a subdomain someone typed won't work, if it won't. Empty is fine. */
+export function subdomainError(sub: string): string | undefined {
+  const value = sub.trim().toLowerCase();
+  if (!value) return undefined;
+  const label = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
+  return value.split(".").every((l) => label.test(l))
+    ? undefined
+    : "Use letters, numbers, and hyphens (not at the start or end).";
 }
 
 /** A CurseForge slug from a slug or a modpack page URL. */

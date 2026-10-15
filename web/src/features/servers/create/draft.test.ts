@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { curseForgeSlug, slugPreview } from "./draft";
+import { curseForgeSlug, domainAddress, newDraft, slugPreview, subdomainError } from "./draft";
 
 describe("slugPreview", () => {
   it("matches the server's slugs", () => {
@@ -18,5 +18,28 @@ describe("curseForgeSlug", () => {
     expect(curseForgeSlug("https://www.curseforge.com/minecraft/modpacks/All-The-Mods-9/files")).toBe(
       "all-the-mods-9",
     );
+  });
+});
+
+describe("domainAddress", () => {
+  const base = newDraft();
+  it("uses the server's name unless a subdomain is given", () => {
+    expect(domainAddress({ ...base, name: "Nether SMP" }, ["example.com"])).toBe("nether-smp.example.com");
+    expect(domainAddress({ ...base, name: "Nether SMP", subdomain: "SMP" }, ["example.com"])).toBe(
+      "smp.example.com",
+    );
+    expect(domainAddress({ ...base, subdomain: "smp", domain: "mc.example.com" }, ["example.com"])).toBe(
+      "smp.mc.example.com",
+    );
+    expect(domainAddress({ ...base, apex: true }, ["example.com"])).toBe("example.com");
+    expect(domainAddress(base, [])).toBeNull();
+  });
+
+  it("checks subdomains", () => {
+    expect(subdomainError("")).toBeUndefined();
+    expect(subdomainError("smp")).toBeUndefined();
+    expect(subdomainError("eu.smp")).toBeUndefined();
+    expect(subdomainError("-smp")).toBeDefined();
+    expect(subdomainError("my server")).toBeDefined();
   });
 });

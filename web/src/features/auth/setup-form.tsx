@@ -31,7 +31,8 @@ export function SetupForm() {
       if (!user) return;
       const session: Session = { status: "authenticated", user };
       queryClient.setQueryData(sessionQuery.queryKey, session);
-      await navigate({ to: "/" });
+      // Next: the optional domain step.
+      await navigate({ to: "/welcome" });
     },
   });
 

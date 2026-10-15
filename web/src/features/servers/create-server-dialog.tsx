@@ -21,7 +21,9 @@ import { useCanManage } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
 import { PLATFORM_NAMES } from "../catalog/queries";
-import { type Draft, MORE_SOFTWARE, newDraft, SOFTWARE } from "./create/draft";
+import { domainsQuery } from "../domains/queries";
+import { routesQuery } from "../proxy/queries";
+import { type Draft, domainAddress, MORE_SOFTWARE, newDraft, SOFTWARE, subdomainError } from "./create/draft";
 import {
   ModpackStep,
   NetworkStep,
@@ -73,6 +75,11 @@ export function CreateServerDialog({
   const softwareName =
     [...SOFTWARE, ...MORE_SOFTWARE].find((s) => s.id === draft.software)?.name ?? draft.software;
   const port = Number(draft.port);
+  const domains = useQuery({ ...domainsQuery, enabled: open && canManageProxy }).data ?? [];
+  const routes = useQuery({ ...routesQuery, enabled: open && canManageProxy }).data ?? [];
+  const address = domainAddress(draft, domains);
+  const taken = address ? routes.find((r) => r.hostname === address) : undefined;
+  const takenBy = taken ? taken.serverName || "another server" : undefined;
   const problems: (string | null)[] = [
     null,
     isPack
@@ -85,12 +92,24 @@ export function CreateServerDialog({
         ? "Choose a Minecraft version."
         : null,
     null,
-    draft.network === "hostname" && !/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(draft.hostname.trim())
-      ? "Enter a hostname like play.example.com."
-      : draft.network === "port" && !(port >= 1024 && port <= 65535)
-        ? "Choose a port between 1024 and 65535."
-        : null,
-    !draft.name.trim() ? "Give your server a name." : !draft.eula ? "Accept the EULA to continue." : null,
+    draft.network === "domain" && !address
+      ? "Add a domain first, or choose another option."
+      : draft.network === "domain" && subdomainError(draft.subdomain)
+        ? "Fix the name before the domain."
+        : draft.network === "domain" && draft.subdomain.trim() && takenBy
+          ? `${address} already leads to ${takenBy}. Choose another name.`
+          : draft.network === "hostname" && !/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(draft.hostname.trim())
+            ? "Enter a hostname like play.example.com."
+            : draft.network === "port" && !(port >= 1024 && port <= 65535)
+              ? "Choose a port between 1024 and 65535."
+              : null,
+    !draft.name.trim()
+      ? "Give your server a name."
+      : draft.network === "domain" && takenBy
+        ? `Players would join with ${address}, which already leads to ${takenBy}. Pick another name, or change it on the Network step.`
+        : !draft.eula
+          ? "Accept the EULA to continue."
+          : null,
   ];
   const problem = problems[step];
 
@@ -120,7 +139,9 @@ export function CreateServerDialog({
       // Networking is set up after the server exists; a failure here
       // leaves the server in place, reachable the default way.
       try {
-        if (draft.network === "hostname") {
+        if (draft.network === "domain" && address) {
+          await proxyClient.upsertRoute({ hostname: address, serverId: server.id });
+        } else if (draft.network === "hostname") {
           await proxyClient.upsertRoute({
             hostname: draft.hostname.trim().toLowerCase(),
             serverId: server.id,
@@ -165,11 +186,13 @@ export function CreateServerDialog({
     ["Memory", `${(draft.memoryMb / 1024).toFixed(draft.memoryMb % 1024 ? 1 : 0)} GB`],
     [
       "Address",
-      draft.network === "hostname"
-        ? draft.hostname.trim()
-        : draft.network === "port"
-          ? `Port ${draft.port}`
-          : "Through the proxy, by name",
+      draft.network === "domain"
+        ? (address ?? "No domain yet")
+        : draft.network === "hostname"
+          ? draft.hostname.trim().toLowerCase()
+          : draft.network === "port"
+            ? `This machine's address, port ${draft.port}`
+            : "None yet (add one on Proxy & routes)",
     ],
   ];
 

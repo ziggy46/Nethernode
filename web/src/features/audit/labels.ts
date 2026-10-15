@@ -63,6 +63,7 @@ const LABELS: Record<string, string> = {
   "proxy.listener.delete": "Deleted a proxy listener",
   "proxy.route.upsert": "Saved a route",
   "proxy.route.delete": "Deleted a route",
+  "proxy.domains": "Changed the domains",
   "settings.curseforge_key": "Changed the CurseForge key",
   "settings.notifications": "Changed Discord notifications",
   "settings.install_count": "Changed whether this install is counted",

@@ -1,7 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
-import { CircleCheck, ExternalLink, Globe, KeyRound, Network, Plug, TriangleAlert } from "lucide-react";
+import {
+  CircleCheck,
+  Clock,
+  ExternalLink,
+  Globe,
+  KeyRound,
+  Network,
+  Plug,
+  TriangleAlert,
+} from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, Input, Select } from "@/components/ui/field";
 import { Platform, ProjectKind } from "@/gen/nethernode/v1/catalog_pb";
@@ -15,10 +25,20 @@ import {
   mcVersionsQuery,
   projectVersionsQuery,
 } from "../../catalog/queries";
+import { domainError, domainsQuery, useSetDomains } from "../../domains/queries";
 import { routesQuery } from "../../proxy/queries";
 import { formatBytes, loaderName, memoryLimitBytes } from "../format";
 import { THEME_NAMES } from "../world-banner";
-import { curseForgeSlug, type Draft, MORE_SOFTWARE, type PackChoice, SOFTWARE, slugPreview } from "./draft";
+import {
+  curseForgeSlug,
+  type Draft,
+  domainAddress,
+  MORE_SOFTWARE,
+  type PackChoice,
+  SOFTWARE,
+  slugPreview,
+  subdomainError,
+} from "./draft";
 
 export const EULA_URL = "https://aka.ms/MinecraftEULA";
 
@@ -433,14 +453,19 @@ export function NetworkStep({
   update: Update;
   canManageProxy: boolean;
 }) {
-  const ids = { host: useId(), port: useId() };
+  const ids = { host: useId(), port: useId(), sub: useId(), domain: useId(), apex: useId(), add: useId() };
+  const domainsList = useQuery({ ...domainsQuery, enabled: canManageProxy });
+  const domains = domainsList.data ?? [];
   const routes = useQuery({ ...routesQuery, enabled: canManageProxy });
-  const wildcards = (routes.data ?? [])
-    .filter((r) => r.hostname.startsWith("*.") && !r.serverId)
-    .map((r) => r.hostname.slice(2));
-  const slug = slugPreview(draft.name || draft.pack?.title || draft.software);
+  const address = domainAddress(draft, domains);
+  const taken = address ? routes.data?.find((r) => r.hostname === address) : undefined;
+  const subProblem = subdomainError(draft.subdomain);
+  const namePreview = slugPreview(draft.name || draft.pack?.title || "server");
   const host = draft.hostname.trim().toLowerCase();
   const [dns, setDns] = useState<{ host: string; addresses: string[]; error: string } | null>(null);
+  const [newDomain, setNewDomain] = useState("");
+  const addDomain = useSetDomains();
+  const newDomainProblem = newDomain ? domainError(newDomain) : undefined;
 
   // Look the name up as it's typed (debounced).
   useEffect(() => {
@@ -481,7 +506,9 @@ export function NetworkStep({
       </span>
       <span className="min-w-0">
         <span className="block font-medium text-label">{title}</span>
-        <span className="mt-0.5 block text-meta text-text-secondary">Players join with {joinWith}</span>
+        {joinWith && (
+          <span className="mt-0.5 block text-meta text-text-secondary">Players join with {joinWith}</span>
+        )}
         <span className="mt-0.5 block text-meta text-text-muted">{body}</span>
       </span>
     </label>
@@ -494,33 +521,132 @@ export function NetworkStep({
         How will players reach this server? Every option goes through NetherNode's proxy, so the server itself
         is never exposed directly.
       </legend>
-      {option(
-        "default",
-        <Network />,
-        "A name you set up later",
-        wildcards.length > 0 ? (
-          <>{code(wildcards.map((w) => `${slug}.${w}`).join(" or "))}</>
+      {canManageProxy &&
+        option(
+          "domain",
+          <Globe />,
+          "A name on your domain",
+          address ? code(address) : null,
+          domains.length > 0
+            ? "NetherNode adds a route for this name. Your domain's wildcard DNS record already covers it."
+            : "Add a domain you own and each server can have its own name on it, like smp.example.com.",
+        )}
+      {draft.network === "domain" &&
+        canManageProxy &&
+        (domains.length > 0 ? (
+          <div className="ml-7 flex flex-col gap-2">
+            <div className="flex items-center gap-1.5">
+              <label htmlFor={ids.sub} className="sr-only">
+                Name before the domain
+              </label>
+              <Input
+                id={ids.sub}
+                placeholder={namePreview}
+                autoCapitalize="none"
+                spellCheck={false}
+                className="w-48 font-mono"
+                disabled={draft.apex}
+                aria-invalid={subProblem ? true : undefined}
+                value={draft.apex ? "" : draft.subdomain}
+                onChange={(e) => update({ subdomain: e.target.value })}
+              />
+              <span className="font-mono text-text-muted">.</span>
+              {domains.length > 1 ? (
+                <>
+                  <label htmlFor={ids.domain} className="sr-only">
+                    Domain
+                  </label>
+                  <Select
+                    id={ids.domain}
+                    className="font-mono"
+                    value={draft.domain || domains[0]}
+                    onChange={(e) => update({ domain: e.target.value })}
+                  >
+                    {domains.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </Select>
+                </>
+              ) : (
+                <span className="font-mono text-label">{domains[0]}</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id={ids.apex}
+                checked={draft.apex}
+                onCheckedChange={(v) => update({ apex: v === true })}
+              />
+              <label htmlFor={ids.apex} className="text-meta text-text-secondary">
+                Use {draft.domain || domains[0]} itself, with nothing in front
+              </label>
+            </div>
+            {subProblem ? (
+              <Hint tone="danger">{subProblem}</Hint>
+            ) : taken ? (
+              <Hint tone="danger">
+                {address} already leads to {taken.serverName || "another server"}. Choose another name.
+              </Hint>
+            ) : (
+              !draft.apex &&
+              !draft.subdomain.trim() && <Hint>Blank uses the server's name, which you choose next.</Hint>
+            )}
+          </div>
         ) : (
-          "an address you add later"
-        ),
-        wildcards.length > 0
-          ? "Your wildcard route already covers it, using the server's short name. Nothing else to set up."
-          : "Nothing is set up now. Until you add a hostname or port on Proxy & routes, players can't join it.",
-      )}
+          <div className="ml-7">
+            <div className="flex gap-2">
+              <label htmlFor={ids.add} className="sr-only">
+                Your domain
+              </label>
+              <Input
+                id={ids.add}
+                placeholder="example.com"
+                autoCapitalize="none"
+                spellCheck={false}
+                className="font-mono"
+                value={newDomain}
+                onChange={(e) => setNewDomain(e.target.value)}
+                onKeyDown={(e) => {
+                  // Enter adds the domain rather than moving the wizard on.
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (!domainError(newDomain)) addDomain.mutate([newDomain]);
+                  }
+                }}
+              />
+              <Button
+                disabled={!newDomain.trim() || addDomain.isPending}
+                onClick={() => {
+                  if (!domainError(newDomain)) addDomain.mutate([newDomain]);
+                }}
+              >
+                Add domain
+              </Button>
+            </div>
+            <Hint tone={newDomainProblem || addDomain.isError ? "danger" : undefined}>
+              {addDomain.isError
+                ? errorMessage(addDomain.error)
+                : (newDomainProblem ??
+                  "Then add an A record for *.yourdomain in your DNS, pointing at this machine. Manage domains in Settings.")}
+            </Hint>
+          </div>
+        ))}
       {canManageProxy &&
         option(
           "hostname",
-          <Globe />,
-          "Its own hostname",
-          code(draft.hostname.trim() || "play.example.com"),
-          "NetherNode adds a route so that name leads here, on the usual port (25565). You need a DNS record for the name pointing at this machine, or your router if you're at home.",
+          <Network />,
+          "A different hostname",
+          code(host || "play.example.org"),
+          "Any full name you control. NetherNode adds a route for it; you need a DNS record for that exact name pointing at this machine (or your router).",
         )}
       {draft.network === "hostname" && (
         <div className="ml-7">
           <Input
             id={ids.host}
             aria-label="Hostname"
-            placeholder="play.example.com"
+            placeholder="play.example.org"
             className="font-mono"
             value={draft.hostname}
             onChange={(e) => update({ hostname: e.target.value })}
@@ -559,6 +685,13 @@ export function NetworkStep({
           />
           <Hint>Any free port from 1024 to 65535 other than the proxy's own (usually 25565).</Hint>
         </div>
+      )}
+      {option(
+        "later",
+        <Clock />,
+        "No address yet",
+        null,
+        "Nothing is set up now. Players can't join until you give it a name or port on Proxy & routes.",
       )}
     </fieldset>
   );

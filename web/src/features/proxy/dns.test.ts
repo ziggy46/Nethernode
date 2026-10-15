@@ -28,4 +28,17 @@ describe("dnsRecords", () => {
     expect(wildcardNeedsPort(routes, [listener(25570)])).toBe(true);
     expect(wildcardNeedsPort(routes, [listener(25565)])).toBe(false);
   });
+
+  it("covers names under a domain with one wildcard record", () => {
+    const routes = [
+      route("smp.example.com", RouteKind.EXACT),
+      route("example.com", RouteKind.EXACT),
+      route("play.other.net", RouteKind.EXACT),
+    ];
+    expect(dnsRecords(routes, [listener(25565)], ["example.com"]).map((r) => `${r.type} ${r.name}`)).toEqual([
+      "A *.example.com",
+      "A example.com",
+      "A play.other.net",
+    ]);
+  });
 });
