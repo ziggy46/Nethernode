@@ -8,5 +8,5 @@ compatibility_date = "2026-10-01"
 binding = "DB"
 database_name = "nethernode-installs"
 # From `wrangler d1 create nethernode-installs`.
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "74ce1266-df89-4ec6-9b9d-f5a45f26ccfb"
 migrations_dir = "migrations"
