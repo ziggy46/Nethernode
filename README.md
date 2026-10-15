@@ -69,10 +69,19 @@ talks to servers over RCON or Minecraft's management protocol.
 
 ## Get started
 
-You need a Linux machine (x86-64 or ARM64) with Docker and the Compose plugin.
+You need a Linux machine (x86-64 or ARM64) with Docker. Start NetherNode with
+one command:
 
 ```sh
-cd deploy
+docker run -d --name nethernode --restart unless-stopped --network host \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v nethernode-data:/data \
+  ghcr.io/ziggy46/nethernode:latest
+```
+
+Or with Docker Compose, using [`docker-compose.yml`](docker-compose.yml):
+
+```sh
 docker compose up -d
 ```
 
@@ -81,9 +90,9 @@ server. To let friends join from outside your network, point a hostname at the
 machine (or forward port 25565 on your router) and add a route on the
 **Proxy & routes** page; it lists the DNS records each route needs.
 
-Settings such as the data folder and ports go in `deploy/.env`; see
-`deploy/docker-compose.yml`. NetherNode can also run as a plain binary under
-systemd.
+Images are tagged `latest` and by version (`0.1.0`, `0.1`); `edge` follows
+the main branch. NetherNode can also run as a plain binary from the releases
+page.
 
 > [!IMPORTANT]
 > NetherNode controls Docker, which is root on the machine, so treat panel
@@ -116,6 +125,7 @@ just lint      # formatting, clippy, protos, types, accessibility checks
 just test      # Rust and web unit tests
 just build     # release binary with the UI embedded
 pnpm --dir web e2e   # browser tests against the built binary
+docker build -t ghcr.io/ziggy46/nethernode:latest .   # the image, from source
 ```
 
 The backend is Rust (axum, ConnectRPC, sqlx on SQLite, bollard for Docker);

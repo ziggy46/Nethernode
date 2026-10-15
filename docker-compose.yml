@@ -1,0 +1,28 @@
+# NetherNode with Docker Compose.
+#
+#   docker compose up -d
+#
+# Then open http://<this machine>:8080 and create the owner account.
+#
+# NetherNode starts each Minecraft server as its own container, so it needs
+# the Docker socket. Anything with the socket can control Docker, which is
+# root on this machine: keep the panel off the open internet and only give
+# accounts to people you trust.
+
+services:
+  nethernode:
+    image: ghcr.io/ziggy46/nethernode:latest
+    restart: unless-stopped
+    # The panel (8080) and the Smart Proxy (25565) listen on this machine
+    # directly; servers stay on 127.0.0.1 where only NetherNode reaches them.
+    network_mode: host
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - nethernode-data:/data
+    # Optional settings; see the configuration reference for the rest.
+    # environment:
+    #   NETHERNODE_HTTP__TRUST_PROXY_HEADERS: "true"   # behind a reverse proxy or tunnel
+    #   NETHERNODE_INSTALL_COUNT__ENABLED: "true"      # join the public install count
+
+volumes:
+  nethernode-data:

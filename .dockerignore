@@ -15,3 +15,6 @@ crates/*/fuzz/artifacts/
 *.db-wal
 .env
 .env.*
+assets/
+counter/
+.github/

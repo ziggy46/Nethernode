@@ -8,8 +8,6 @@
 *.db-shm
 *.db-wal
 /data/
-/deploy/data/
-/deploy/.env
 /backups/
 /tmp/
 

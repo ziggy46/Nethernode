@@ -1,10 +1,12 @@
 # syntax=docker/dockerfile:1
 #
 # NetherNode as a single static binary on an empty base image.
-#   docker build -f deploy/Dockerfile -t nethernode .
-# Run it with deploy/docker-compose.yml (it needs the Docker socket).
+#   docker build -t ghcr.io/ziggy46/nethernode:latest .
+# Run it with docker-compose.yml (it needs the Docker socket).
 
-FROM node:26-alpine AS web
+# The panel is plain JavaScript, so it's built once on the build machine's
+# own platform even when the image is for another one.
+FROM --platform=$BUILDPLATFORM node:26-alpine AS web
 WORKDIR /src/web
 RUN npm install -g pnpm@11.22.0
 COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
@@ -22,9 +24,11 @@ COPY proto/ proto/
 COPY .sqlx/ .sqlx/
 COPY --from=web /src/web/dist web/dist
 ENV SQLX_OFFLINE=true
+# Limits parallel compile jobs on small machines: --build-arg JOBS=2
+ARG JOBS
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/src/target \
-    cargo build --release --locked -p nethernode \
+    cargo build --release --locked -p nethernode ${JOBS:+--jobs "$JOBS"} \
     && cp target/release/nethernode /nethernode
 
 FROM scratch
