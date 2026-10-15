@@ -121,10 +121,12 @@ jobs:
       - name: Create the multi-arch tags
         working-directory: digests
         run: |
+          sources=()
+          for digest in *; do sources+=("$IMAGE@sha256:$digest"); done
           # shellcheck disable=SC2046
           docker buildx imagetools create \
             $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '%s@sha256:%s ' "$IMAGE" *)
+            "${sources[@]}"
         env:
           IMAGE: ${{ steps.name.outputs.image }}
       - name: Inspect

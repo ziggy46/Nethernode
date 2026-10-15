@@ -99,6 +99,8 @@ test("an owner adds a user who must choose their own password", async ({ page, b
 });
 
 test("two-factor sign-in with an app code, then a recovery code", async ({ page, browser }) => {
+  // Waiting for the next authenticator code can take up to 30 s on its own.
+  test.setTimeout(90_000);
   await signIn(page, OWNER.username, OWNER.password);
   await page.goto("/settings");
   await page.getByRole("button", { name: "Set up…" }).click();
