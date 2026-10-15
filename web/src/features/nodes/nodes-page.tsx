@@ -317,7 +317,7 @@ function JoinDialog({ node, join, onClose }: { node: Node; join: JoinCode; onClo
   };
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-[640px]">
+      <DialogContent className="w-[680px]">
         <DialogHeader>
           <DialogTitle>Join {node.name} to this panel</DialogTitle>
           <DialogDescription>
