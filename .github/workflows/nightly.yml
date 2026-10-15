@@ -1,7 +1,8 @@
 name: Nightly
 
-# Slow tests that need a real Docker daemon: the orchestrator starting and
-# stopping actual Minecraft server containers.
+# Slow checks: the orchestrator starting and stopping real Minecraft server
+# containers, and a minute of fuzzing for each parser that reads untrusted
+# input.
 
 on:
   schedule:
@@ -28,3 +29,20 @@ jobs:
           toolchain: "1.96.0"
       - uses: Swatinem/rust-cache@v2
       - run: cargo test -p nn-orchestrator --locked -- --ignored --test-threads=1
+
+  fuzz:
+    name: Fuzz (60 s per target)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-fuzz
+      - name: Fuzz each target
+        run: |
+          for t in nn-mcproto:pre_login nn-files:extract_entries nn-files:extract_raw nn-players:nbt; do
+            echo "::group::${t%%:*} / ${t#*:}"
+            (cd "crates/${t%%:*}" && cargo +nightly fuzz run "${t#*:}" -- -max_total_time=60)
+            echo "::endgroup::"
+          done
