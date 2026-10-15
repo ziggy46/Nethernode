@@ -458,6 +458,7 @@ export function NetworkStep({
   const domains = domainsList.data ?? [];
   const routes = useQuery({ ...routesQuery, enabled: canManageProxy });
   const address = domainAddress(draft, domains);
+  // The dialog explains a name that's already taken.
   const taken = address ? routes.data?.find((r) => r.hostname === address) : undefined;
   const subProblem = subdomainError(draft.subdomain);
   const namePreview = slugPreview(draft.name || draft.pack?.title || "server");
@@ -526,7 +527,13 @@ export function NetworkStep({
           "domain",
           <Globe />,
           "A name on your domain",
-          address ? code(address) : null,
+          address
+            ? code(
+                draft.apex || draft.subdomain.trim() || draft.name.trim() || draft.pack?.title
+                  ? address
+                  : `<server name>.${draft.domain || domains[0]}`,
+              )
+            : null,
           domains.length > 0
             ? "NetherNode adds a route for this name. Your domain's wildcard DNS record already covers it."
             : "Add a domain you own and each server can have its own name on it, like smp.example.com.",
@@ -541,7 +548,7 @@ export function NetworkStep({
               </label>
               <Input
                 id={ids.sub}
-                placeholder={namePreview}
+                placeholder={draft.name.trim() || draft.pack?.title ? namePreview : "server name"}
                 autoCapitalize="none"
                 spellCheck={false}
                 className="w-48 font-mono"
@@ -585,11 +592,7 @@ export function NetworkStep({
             </div>
             {subProblem ? (
               <Hint tone="danger">{subProblem}</Hint>
-            ) : taken ? (
-              <Hint tone="danger">
-                {address} already leads to {taken.serverName || "another server"}. Choose another name.
-              </Hint>
-            ) : (
+            ) : taken ? null : (
               !draft.apex &&
               !draft.subdomain.trim() && <Hint>Blank uses the server's name, which you choose next.</Hint>
             )}
