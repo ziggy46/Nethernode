@@ -1,8 +1,5 @@
-# The build guide stays private; the public docs site is docs/site.
-/docs/build-guide/
-/docs/site/node_modules/
-/docs/site/dist/
-/docs/site/.astro/
+# The build guide stays private; the public docs are the NetherNode-docs repository.
+/docs/
 
 # Secrets and local state (00-ground-rules.md §0.1)
 .env

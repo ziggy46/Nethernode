@@ -4,7 +4,7 @@
 
 <p align="center">A fast, self-hosted Minecraft server manager.</p>
 
-<p align="center"><a href="docs/site/src/content/docs/reference/install-count.md"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fnethernode-installs.pages.dev%2Fbadge.json" alt="Active installs (opt-in)"></a></p>
+<p align="center"><a href="counter/README.md"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fnethernode-installs.pages.dev%2Fbadge.json" alt="Active installs (opt-in)"></a></p>
 
 NetherNode is a single binary that runs a web panel, manages Minecraft servers
 as Docker containers, and routes players to the right server by hostname
@@ -34,9 +34,10 @@ cd deploy
 docker compose up -d
 ```
 
-Then open `http://<machine>:8080` and create the owner account. See
-[the documentation](docs/site/src/content/docs/) for installing, DNS, the
-proxy, Cloudflare Tunnel, backups, configuration, the API, and security.
+Then open `http://<machine>:8080` and create the owner account. The
+documentation, in the NetherNode-docs repository, covers installing, DNS,
+the proxy, Cloudflare Tunnel, backups, configuration, the API, security, and
+the opt-in install count.
 
 ## Development
 
@@ -49,7 +50,6 @@ just lint      # formatting, clippy, protos, types, accessibility checks
 just test      # Rust and web unit tests
 just build     # release binary with the UI embedded
 pnpm --dir web e2e          # browser tests against the built binary
-pnpm --dir docs/site dev    # the documentation site
 ```
 
 ## License
