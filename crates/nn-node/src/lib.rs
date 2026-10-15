@@ -22,6 +22,7 @@ use nn_players::{MgmtClient, MgmtError};
 use nn_store::{Server, ServerSettings};
 use tokio::sync::broadcast;
 
+pub mod agent;
 mod backups;
 mod folder;
 pub mod jobs;

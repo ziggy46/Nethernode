@@ -41,6 +41,7 @@ async fn harness() -> (Router, String, String) {
         content: Default::default(),
         notifier: Default::default(),
         install_count: Default::default(),
+        agents: Default::default(),
         nodes: Nodes::default(),
     });
     let owner = auth

@@ -74,6 +74,7 @@ async fn harness_with(settings: UploadSettings) -> Harness {
         content: Default::default(),
         notifier: Default::default(),
         install_count: Default::default(),
+        agents: Default::default(),
         nodes: Nodes::new(LocalNode::without_docker(
             "not connected",
             Some(servers_dir.clone()),

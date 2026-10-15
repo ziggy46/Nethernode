@@ -11,6 +11,17 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+bytes.workspace = true
+futures-util.workspace = true
+hex.workspace = true
+http.workspace = true
+nn-link.workspace = true
+rustls.workspace = true
+rustls-platform-verifier.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio-rustls.workspace = true
+tokio-tungstenite.workspace = true
 nn-catalog.workspace = true
 nn-events.workspace = true
 nn-files.workspace = true

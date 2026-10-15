@@ -68,6 +68,14 @@ pub enum Event {
         /// Listener ID.
         listener_id: String,
     },
+    /// A node's agent connected or disconnected, or a node was added,
+    /// renamed, or removed.
+    NodeChanged {
+        /// Node ID.
+        node_id: String,
+        /// Whether its agent is connected now.
+        online: bool,
+    },
     /// A server was created, deleted, or changed lifecycle state.
     ServerStatusChanged {
         /// Server ID.

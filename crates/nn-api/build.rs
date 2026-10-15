@@ -19,6 +19,7 @@ fn main() {
             format!("{proto_root}/nethernode/v1/notifications.proto"),
             format!("{proto_root}/nethernode/v1/install_count.proto"),
             format!("{proto_root}/nethernode/v1/schedules.proto"),
+            format!("{proto_root}/nethernode/v1/nodes.proto"),
         ])
         .includes(&[proto_root])
         .include_file("_connectrpc.rs")

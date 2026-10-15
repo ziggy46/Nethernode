@@ -29,6 +29,7 @@ use tower_http::compression::CompressionLayer;
 use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::trace::TraceLayer;
 
+pub mod agents;
 pub mod backups;
 mod console;
 pub mod content;
@@ -126,6 +127,8 @@ pub struct AppState {
     pub notifier: Arc<notify::Notifier>,
     /// The opt-in active installs count.
     pub install_count: Arc<install_count::InstallCount>,
+    /// Links to agents on other machines.
+    pub agents: Arc<agents::Agents>,
 }
 
 /// Builds the full application router.
@@ -160,6 +163,7 @@ pub fn router(state: AppState) -> Router {
                 .delete(uploads::cancel),
         )
         .route("/ws/servers/{id}/console", get(console::console))
+        .route("/api/agent", get(agents::connect))
         .route("/api/players/{uuid}/head", get(players::heads::head))
         .route("/api/catalog/icon", get(content::icons::icon))
         .route("/api/backups/{id}/download", get(backups::http::download))

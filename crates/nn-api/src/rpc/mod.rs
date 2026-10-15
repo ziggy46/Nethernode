@@ -10,7 +10,7 @@ use crate::AppState;
 use crate::middleware::CurrentUser;
 use crate::proto::nethernode::v1::{
     AccountServiceExt, AuditServiceExt, AuthServiceExt, BackupServiceExt, CatalogServiceExt,
-    FileServiceExt, InstallCountServiceExt, ModServiceExt, NotificationServiceExt,
+    FileServiceExt, InstallCountServiceExt, ModServiceExt, NodeServiceExt, NotificationServiceExt,
     PlayerServiceExt, ProxyServiceExt, ScheduleServiceExt, ServerServiceExt, UserServiceExt,
 };
 
@@ -22,6 +22,7 @@ pub(crate) mod catalog;
 mod files;
 mod install_count;
 pub(crate) mod mods;
+mod nodes;
 mod notifications;
 mod players;
 mod proxy;
@@ -44,6 +45,7 @@ pub(crate) fn register(router: ConnectRouter, state: &AppState) -> ConnectRouter
     let router = Arc::new(backups::BackupRpc::new(state.clone())).register(router);
     let router = Arc::new(schedules::ScheduleRpc::new(state.clone())).register(router);
     let router = Arc::new(users::UserRpc::new(state.clone())).register(router);
+    let router = Arc::new(nodes::NodeRpc::new(state.clone())).register(router);
     Arc::new(proxy::ProxyRpc::new(state.clone()))
         .register(router)
         // The editor saves files up to 5 MB, which is larger than the default

@@ -1,0 +1,118 @@
+syntax = "proto3";
+
+package nethernode.v1;
+
+// The machines that run servers: this one, and agents that joined it.
+// Listing needs View; changes need ManageSettings (admins).
+service NodeService {
+  rpc ListNodes(ListNodesRequest) returns (ListNodesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // Adds a node and returns a one-time code for its agent to join with.
+  rpc CreateNode(CreateNodeRequest) returns (CreateNodeResponse);
+
+  // A new join code for a node whose agent hasn't joined yet. The old
+  // code stops working.
+  rpc RegenerateJoinCode(RegenerateJoinCodeRequest) returns (RegenerateJoinCodeResponse);
+
+  rpc RenameNode(RenameNodeRequest) returns (RenameNodeResponse);
+
+  // Removes a node and disconnects its agent, which can't come back
+  // without a new join code. Not this machine.
+  rpc DeleteNode(DeleteNodeRequest) returns (DeleteNodeResponse);
+}
+
+enum NodeStatus {
+  NODE_STATUS_UNSPECIFIED = 0;
+  // Connected (this machine always is).
+  NODE_STATUS_ONLINE = 1;
+  // Joined before, not connected now.
+  NODE_STATUS_OFFLINE = 2;
+  // Waiting for its agent to join.
+  NODE_STATUS_WAITING = 3;
+}
+
+// What a node's machine reported, or this machine right now.
+message NodeHost {
+  bool docker_available = 1;
+  // Why Docker can't be reached, when it can't.
+  string docker_error = 2;
+  string hostname = 3;
+  string operating_system = 4;
+  string docker_version = 5;
+  uint32 cpus = 6;
+  uint64 memory_bytes = 7;
+  optional uint64 disk_total_bytes = 8;
+  optional uint64 disk_free_bytes = 9;
+}
+
+message Node {
+  string id = 1;
+  string name = 2;
+  // The panel's own machine.
+  bool local = 3;
+  NodeStatus status = 4;
+  // The agent's NetherNode version.
+  string version = 5;
+  // The agent runs a different NetherNode version than the panel; it
+  // reports in but can't run servers until it's updated.
+  bool update_needed = 6;
+  // Unix milliseconds the agent was last heard from.
+  optional int64 last_seen_ms = 7;
+  // Unset while waiting for the agent.
+  NodeHost host = 8;
+  uint32 server_count = 9;
+  int64 created_at_ms = 10;
+  // A join code is waiting to be used.
+  bool join_pending = 11;
+}
+
+// How to start an agent that joins this panel.
+message JoinCode {
+  // Secret: shown once.
+  string token = 1;
+  int64 expires_at_ms = 2;
+  // The image to run, matching the panel's version.
+  string image = 3;
+}
+
+message ListNodesRequest {}
+
+message ListNodesResponse {
+  repeated Node nodes = 1;
+  // Why agents can't connect, when they can't (no data key).
+  string unavailable_reason = 2;
+}
+
+message CreateNodeRequest {
+  string name = 1;
+}
+
+message CreateNodeResponse {
+  Node node = 1;
+  JoinCode join = 2;
+}
+
+message RegenerateJoinCodeRequest {
+  string id = 1;
+}
+
+message RegenerateJoinCodeResponse {
+  JoinCode join = 1;
+}
+
+message RenameNodeRequest {
+  string id = 1;
+  string name = 2;
+}
+
+message RenameNodeResponse {
+  Node node = 1;
+}
+
+message DeleteNodeRequest {
+  string id = 1;
+}
+
+message DeleteNodeResponse {}

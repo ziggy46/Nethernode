@@ -58,6 +58,17 @@ enum Command {
         #[arg(long)]
         username: Option<String>,
     },
+    /// Run as an agent on another machine: its servers are managed from a
+    /// panel, which players connect through. The first run joins with a
+    /// code from the panel's Nodes page; later runs reconnect on their own.
+    Agent {
+        /// The panel's address, as you open it in a browser (first run).
+        #[arg(long, env = "NETHERNODE_JOIN")]
+        join: Option<String>,
+        /// The join code from the panel (first run).
+        #[arg(long, env = "NETHERNODE_JOIN_CODE")]
+        code: Option<String>,
+    },
     /// Print version information.
     Version,
 }
@@ -77,21 +88,14 @@ fn main() -> Result<()> {
             Command::Serve => serve(config).await,
             Command::Migrate => migrate(config).await,
             Command::ResetAdmin { username } => reset_admin(config, username).await,
+            Command::Agent { join, code } => agent(config, join, code).await,
             Command::Version => unreachable!("handled above"),
         }
     })
 }
 
 async fn serve(config: Config) -> Result<()> {
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new("info,tower_http=warn")),
-        )
-        // Colours only for a person watching; files and journals get plain text.
-        .with_ansi(std::io::IsTerminal::is_terminal(&std::io::stdout()))
-        .with_writer(redact::Redacting(std::io::stdout))
-        .init();
+    init_logging();
 
     let metrics = metrics_exporter_prometheus::PrometheusBuilder::new()
         .install_recorder()
@@ -136,6 +140,9 @@ async fn serve(config: Config) -> Result<()> {
     let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
     let notifier = Arc::new(nn_api::notify::Notifier::default());
     notifier.load(&store, secrets.as_deref()).await;
+    let agents = Arc::new(
+        nn_api::agents::Agents::load(store.clone(), events.clone(), secrets.as_deref()).await,
+    );
     let install_count = Arc::new(nn_api::install_count::InstallCount::new(
         config.install_count.url.clone(),
         config.install_count.enabled,
@@ -156,6 +163,7 @@ async fn serve(config: Config) -> Result<()> {
         content: content.clone(),
         notifier: notifier.clone(),
         install_count,
+        agents,
     };
     nn_api::players::tasks::spawn(state.clone());
     nn_api::uploads::tasks::spawn(state.clone());
@@ -201,6 +209,50 @@ async fn serve(config: Config) -> Result<()> {
     auth.store().close().await;
     tracing::info!("shut down cleanly");
     Ok(())
+}
+
+fn init_logging() {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| EnvFilter::new("info,tower_http=warn")),
+        )
+        // Colours only for a person watching; files and journals get plain text.
+        .with_ansi(std::io::IsTerminal::is_terminal(&std::io::stdout()))
+        .with_writer(redact::Redacting(std::io::stdout))
+        .init();
+}
+
+/// Runs as an agent: Docker and server folders on this machine, managed
+/// by a panel over the link. No web panel and no proxy here.
+async fn agent(config: Config, join: Option<String>, code: Option<String>) -> Result<()> {
+    init_logging();
+    let store = open_store(&config).await?;
+    let secrets = SecretBox::load(&config.data.secret_key_path())
+        .map(Arc::new)
+        .context("loading the data key")?;
+    let events = EventBus::default();
+    let node =
+        nn_node::Nodes::new(start_orchestrator(&config, &store, &events, Some(secrets)).await);
+    let args = nn_node::agent::AgentArgs {
+        dir: config.data.dir.clone(),
+        panel_url: join,
+        code,
+        version: env!("CARGO_PKG_VERSION").to_owned(),
+    };
+    tracing::info!(
+        version = env!("CARGO_PKG_VERSION"),
+        "NetherNode agent starting"
+    );
+    tokio::select! {
+        result = nn_node::agent::run(args, node.local().clone()) => {
+            result.map_err(|e| anyhow::anyhow!(e))
+        }
+        () = shutdown_signal() => {
+            tracing::info!("agent shutting down");
+            Ok(())
+        }
+    }
 }
 
 /// Seeds the default listener on first run, loads routes, and starts the
