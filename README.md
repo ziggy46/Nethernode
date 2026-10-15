@@ -1,43 +1,109 @@
-<p align="center"><img src="assets/icon-1024.png" width="128" alt="NetherNode icon"></p>
+<p align="center"><img src="assets/icon-1024.png" width="112" alt="NetherNode obsidian and lava server logo"></p>
 
 <h1 align="center">NetherNode</h1>
 
-<p align="center">A fast, self-hosted Minecraft server manager.</p>
+<p align="center"><strong>Your Minecraft worlds, under control.</strong><br>
+A fast, self-hosted panel that runs your servers in Docker and routes every player through one port.</p>
 
-<p align="center"><a href="counter/README.md"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fnethernode-installs.pages.dev%2Fbadge.json" alt="Active installs (opt-in)"></a></p>
+<p align="center">
+  <a href="counter/README.md"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fnethernode-installs.pages.dev%2Fbadge.json" alt="Active installs (opt-in)"></a>
+  <img src="https://img.shields.io/badge/version-0.1-f2701c" alt="Version 0.1">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
+</p>
 
-NetherNode is a single binary that runs a web panel, manages Minecraft servers
-as Docker containers, and routes players to the right server by hostname
-through one public port.
+<p align="center"><img src="assets/screenshots/overview.png" alt="The NetherNode overview: server cards, live players and memory, host resources, and recent activity"></p>
 
-- **Servers:** Vanilla, Paper, Fabric, Forge, NeoForge and Quilt, plus
-  Modrinth and CurseForge modpacks. Live console, file manager, resumable
-  uploads of any size, mods, `server.properties` as a form.
-- **Smart Proxy:** one port for every server, routed by hostname, with
-  sleeping servers that wake when someone joins and bans enforced before a
-  login reaches a server.
-- **Players:** operators, allowlists, bans (per server or everywhere),
-  inventories and statistics.
-- **Backups and schedules:** live backups, safe restores, retention, and
-  scheduled restarts, backups, commands and messages with in-game warnings.
-- **People:** roles, one-time passwords, two-factor sign-in, an audit log,
-  and Discord notifications.
+## Why NetherNode
 
-> **Status:** 0.1, early. Expect rough edges and back up your worlds.
+Running a few Minecraft servers at home usually means juggling ports, scripts
+and a separate proxy. NetherNode is one program that does all of it from a
+web panel:
 
-## Quick start
+- **One address, every world.** A built-in Smart Proxy listens on port 25565
+  and sends each player to the right server by the hostname they type, so
+  `smp.example.com` and `creative.example.com` share one IP and one port.
+- **Servers that sleep.** Idle servers stop on their own. Players still see
+  them in their server list ("Sleeping, join to wake"), and joining starts them.
+- **Any server, any pack.** Vanilla, Paper, Fabric, Forge, NeoForge and Quilt,
+  or install a Modrinth or CurseForge modpack in a few clicks.
+- **Everything in the browser.** Live console, file manager and editor,
+  uploads of any size that resume, mod management, and `server.properties` as
+  a form.
+- **Players.** Operators, allowlists, bans per server or everywhere (enforced
+  by the proxy before a login even reaches a server), inventories and stats.
+- **Backups you don't think about.** Live backups while people play, safe
+  restores that keep a copy of what was there, and schedules for backups,
+  restarts with in-game warnings, commands and announcements.
+- **Room for friends.** Roles from viewer to owner, one-time passwords,
+  two-factor sign-in, an audit log, and Discord notifications.
+- **Light.** A single static binary with the panel built in; it idles at a few
+  tens of megabytes of memory.
 
-On a Linux machine with Docker:
+## A closer look
+
+| Server console | Backups and schedules | Proxy and routes |
+| :---: | :---: | :---: |
+| <img src="assets/screenshots/console.png" alt="A server's live console with controls and resource use"> | <img src="assets/screenshots/backups.png" alt="Scheduled backups, restarts and messages, and the snapshot list"> | <img src="assets/screenshots/proxy.png" alt="Hostname routes, live players per route, listeners and connections"> |
+
+## How it works
+
+```mermaid
+flowchart LR
+    players(["Players"]) -->|"smp.example.com:25565"| proxy
+    subgraph host["Your machine"]
+        proxy["NetherNode<br/>Smart Proxy"]
+        panel["NetherNode<br/>web panel"]
+        proxy -->|"by hostname"| smp["Nether SMP<br/>container"]
+        proxy --> creative["Creative<br/>container"]
+        proxy -. "wakes" .-> sky["Skyblock<br/>(asleep)"]
+        panel -->|"Docker"| smp & creative & sky
+    end
+    you(["You"]) -->|"browser"| panel
+```
+
+Each server runs in its own container using the
+[itzg/minecraft-server](https://github.com/itzg/docker-minecraft-server)
+image, with its ports on `127.0.0.1` so players can only reach it through the
+proxy. NetherNode keeps its settings in SQLite, encrypts stored secrets, and
+talks to servers over RCON or Minecraft's management protocol.
+
+## Get started
+
+You need a Linux machine (x86-64 or ARM64) with Docker and the Compose plugin.
 
 ```sh
 cd deploy
 docker compose up -d
 ```
 
-Then open `http://<machine>:8080` and create the owner account. The
-documentation, in the NetherNode-docs repository, covers installing, DNS,
-the proxy, Cloudflare Tunnel, backups, configuration, the API, security, and
-the opt-in install count.
+Open `http://<machine>:8080`, create the owner account, and create your first
+server. To let friends join from outside your network, point a hostname at the
+machine (or forward port 25565 on your router) and add a route on the
+**Proxy & routes** page; it lists the DNS records each route needs.
+
+Settings such as the data folder and ports go in `deploy/.env`; see
+`deploy/docker-compose.yml`. NetherNode can also run as a plain binary under
+systemd.
+
+> [!IMPORTANT]
+> NetherNode controls Docker, which is root on the machine, so treat panel
+> accounts like administrator accounts. Keep the panel off the open internet:
+> reach it on your network, over a VPN, or through a reverse proxy or tunnel
+> with access control in front.
+
+## Documentation
+
+The full guides (installing, DNS and ports, the proxy, Cloudflare Tunnel,
+backups, users, configuration, the API and the security model) live in the
+**NetherNode-docs** repository, with a hosted site coming.
+
+## The install count
+
+The badge at the top counts installs that chose to be counted. It's **off by
+default**: an owner can turn it on in **Settings › Count this install**. Once a
+day it then sends a random ID made on that machine and the version number,
+nothing else; turning it off deletes the ID. The counter is open source in
+[`counter/`](counter/README.md).
 
 ## Development
 
@@ -49,8 +115,12 @@ just dev       # panel with live reload (UI on :5173)
 just lint      # formatting, clippy, protos, types, accessibility checks
 just test      # Rust and web unit tests
 just build     # release binary with the UI embedded
-pnpm --dir web e2e          # browser tests against the built binary
+pnpm --dir web e2e   # browser tests against the built binary
 ```
+
+The backend is Rust (axum, ConnectRPC, sqlx on SQLite, bollard for Docker);
+the panel is React with TanStack Router and Query. API definitions are the
+`.proto` files in `proto/`.
 
 ## License
 
