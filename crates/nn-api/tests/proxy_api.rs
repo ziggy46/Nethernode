@@ -343,6 +343,43 @@ async fn viewers_can_look_but_not_change() {
     )
     .await;
     assert_eq!(status, StatusCode::FORBIDDEN);
+    assert_eq!(
+        call(&h.app, "ListDomains", json!({}), &viewer).await.0,
+        StatusCode::OK
+    );
+    let (status, _) = call(
+        &h.app,
+        "SetDomains",
+        json!({ "domains": ["example.com"] }),
+        &viewer,
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn domains_are_cleaned_up_and_checked() {
+    let h = harness().await;
+    let (_, empty) = call(&h.app, "ListDomains", json!({}), &h.owner).await;
+    assert!(empty.get("domains").is_none());
+    let (status, saved) = call(
+        &h.app,
+        "SetDomains",
+        json!({ "domains": [" Example.COM. ", "*.mc.example.com", "example.com"] }),
+        &h.owner,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{saved}");
+    assert_eq!(saved["domains"], json!(["example.com", "mc.example.com"]));
+    let (_, listed) = call(&h.app, "ListDomains", json!({}), &h.owner).await;
+    assert_eq!(listed["domains"], saved["domains"]);
+    for bad in ["localhost", "10.0.0.5", "not a domain", "*", "-x.com"] {
+        let (status, body) =
+            call(&h.app, "SetDomains", json!({ "domains": [bad] }), &h.owner).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST, "{bad}: {body}");
+    }
+    let (status, _) = call(&h.app, "SetDomains", json!({ "domains": [] }), &h.owner).await;
+    assert_eq!(status, StatusCode::OK);
 }
 
 #[tokio::test]

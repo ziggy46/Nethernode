@@ -23,6 +23,16 @@ service ProxyService {
   // Deletes a route.
   rpc DeleteRoute(DeleteRouteRequest) returns (DeleteRouteResponse);
 
+  // Domains the admin owns, like example.com. New servers get names under
+  // them (smp.example.com).
+  rpc ListDomains(ListDomainsRequest) returns (ListDomainsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // Replaces the list of domains. Each must be a domain name like
+  // example.com or mc.example.com. Routes already made are kept.
+  rpc SetDomains(SetDomainsRequest) returns (SetDomainsResponse);
+
   // Resolves a hostname's A/AAAA records, to help set up DNS.
   rpc CheckDns(CheckDnsRequest) returns (CheckDnsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
@@ -172,4 +182,20 @@ message ListConnectionsRequest {}
 
 message ListConnectionsResponse {
   repeated Connection connections = 1;
+}
+
+message ListDomainsRequest {}
+
+message ListDomainsResponse {
+  // In the admin's order; the first is the default for new servers.
+  repeated string domains = 1;
+}
+
+message SetDomainsRequest {
+  repeated string domains = 1;
+}
+
+message SetDomainsResponse {
+  // As saved: lowercased, without duplicates.
+  repeated string domains = 1;
 }

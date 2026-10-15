@@ -90,6 +90,20 @@ pub(crate) fn normalize_pattern(input: &str) -> Result<(String, pb::RouteKind), 
     }
 }
 
+/// Where the admin's domains are kept.
+const DOMAINS_SETTING: &str = "proxy.domains";
+/// More than enough for one panel.
+const MAX_DOMAINS: usize = 20;
+
+/// A domain as typed (`Example.com.`, `*.mc.example.com`), as stored
+/// (`example.com`, `mc.example.com`), if it is one.
+pub(crate) fn normalize_domain(input: &str) -> Option<String> {
+    let raw = input.trim();
+    let host = normalize_hostname(raw.strip_prefix("*.").unwrap_or(raw));
+    let valid = host.contains('.') && host.parse::<IpAddr>().is_err() && is_dns_name(&host);
+    valid.then_some(host)
+}
+
 fn is_dns_name(host: &str) -> bool {
     host.len() <= 253
         && host.split('.').all(|label| {
@@ -378,6 +392,69 @@ impl pb::ProxyService for ProxyRpc {
         )
         .await;
         Response::ok(pb::DeleteRouteResponse::default())
+    }
+
+    async fn list_domains(
+        &self,
+        ctx: RequestContext,
+        _request: ServiceRequest<'_, pb::ListDomainsRequest>,
+    ) -> ServiceResult<pb::ListDomainsResponse> {
+        require(&ctx, Permission::View)?;
+        let domains = self
+            .state
+            .auth
+            .store()
+            .get_setting::<Vec<String>>(DOMAINS_SETTING)
+            .await
+            .map_err(store_error)?
+            .unwrap_or_default();
+        Response::ok(pb::ListDomainsResponse {
+            domains,
+            ..Default::default()
+        })
+    }
+
+    async fn set_domains(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::SetDomainsRequest>,
+    ) -> ServiceResult<pb::SetDomainsResponse> {
+        let user = require(&ctx, Permission::ManageProxy)?.clone();
+        let mut domains: Vec<String> = Vec::new();
+        for raw in request.domains.iter() {
+            let domain = normalize_domain(raw).ok_or_else(|| {
+                ConnectError::invalid_argument(format!(
+                    "{} isn't a domain name. Enter one like example.com or mc.example.com.",
+                    raw.trim()
+                ))
+            })?;
+            if !domains.contains(&domain) {
+                domains.push(domain);
+            }
+        }
+        if domains.len() > MAX_DOMAINS {
+            return Err(ConnectError::invalid_argument(format!(
+                "Up to {MAX_DOMAINS} domains."
+            )));
+        }
+        self.state
+            .auth
+            .store()
+            .set_setting(DOMAINS_SETTING, &domains)
+            .await
+            .map_err(store_error)?;
+        audit(
+            &self.state,
+            &user,
+            "proxy.domains",
+            ("settings", "domains"),
+            json!({ "domains": domains }),
+        )
+        .await;
+        Response::ok(pb::SetDomainsResponse {
+            domains,
+            ..Default::default()
+        })
     }
 
     async fn check_dns(
