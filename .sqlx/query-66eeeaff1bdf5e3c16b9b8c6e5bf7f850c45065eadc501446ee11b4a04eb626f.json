@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE users SET theme = ?2 WHERE id = ?1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "66eeeaff1bdf5e3c16b9b8c6e5bf7f850c45065eadc501446ee11b4a04eb626f"
+}

@@ -2,8 +2,8 @@
 // @generated from file nethernode/v1/account.proto (package nethernode.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { User } from "./auth_pb";
 import { file_nethernode_v1_auth } from "./auth_pb";
 import type { Message } from "@bufbuild/protobuf";
@@ -12,7 +12,90 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file nethernode/v1/account.proto.
  */
 export const file_nethernode_v1_account: GenFile = /*@__PURE__*/
-  fileDesc("ChtuZXRoZXJub2RlL3YxL2FjY291bnQucHJvdG8SDW5ldGhlcm5vZGUudjEiRwoVQ2hhbmdlUGFzc3dvcmRSZXF1ZXN0EhgKEGN1cnJlbnRfcGFzc3dvcmQYASABKAkSFAoMbmV3X3Bhc3N3b3JkGAIgASgJIjsKFkNoYW5nZVBhc3N3b3JkUmVzcG9uc2USIQoEdXNlchgBIAEoCzITLm5ldGhlcm5vZGUudjEuVXNlciJ0CgdTZXNzaW9uEgoKAmlkGAEgASgJEhIKCnVzZXJfYWdlbnQYAiABKAkSCgoCaXAYAyABKAkSFQoNY3JlYXRlZF9hdF9tcxgEIAEoAxIVCg1leHBpcmVzX2F0X21zGAUgASgDEg8KB2N1cnJlbnQYBiABKAgiFAoSR2V0U2VjdXJpdHlSZXF1ZXN0IooBChNHZXRTZWN1cml0eVJlc3BvbnNlEigKCHNlc3Npb25zGAEgAygLMhYubmV0aGVybm9kZS52MS5TZXNzaW9uEhQKDHRvdHBfZW5hYmxlZBgCIAEoCBIbChNyZWNvdmVyeV9jb2Rlc19sZWZ0GAMgASgDEhYKDnRvdHBfYXZhaWxhYmxlGAQgASgIIiIKFFJldm9rZVNlc3Npb25SZXF1ZXN0EgoKAmlkGAEgASgJIhcKFVJldm9rZVNlc3Npb25SZXNwb25zZSIXChVCZWdpblRvdHBTZXR1cFJlcXVlc3QiTQoWQmVnaW5Ub3RwU2V0dXBSZXNwb25zZRIOCgZzZWNyZXQYASABKAkSEwoLb3RwYXV0aF91cmkYAiABKAkSDgoGcXJfc3ZnGAMgASgJIicKF0NvbmZpcm1Ub3RwU2V0dXBSZXF1ZXN0EgwKBGNvZGUYASABKAkiMgoYQ29uZmlybVRvdHBTZXR1cFJlc3BvbnNlEhYKDnJlY292ZXJ5X2NvZGVzGAEgAygJIiYKEkRpc2FibGVUb3RwUmVxdWVzdBIQCghwYXNzd29yZBgBIAEoCSIVChNEaXNhYmxlVG90cFJlc3BvbnNlMsAECg5BY2NvdW50U2VydmljZRJdCg5DaGFuZ2VQYXNzd29yZBIkLm5ldGhlcm5vZGUudjEuQ2hhbmdlUGFzc3dvcmRSZXF1ZXN0GiUubmV0aGVybm9kZS52MS5DaGFuZ2VQYXNzd29yZFJlc3BvbnNlElkKC0dldFNlY3VyaXR5EiEubmV0aGVybm9kZS52MS5HZXRTZWN1cml0eVJlcXVlc3QaIi5uZXRoZXJub2RlLnYxLkdldFNlY3VyaXR5UmVzcG9uc2UiA5ACARJaCg1SZXZva2VTZXNzaW9uEiMubmV0aGVybm9kZS52MS5SZXZva2VTZXNzaW9uUmVxdWVzdBokLm5ldGhlcm5vZGUudjEuUmV2b2tlU2Vzc2lvblJlc3BvbnNlEl0KDkJlZ2luVG90cFNldHVwEiQubmV0aGVybm9kZS52MS5CZWdpblRvdHBTZXR1cFJlcXVlc3QaJS5uZXRoZXJub2RlLnYxLkJlZ2luVG90cFNldHVwUmVzcG9uc2USYwoQQ29uZmlybVRvdHBTZXR1cBImLm5ldGhlcm5vZGUudjEuQ29uZmlybVRvdHBTZXR1cFJlcXVlc3QaJy5uZXRoZXJub2RlLnYxLkNvbmZpcm1Ub3RwU2V0dXBSZXNwb25zZRJUCgtEaXNhYmxlVG90cBIhLm5ldGhlcm5vZGUudjEuRGlzYWJsZVRvdHBSZXF1ZXN0GiIubmV0aGVybm9kZS52MS5EaXNhYmxlVG90cFJlc3BvbnNlYgZwcm90bzM", [file_nethernode_v1_auth]);
+  fileDesc("ChtuZXRoZXJub2RlL3YxL2FjY291bnQucHJvdG8SDW5ldGhlcm5vZGUudjEiMgoLUHJlZmVyZW5jZXMSIwoFdGhlbWUYASABKA4yFC5uZXRoZXJub2RlLnYxLlRoZW1lIhcKFUdldFByZWZlcmVuY2VzUmVxdWVzdCJJChZHZXRQcmVmZXJlbmNlc1Jlc3BvbnNlEi8KC3ByZWZlcmVuY2VzGAEgASgLMhoubmV0aGVybm9kZS52MS5QcmVmZXJlbmNlcyJLChhVcGRhdGVQcmVmZXJlbmNlc1JlcXVlc3QSLwoLcHJlZmVyZW5jZXMYASABKAsyGi5uZXRoZXJub2RlLnYxLlByZWZlcmVuY2VzIkwKGVVwZGF0ZVByZWZlcmVuY2VzUmVzcG9uc2USLwoLcHJlZmVyZW5jZXMYASABKAsyGi5uZXRoZXJub2RlLnYxLlByZWZlcmVuY2VzIkcKFUNoYW5nZVBhc3N3b3JkUmVxdWVzdBIYChBjdXJyZW50X3Bhc3N3b3JkGAEgASgJEhQKDG5ld19wYXNzd29yZBgCIAEoCSI7ChZDaGFuZ2VQYXNzd29yZFJlc3BvbnNlEiEKBHVzZXIYASABKAsyEy5uZXRoZXJub2RlLnYxLlVzZXIidAoHU2Vzc2lvbhIKCgJpZBgBIAEoCRISCgp1c2VyX2FnZW50GAIgASgJEgoKAmlwGAMgASgJEhUKDWNyZWF0ZWRfYXRfbXMYBCABKAMSFQoNZXhwaXJlc19hdF9tcxgFIAEoAxIPCgdjdXJyZW50GAYgASgIIhQKEkdldFNlY3VyaXR5UmVxdWVzdCKKAQoTR2V0U2VjdXJpdHlSZXNwb25zZRIoCghzZXNzaW9ucxgBIAMoCzIWLm5ldGhlcm5vZGUudjEuU2Vzc2lvbhIUCgx0b3RwX2VuYWJsZWQYAiABKAgSGwoTcmVjb3ZlcnlfY29kZXNfbGVmdBgDIAEoAxIWCg50b3RwX2F2YWlsYWJsZRgEIAEoCCIiChRSZXZva2VTZXNzaW9uUmVxdWVzdBIKCgJpZBgBIAEoCSIXChVSZXZva2VTZXNzaW9uUmVzcG9uc2UiFwoVQmVnaW5Ub3RwU2V0dXBSZXF1ZXN0Ik0KFkJlZ2luVG90cFNldHVwUmVzcG9uc2USDgoGc2VjcmV0GAEgASgJEhMKC290cGF1dGhfdXJpGAIgASgJEg4KBnFyX3N2ZxgDIAEoCSInChdDb25maXJtVG90cFNldHVwUmVxdWVzdBIMCgRjb2RlGAEgASgJIjIKGENvbmZpcm1Ub3RwU2V0dXBSZXNwb25zZRIWCg5yZWNvdmVyeV9jb2RlcxgBIAMoCSImChJEaXNhYmxlVG90cFJlcXVlc3QSEAoIcGFzc3dvcmQYASABKAkiFQoTRGlzYWJsZVRvdHBSZXNwb25zZSpRCgVUaGVtZRIVChFUSEVNRV9VTlNQRUNJRklFRBAAEhAKDFRIRU1FX1NZU1RFTRABEg4KClRIRU1FX0RBUksQAhIPCgtUSEVNRV9MSUdIVBADMowGCg5BY2NvdW50U2VydmljZRJdCg5DaGFuZ2VQYXNzd29yZBIkLm5ldGhlcm5vZGUudjEuQ2hhbmdlUGFzc3dvcmRSZXF1ZXN0GiUubmV0aGVybm9kZS52MS5DaGFuZ2VQYXNzd29yZFJlc3BvbnNlElkKC0dldFNlY3VyaXR5EiEubmV0aGVybm9kZS52MS5HZXRTZWN1cml0eVJlcXVlc3QaIi5uZXRoZXJub2RlLnYxLkdldFNlY3VyaXR5UmVzcG9uc2UiA5ACARJaCg1SZXZva2VTZXNzaW9uEiMubmV0aGVybm9kZS52MS5SZXZva2VTZXNzaW9uUmVxdWVzdBokLm5ldGhlcm5vZGUudjEuUmV2b2tlU2Vzc2lvblJlc3BvbnNlEl0KDkJlZ2luVG90cFNldHVwEiQubmV0aGVybm9kZS52MS5CZWdpblRvdHBTZXR1cFJlcXVlc3QaJS5uZXRoZXJub2RlLnYxLkJlZ2luVG90cFNldHVwUmVzcG9uc2USYwoQQ29uZmlybVRvdHBTZXR1cBImLm5ldGhlcm5vZGUudjEuQ29uZmlybVRvdHBTZXR1cFJlcXVlc3QaJy5uZXRoZXJub2RlLnYxLkNvbmZpcm1Ub3RwU2V0dXBSZXNwb25zZRJUCgtEaXNhYmxlVG90cBIhLm5ldGhlcm5vZGUudjEuRGlzYWJsZVRvdHBSZXF1ZXN0GiIubmV0aGVybm9kZS52MS5EaXNhYmxlVG90cFJlc3BvbnNlEmIKDkdldFByZWZlcmVuY2VzEiQubmV0aGVybm9kZS52MS5HZXRQcmVmZXJlbmNlc1JlcXVlc3QaJS5uZXRoZXJub2RlLnYxLkdldFByZWZlcmVuY2VzUmVzcG9uc2UiA5ACARJmChFVcGRhdGVQcmVmZXJlbmNlcxInLm5ldGhlcm5vZGUudjEuVXBkYXRlUHJlZmVyZW5jZXNSZXF1ZXN0GigubmV0aGVybm9kZS52MS5VcGRhdGVQcmVmZXJlbmNlc1Jlc3BvbnNlYgZwcm90bzM", [file_nethernode_v1_auth]);
+
+/**
+ * Settings that belong to one account and follow it to every browser.
+ *
+ * @generated from message nethernode.v1.Preferences
+ */
+export type Preferences = Message<"nethernode.v1.Preferences"> & {
+  /**
+   * @generated from field: nethernode.v1.Theme theme = 1;
+   */
+  theme: Theme;
+};
+
+/**
+ * Describes the message nethernode.v1.Preferences.
+ * Use `create(PreferencesSchema)` to create a new message.
+ */
+export const PreferencesSchema: GenMessage<Preferences> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_account, 0);
+
+/**
+ * @generated from message nethernode.v1.GetPreferencesRequest
+ */
+export type GetPreferencesRequest = Message<"nethernode.v1.GetPreferencesRequest"> & {
+};
+
+/**
+ * Describes the message nethernode.v1.GetPreferencesRequest.
+ * Use `create(GetPreferencesRequestSchema)` to create a new message.
+ */
+export const GetPreferencesRequestSchema: GenMessage<GetPreferencesRequest> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_account, 1);
+
+/**
+ * @generated from message nethernode.v1.GetPreferencesResponse
+ */
+export type GetPreferencesResponse = Message<"nethernode.v1.GetPreferencesResponse"> & {
+  /**
+   * @generated from field: nethernode.v1.Preferences preferences = 1;
+   */
+  preferences?: Preferences | undefined;
+};
+
+/**
+ * Describes the message nethernode.v1.GetPreferencesResponse.
+ * Use `create(GetPreferencesResponseSchema)` to create a new message.
+ */
+export const GetPreferencesResponseSchema: GenMessage<GetPreferencesResponse> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_account, 2);
+
+/**
+ * @generated from message nethernode.v1.UpdatePreferencesRequest
+ */
+export type UpdatePreferencesRequest = Message<"nethernode.v1.UpdatePreferencesRequest"> & {
+  /**
+   * @generated from field: nethernode.v1.Preferences preferences = 1;
+   */
+  preferences?: Preferences | undefined;
+};
+
+/**
+ * Describes the message nethernode.v1.UpdatePreferencesRequest.
+ * Use `create(UpdatePreferencesRequestSchema)` to create a new message.
+ */
+export const UpdatePreferencesRequestSchema: GenMessage<UpdatePreferencesRequest> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_account, 3);
+
+/**
+ * @generated from message nethernode.v1.UpdatePreferencesResponse
+ */
+export type UpdatePreferencesResponse = Message<"nethernode.v1.UpdatePreferencesResponse"> & {
+  /**
+   * @generated from field: nethernode.v1.Preferences preferences = 1;
+   */
+  preferences?: Preferences | undefined;
+};
+
+/**
+ * Describes the message nethernode.v1.UpdatePreferencesResponse.
+ * Use `create(UpdatePreferencesResponseSchema)` to create a new message.
+ */
+export const UpdatePreferencesResponseSchema: GenMessage<UpdatePreferencesResponse> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_account, 4);
 
 /**
  * @generated from message nethernode.v1.ChangePasswordRequest
@@ -34,7 +117,7 @@ export type ChangePasswordRequest = Message<"nethernode.v1.ChangePasswordRequest
  * Use `create(ChangePasswordRequestSchema)` to create a new message.
  */
 export const ChangePasswordRequestSchema: GenMessage<ChangePasswordRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_account, 0);
+  messageDesc(file_nethernode_v1_account, 5);
 
 /**
  * @generated from message nethernode.v1.ChangePasswordResponse
@@ -51,7 +134,7 @@ export type ChangePasswordResponse = Message<"nethernode.v1.ChangePasswordRespon
  * Use `create(ChangePasswordResponseSchema)` to create a new message.
  */
 export const ChangePasswordResponseSchema: GenMessage<ChangePasswordResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_account, 1);
+  messageDesc(file_nethernode_v1_account, 6);
 
 /**
  * A signed-in browser.
@@ -97,7 +180,7 @@ export type Session = Message<"nethernode.v1.Session"> & {
  * Use `create(SessionSchema)` to create a new message.
  */
 export const SessionSchema: GenMessage<Session> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_account, 2);
+  messageDesc(file_nethernode_v1_account, 7);
 
 /**
  * @generated from message nethernode.v1.GetSecurityRequest
@@ -110,7 +193,7 @@ export type GetSecurityRequest = Message<"nethernode.v1.GetSecurityRequest"> & {
  * Use `create(GetSecurityRequestSchema)` to create a new message.
  */
 export const GetSecurityRequestSchema: GenMessage<GetSecurityRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_account, 3);
+  messageDesc(file_nethernode_v1_account, 8);
 
 /**
  * @generated from message nethernode.v1.GetSecurityResponse
@@ -144,7 +227,7 @@ export type GetSecurityResponse = Message<"nethernode.v1.GetSecurityResponse"> &
  * Use `create(GetSecurityResponseSchema)` to create a new message.
  */
 export const GetSecurityResponseSchema: GenMessage<GetSecurityResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_account, 4);
+  messageDesc(file_nethernode_v1_account, 9);
 
 /**
  * @generated from message nethernode.v1.RevokeSessionRequest
@@ -161,7 +244,7 @@ export type RevokeSessionRequest = Message<"nethernode.v1.RevokeSessionRequest">
  * Use `create(RevokeSessionRequestSchema)` to create a new message.
  */
 export const RevokeSessionRequestSchema: GenMessage<RevokeSessionRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_account, 5);
+  messageDesc(file_nethernode_v1_account, 10);
 
 /**
  * @generated from message nethernode.v1.RevokeSessionResponse
@@ -174,7 +257,7 @@ export type RevokeSessionResponse = Message<"nethernode.v1.RevokeSessionResponse
  * Use `create(RevokeSessionResponseSchema)` to create a new message.
  */
 export const RevokeSessionResponseSchema: GenMessage<RevokeSessionResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_account, 6);
+  messageDesc(file_nethernode_v1_account, 11);
 
 /**
  * @generated from message nethernode.v1.BeginTotpSetupRequest
@@ -187,7 +270,7 @@ export type BeginTotpSetupRequest = Message<"nethernode.v1.BeginTotpSetupRequest
  * Use `create(BeginTotpSetupRequestSchema)` to create a new message.
  */
 export const BeginTotpSetupRequestSchema: GenMessage<BeginTotpSetupRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_account, 7);
+  messageDesc(file_nethernode_v1_account, 12);
 
 /**
  * @generated from message nethernode.v1.BeginTotpSetupResponse
@@ -218,7 +301,7 @@ export type BeginTotpSetupResponse = Message<"nethernode.v1.BeginTotpSetupRespon
  * Use `create(BeginTotpSetupResponseSchema)` to create a new message.
  */
 export const BeginTotpSetupResponseSchema: GenMessage<BeginTotpSetupResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_account, 8);
+  messageDesc(file_nethernode_v1_account, 13);
 
 /**
  * @generated from message nethernode.v1.ConfirmTotpSetupRequest
@@ -235,7 +318,7 @@ export type ConfirmTotpSetupRequest = Message<"nethernode.v1.ConfirmTotpSetupReq
  * Use `create(ConfirmTotpSetupRequestSchema)` to create a new message.
  */
 export const ConfirmTotpSetupRequestSchema: GenMessage<ConfirmTotpSetupRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_account, 9);
+  messageDesc(file_nethernode_v1_account, 14);
 
 /**
  * @generated from message nethernode.v1.ConfirmTotpSetupResponse
@@ -252,7 +335,7 @@ export type ConfirmTotpSetupResponse = Message<"nethernode.v1.ConfirmTotpSetupRe
  * Use `create(ConfirmTotpSetupResponseSchema)` to create a new message.
  */
 export const ConfirmTotpSetupResponseSchema: GenMessage<ConfirmTotpSetupResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_account, 10);
+  messageDesc(file_nethernode_v1_account, 15);
 
 /**
  * @generated from message nethernode.v1.DisableTotpRequest
@@ -269,7 +352,7 @@ export type DisableTotpRequest = Message<"nethernode.v1.DisableTotpRequest"> & {
  * Use `create(DisableTotpRequestSchema)` to create a new message.
  */
 export const DisableTotpRequestSchema: GenMessage<DisableTotpRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_account, 11);
+  messageDesc(file_nethernode_v1_account, 16);
 
 /**
  * @generated from message nethernode.v1.DisableTotpResponse
@@ -282,10 +365,46 @@ export type DisableTotpResponse = Message<"nethernode.v1.DisableTotpResponse"> &
  * Use `create(DisableTotpResponseSchema)` to create a new message.
  */
 export const DisableTotpResponseSchema: GenMessage<DisableTotpResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_account, 12);
+  messageDesc(file_nethernode_v1_account, 17);
 
 /**
- * The signed-in user's own password, two-factor sign-in, and sessions.
+ * The panel's color theme.
+ *
+ * @generated from enum nethernode.v1.Theme
+ */
+export enum Theme {
+  /**
+   * @generated from enum value: THEME_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * Light or dark, following the device's setting.
+   *
+   * @generated from enum value: THEME_SYSTEM = 1;
+   */
+  SYSTEM = 1,
+
+  /**
+   * @generated from enum value: THEME_DARK = 2;
+   */
+  DARK = 2,
+
+  /**
+   * @generated from enum value: THEME_LIGHT = 3;
+   */
+  LIGHT = 3,
+}
+
+/**
+ * Describes the enum nethernode.v1.Theme.
+ */
+export const ThemeSchema: GenEnum<Theme> = /*@__PURE__*/
+  enumDesc(file_nethernode_v1_account, 0);
+
+/**
+ * The signed-in user's own password, two-factor sign-in, sessions, and
+ * preferences.
  *
  * @generated from service nethernode.v1.AccountService
  */
@@ -352,6 +471,26 @@ export const AccountService: GenService<{
     methodKind: "unary";
     input: typeof DisableTotpRequestSchema;
     output: typeof DisableTotpResponseSchema;
+  },
+  /**
+   * The signed-in user's preferences, such as the color theme.
+   *
+   * @generated from rpc nethernode.v1.AccountService.GetPreferences
+   */
+  getPreferences: {
+    methodKind: "unary";
+    input: typeof GetPreferencesRequestSchema;
+    output: typeof GetPreferencesResponseSchema;
+  },
+  /**
+   * Changes the signed-in user's preferences.
+   *
+   * @generated from rpc nethernode.v1.AccountService.UpdatePreferences
+   */
+  updatePreferences: {
+    methodKind: "unary";
+    input: typeof UpdatePreferencesRequestSchema;
+    output: typeof UpdatePreferencesResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_nethernode_v1_account, 0);

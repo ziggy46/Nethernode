@@ -238,6 +238,24 @@ impl Store {
         Ok(result.rows_affected() > 0)
     }
 
+    /// A user's color theme: `system`, `dark` or `light`. `None` if the user
+    /// doesn't exist.
+    pub async fn user_theme(&self, user_id: &str) -> Result<Option<String>> {
+        let theme = sqlx::query_scalar!("SELECT theme FROM users WHERE id = ?1", user_id)
+            .fetch_optional(self.pool())
+            .await?;
+        Ok(theme)
+    }
+
+    /// Sets a user's color theme (`system`, `dark` or `light`). Returns
+    /// `false` if the user doesn't exist.
+    pub async fn set_user_theme(&self, user_id: &str, theme: &str) -> Result<bool> {
+        let result = sqlx::query!("UPDATE users SET theme = ?2 WHERE id = ?1", user_id, theme)
+            .execute(self.pool())
+            .await?;
+        Ok(result.rows_affected() > 0)
+    }
+
     /// Stores (or clears) a sealed TOTP secret awaiting confirmation.
     pub async fn set_totp_pending(&self, user_id: &str, sealed: Option<&str>) -> Result<()> {
         sqlx::query!(
@@ -375,6 +393,30 @@ mod tests {
             role: "owner",
             must_change_password: false,
         }
+    }
+
+    #[tokio::test]
+    async fn theme_defaults_to_system_and_only_takes_known_values() {
+        let store = test_store().await;
+        let user = store.create_user(owner("alpha")).await.unwrap();
+        assert_eq!(
+            store.user_theme(&user.id).await.unwrap().as_deref(),
+            Some("system")
+        );
+
+        assert!(store.set_user_theme(&user.id, "light").await.unwrap());
+        assert_eq!(
+            store.user_theme(&user.id).await.unwrap().as_deref(),
+            Some("light")
+        );
+        assert!(store.set_user_theme(&user.id, "sepia").await.is_err());
+        assert_eq!(
+            store.user_theme(&user.id).await.unwrap().as_deref(),
+            Some("light")
+        );
+
+        assert!(!store.set_user_theme("missing", "dark").await.unwrap());
+        assert_eq!(store.user_theme("missing").await.unwrap(), None);
     }
 
     #[tokio::test]

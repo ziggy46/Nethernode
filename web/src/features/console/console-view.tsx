@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { ServerStatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { type Server, ServerStatus } from "@/gen/nethernode/v1/servers_pb";
+import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 import { type ConsoleColors, colorize, completions, fg, type Rgb, sectionToAnsi } from "./format";
@@ -110,7 +111,10 @@ export default function ConsoleView({ server }: { server: Server }) {
   const host = useRef<HTMLDivElement>(null);
   const term = useRef<Terminal | null>(null);
   const searcher = useRef<SearchAddon | null>(null);
-  const palette = useMemo(readPalette, []);
+  const theme = useTheme();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the tokens it reads change with the theme.
+  const palette = useMemo(readPalette, [theme]);
+  const firstPalette = useRef(palette);
   const [hasOutput, setHasOutput] = useState(false);
   const [following, setFollowing] = useState(true);
   const [unseen, setUnseen] = useState(0);
@@ -181,7 +185,7 @@ export default function ConsoleView({ server }: { server: Server }) {
       convertEol: false,
       allowProposedApi: true,
       minimumContrastRatio: 4.5,
-      theme: palette.theme,
+      theme: firstPalette.current.theme,
     });
     const fit = new FitAddon();
     const search = new SearchAddon();
@@ -224,6 +228,12 @@ export default function ConsoleView({ server }: { server: Server }) {
       term.current = null;
       searcher.current = null;
     };
+  }, []);
+
+  // A theme change recolors the terminal in place; lines already printed
+  // keep their colors, which the contrast floor keeps readable.
+  useEffect(() => {
+    if (term.current) term.current.options.theme = palette.theme;
   }, [palette]);
 
   const decorations = {

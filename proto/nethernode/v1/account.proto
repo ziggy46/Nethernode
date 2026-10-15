@@ -4,7 +4,8 @@ package nethernode.v1;
 
 import "nethernode/v1/auth.proto";
 
-// The signed-in user's own password, two-factor sign-in, and sessions.
+// The signed-in user's own password, two-factor sign-in, sessions, and
+// preferences.
 service AccountService {
   // Changes the signed-in user's password and ends their other sessions.
   // The only call (with AuthService Me and Logout) allowed while a password
@@ -28,6 +29,42 @@ service AccountService {
 
   // Turns two-factor sign-in off. Needs the current password.
   rpc DisableTotp(DisableTotpRequest) returns (DisableTotpResponse);
+
+  // The signed-in user's preferences, such as the color theme.
+  rpc GetPreferences(GetPreferencesRequest) returns (GetPreferencesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // Changes the signed-in user's preferences.
+  rpc UpdatePreferences(UpdatePreferencesRequest) returns (UpdatePreferencesResponse);
+}
+
+// The panel's color theme.
+enum Theme {
+  THEME_UNSPECIFIED = 0;
+  // Light or dark, following the device's setting.
+  THEME_SYSTEM = 1;
+  THEME_DARK = 2;
+  THEME_LIGHT = 3;
+}
+
+// Settings that belong to one account and follow it to every browser.
+message Preferences {
+  Theme theme = 1;
+}
+
+message GetPreferencesRequest {}
+
+message GetPreferencesResponse {
+  Preferences preferences = 1;
+}
+
+message UpdatePreferencesRequest {
+  Preferences preferences = 1;
+}
+
+message UpdatePreferencesResponse {
+  Preferences preferences = 1;
 }
 
 message ChangePasswordRequest {

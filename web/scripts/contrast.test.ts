@@ -1,7 +1,14 @@
 // @vitest-environment node
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { contrastRatio, evaluate, mixOklab, parseColorTokens, resolveColor } from "./contrast-lib.ts";
+import {
+  contrastRatio,
+  evaluate,
+  mixOklab,
+  parseColorTokens,
+  parseThemes,
+  resolveColor,
+} from "./contrast-lib.ts";
 
 const css = readFileSync(new URL("../src/styles/tokens.css", import.meta.url), "utf8");
 const tokens = parseColorTokens(css);
@@ -45,5 +52,25 @@ describe("contrast math", () => {
 
   it("every enforced pair passes", () => {
     expect(evaluate(tokens).filter((r) => !r.pass)).toEqual([]);
+  });
+});
+
+describe("the light theme", () => {
+  const { dark, light } = parseThemes(css);
+
+  it("overrides colors and inherits everything else", () => {
+    expect(dark.get("color-surface")).toBe("#20172c");
+    expect(light.get("color-surface")).toBe("#ffffff");
+    // Not redefined: shadcn's mapping follows whichever theme is active.
+    expect(light.get("input")).toBe(dark.get("input"));
+    expect(resolveColor("var(--color-input)", light)).toEqual(resolveColor("#85769a", light));
+  });
+
+  it("every enforced pair passes", () => {
+    expect(evaluate(light).filter((r) => !r.pass)).toEqual([]);
+  });
+
+  it("refuses a file without a light block", () => {
+    expect(() => parseThemes(":root { --color-surface: #000000; }")).toThrow(/light/);
   });
 });

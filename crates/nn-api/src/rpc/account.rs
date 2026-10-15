@@ -1,4 +1,5 @@
-//! `nethernode.v1.AccountService`: the signed-in user's own security.
+//! `nethernode.v1.AccountService`: the signed-in user's own security and
+//! preferences.
 
 use connectrpc::{ConnectError, RequestContext, Response, ServiceRequest, ServiceResult};
 
@@ -160,5 +161,66 @@ impl pb::AccountService for AccountRpc {
             .await
             .map_err(auth_error)?;
         Response::ok(pb::DisableTotpResponse::default())
+    }
+
+    async fn get_preferences(
+        &self,
+        ctx: RequestContext,
+        _request: ServiceRequest<'_, pb::GetPreferencesRequest>,
+    ) -> ServiceResult<pb::GetPreferencesResponse> {
+        let authed = signed_in(&ctx)?;
+        let theme = self
+            .state
+            .auth
+            .store()
+            .user_theme(&authed.user.id)
+            .await
+            .map_err(crate::rpc::store_error)?
+            .ok_or_else(|| ConnectError::not_found("no such user"))?;
+        Response::ok(pb::GetPreferencesResponse {
+            preferences: preferences(&theme).into(),
+            ..Default::default()
+        })
+    }
+
+    async fn update_preferences(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::UpdatePreferencesRequest>,
+    ) -> ServiceResult<pb::UpdatePreferencesResponse> {
+        let authed = signed_in(&ctx)?;
+        let theme = match request.preferences.theme.as_known() {
+            Some(pb::Theme::THEME_SYSTEM) => "system",
+            Some(pb::Theme::THEME_DARK) => "dark",
+            Some(pb::Theme::THEME_LIGHT) => "light",
+            _ => return Err(ConnectError::invalid_argument("choose a theme")),
+        };
+        let updated = self
+            .state
+            .auth
+            .store()
+            .set_user_theme(&authed.user.id, theme)
+            .await
+            .map_err(crate::rpc::store_error)?;
+        if !updated {
+            return Err(ConnectError::not_found("no such user"));
+        }
+        Response::ok(pb::UpdatePreferencesResponse {
+            preferences: preferences(theme).into(),
+            ..Default::default()
+        })
+    }
+}
+
+/// Preferences as stored (`theme` is `system`, `dark` or `light`).
+fn preferences(theme: &str) -> pb::Preferences {
+    pb::Preferences {
+        theme: match theme {
+            "dark" => pb::Theme::THEME_DARK,
+            "light" => pb::Theme::THEME_LIGHT,
+            _ => pb::Theme::THEME_SYSTEM,
+        }
+        .into(),
+        ..Default::default()
     }
 }

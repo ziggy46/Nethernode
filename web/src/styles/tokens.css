@@ -7,7 +7,8 @@
  * (surface-subtle, nav-active, meter, and button tints). Contrast is enforced
  * by scripts/check-contrast.ts, which parses this file.
  *
- * Dark only in v1. A light theme can be added later by redefining these.
+ * Dark is the default; the light theme below redefines the same tokens when
+ * <html data-theme="light"> (public/theme.js sets it before first paint).
  */
 @import "tailwindcss";
 
@@ -130,6 +131,90 @@
   --color-ansi-bright-magenta: #e4b8ff;
   --color-ansi-bright-cyan: #8ee8f2;
   --color-ansi-bright-white: #f5f1f7;
+}
+
+/*
+ * Light theme: warm lavender-white surfaces and obsidian text. Orange and the
+ * status colors are darkened so they still read as text, and filled buttons
+ * carry white text. The contrast check runs on this block as well.
+ */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --color-background: #f6f3f9;
+  --color-sidebar: #eee9f3;
+  --color-surface-subtle: #f1edf5;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #ece6f2;
+  --color-console: #fbfafc;
+  --color-field: #ffffff;
+
+  --color-border: #ddd4e6;
+  --color-border-strong: #85769a;
+  --color-divider: color-mix(in oklab, #ddd4e6 70%, #ffffff);
+
+  --color-primary: #a84a00;
+  --color-primary-hover: #8f3f00;
+  --color-primary-pressed: color-mix(in oklab, #a84a00 85%, #2a1500);
+  --color-primary-foreground: #ffffff;
+  --color-lava: #8a5700;
+  --color-crimson: #c91832;
+
+  --color-text-primary: #1d1526;
+  --color-text-secondary: #4f4359;
+  --color-text-muted: #6b5e76;
+
+  --color-success: #17703a;
+  --color-warning: #875800;
+  --color-danger: #bd2440;
+  --color-info: #6649cc;
+
+  --color-nav-active: #fbe7d5;
+  --color-nav-active-foreground: #943f00;
+  --color-nav-hover: #e7e0ee;
+  --color-button-quiet: #f1ecf5;
+  --color-button-quiet-hover: #e5dded;
+  --color-button-danger: #fbe5e9;
+  --color-button-danger-border: #e6a6b2;
+  --color-meter-track: #e2d9ea;
+  --color-meter-cpu: #e07a00;
+  --color-meter-memory: #8a6aab;
+  --color-meter-storage: #b85a5c;
+
+  --color-success-subtle: color-mix(in oklab, #17703a 10%, #ffffff);
+  --color-warning-subtle: color-mix(in oklab, #875800 10%, #ffffff);
+  --color-danger-subtle: color-mix(in oklab, #bd2440 10%, #ffffff);
+  --color-info-subtle: color-mix(in oklab, #6649cc 10%, #ffffff);
+  --color-primary-subtle: color-mix(in oklab, #a84a00 10%, #ffffff);
+
+  --color-overlay: rgb(29 21 38 / 0.45);
+  --shadow-overlay: 0 1px 2px rgb(29 21 38 / 0.12), 0 25px 90px -12px rgb(29 21 38 / 0.3);
+
+  --color-console-text: #3b3046;
+  --color-console-dim: #6b5e76;
+  --color-console-success: #17703a;
+  --color-console-warning: #875800;
+  --color-console-danger: #b3223b;
+  --color-console-selection: #e3d9ed;
+
+  --color-ansi-black: #1d1526;
+  --color-ansi-red: #b3223b;
+  --color-ansi-green: #17703a;
+  --color-ansi-yellow: #7d5300;
+  --color-ansi-blue: #2f52c0;
+  --color-ansi-magenta: #8a3db5;
+  --color-ansi-cyan: #0d6874;
+  --color-ansi-white: #5a4d66;
+  --color-ansi-bright-black: #6b5e76;
+  --color-ansi-bright-red: #c0283f;
+  --color-ansi-bright-green: #1b7a41;
+  --color-ansi-bright-yellow: #875800;
+  --color-ansi-bright-blue: #3a5dcc;
+  --color-ansi-bright-magenta: #9644c4;
+  --color-ansi-bright-cyan: #10717e;
+  --color-ansi-bright-white: #1d1526;
+
+  --world-fade: color-mix(in oklab, #1d1526 35%, transparent);
 }
 
 /*

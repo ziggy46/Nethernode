@@ -555,3 +555,65 @@ async fn the_install_count_is_off_until_an_owner_turns_it_on() {
         .await;
     assert_eq!(status, StatusCode::FORBIDDEN);
 }
+
+#[tokio::test]
+async fn each_account_keeps_its_own_theme() {
+    let (app, owner) = app().await;
+    let mut owner = Client::new(&app, Some(owner));
+    let prefs = owner.ok("AccountService/GetPreferences", json!({})).await;
+    assert_eq!(prefs["preferences"]["theme"], "THEME_SYSTEM");
+
+    let updated = owner
+        .ok(
+            "AccountService/UpdatePreferences",
+            json!({ "preferences": { "theme": "THEME_LIGHT" } }),
+        )
+        .await;
+    assert_eq!(updated["preferences"]["theme"], "THEME_LIGHT");
+    let prefs = owner.ok("AccountService/GetPreferences", json!({})).await;
+    assert_eq!(prefs["preferences"]["theme"], "THEME_LIGHT");
+    let (status, _) = owner
+        .call(
+            "AccountService/UpdatePreferences",
+            json!({ "preferences": {} }),
+        )
+        .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+
+    // Another account, even a viewer, has its own.
+    let created = owner
+        .ok(
+            "UserService/CreateUser",
+            json!({ "username": "watcher", "role": "ROLE_VIEWER" }),
+        )
+        .await;
+    let temporary = created["password"].as_str().unwrap().to_owned();
+    let mut watcher = Client::new(&app, None);
+    watcher
+        .ok(
+            "AuthService/Login",
+            json!({ "username": "watcher", "password": temporary }),
+        )
+        .await;
+    watcher
+        .ok(
+            "AccountService/ChangePassword",
+            json!({ "currentPassword": temporary, "newPassword": "a brand new password" }),
+        )
+        .await;
+    let prefs = watcher.ok("AccountService/GetPreferences", json!({})).await;
+    assert_eq!(prefs["preferences"]["theme"], "THEME_SYSTEM");
+    watcher
+        .ok(
+            "AccountService/UpdatePreferences",
+            json!({ "preferences": { "theme": "THEME_DARK" } }),
+        )
+        .await;
+    let prefs = owner.ok("AccountService/GetPreferences", json!({})).await;
+    assert_eq!(prefs["preferences"]["theme"], "THEME_LIGHT");
+
+    let (status, _) = Client::new(&app, None)
+        .call("AccountService/GetPreferences", json!({}))
+        .await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+}

@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 
 import { AppShell } from "@/components/shell/app-shell";
 import { UploadTrayHost } from "@/features/uploads/tray-host";
@@ -37,6 +37,15 @@ function AppLayout() {
     <AppShell>
       <Outlet />
       <UploadTrayHost />
+      <ThemeSync />
     </AppShell>
   );
+}
+
+/** Applies the account's theme once signed in (loaded later, off the shell). */
+function ThemeSync() {
+  useEffect(() => {
+    void import("@/features/appearance/sync").then((m) => m.syncTheme());
+  }, []);
+  return null;
 }

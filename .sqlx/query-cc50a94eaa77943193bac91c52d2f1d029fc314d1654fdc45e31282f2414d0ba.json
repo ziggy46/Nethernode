@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT theme FROM users WHERE id = ?1",
+  "describe": {
+    "columns": [
+      {
+        "name": "theme",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "theme"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "cc50a94eaa77943193bac91c52d2f1d029fc314d1654fdc45e31282f2414d0ba"
+}

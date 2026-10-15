@@ -14,6 +14,7 @@ import { useDocumentTitle } from "@/lib/use-document-title";
 
 export const Route = createFileRoute("/_app/settings")({ component: SettingsPage });
 
+const AppearancePanel = lazy(() => import("@/features/appearance/appearance-panel"));
 const SecurityPanel = lazy(() => import("@/features/account/security-panel"));
 const DiscordPanel = lazy(() => import("@/features/notifications/discord-panel"));
 const DomainsPanel = lazy(() => import("@/features/domains/domains-panel"));
@@ -64,6 +65,10 @@ function SettingsPage() {
             </Button>
           </Row>
         </Panel>
+
+        <Suspense fallback={<div className="h-24 animate-pulse rounded-lg bg-surface-subtle" />}>
+          <AppearancePanel />
+        </Suspense>
 
         <Suspense fallback={<div className="h-48 animate-pulse rounded-lg bg-surface-subtle" />}>
           <SecurityPanel />

@@ -19,6 +19,20 @@ export function parseColorTokens(css: string): Map<string, string> {
   return tokens;
 }
 
+/**
+ * The color tokens of each theme: dark is every first declaration in the
+ * file; light is dark overlaid with the `:root[data-theme="light"]` block.
+ */
+export function parseThemes(css: string): { dark: Map<string, string>; light: Map<string, string> } {
+  const dark = parseColorTokens(css);
+  const code = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const block = /:root\[data-theme="light"\]\s*\{([^}]*)\}/.exec(code)?.[1];
+  if (!block) throw new Error('tokens.css has no :root[data-theme="light"] block');
+  const light = new Map(dark);
+  for (const [name, value] of parseColorTokens(block)) light.set(name, value);
+  return { dark, light };
+}
+
 /** Resolves a token value to sRGB (0–255), following var() and color-mix(). */
 export function resolveColor(value: string, tokens: Map<string, string>, depth = 0): Rgb | null {
   if (depth > 10) throw new Error(`token reference cycle at ${value}`);
