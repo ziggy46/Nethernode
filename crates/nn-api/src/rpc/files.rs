@@ -7,7 +7,7 @@ use nn_files::{EDITOR_LIMIT, Entry, EntryKind, Expect, RelPath, TRASH_RETENTION,
 use serde_json::json;
 
 use crate::AppState;
-use crate::files::{blocking, open, spawn_job};
+use crate::files::{file_error, open};
 use crate::proto::nethernode::v1 as pb;
 use crate::rpc::{audit, require};
 
@@ -75,8 +75,7 @@ impl pb::FileService for FileRpc {
         require(&ctx, Permission::ManageServers)?;
         let dir = path(request.path)?;
         let (_, files) = open(&self.state, request.server_id).await?;
-        let listed = dir.clone();
-        let entries = blocking(move || files.list(&listed)).await?;
+        let entries = files.list(&dir).await.map_err(file_error)?;
         Response::ok(pb::ListFilesResponse {
             path: dir.as_str().to_owned(),
             entries: entries.into_iter().map(entry).collect(),
@@ -92,7 +91,7 @@ impl pb::FileService for FileRpc {
         require(&ctx, Permission::ManageServers)?;
         let file = path(request.path)?;
         let (_, files) = open(&self.state, request.server_id).await?;
-        let content = blocking(move || files.read(&file, EDITOR_LIMIT)).await?;
+        let content = files.read(&file, EDITOR_LIMIT).await.map_err(file_error)?;
         Response::ok(pb::ReadFileResponse {
             content: content.data,
             is_text: content.is_text,
@@ -122,8 +121,7 @@ impl pb::FileService for FileRpc {
         let (server, files) = open(&self.state, request.server_id).await?;
         let data = request.content.to_vec();
         let size = data.len();
-        let written = file.clone();
-        let version = blocking(move || files.write(&written, &data, expect)).await?;
+        let version = files.write(&file, data, expect).await.map_err(file_error)?;
         self.record(
             &user,
             "file.write",
@@ -145,8 +143,7 @@ impl pb::FileService for FileRpc {
         let user = require(&ctx, Permission::ManageServers)?.clone();
         let dir = path(request.path)?;
         let (server, files) = open(&self.state, request.server_id).await?;
-        let made = dir.clone();
-        blocking(move || files.mkdir(&made)).await?;
+        files.mkdir(&dir).await.map_err(file_error)?;
         self.record(
             &user,
             "file.mkdir",
@@ -165,8 +162,7 @@ impl pb::FileService for FileRpc {
         let user = require(&ctx, Permission::ManageServers)?.clone();
         let (from, to) = (path(request.from)?, path(request.to)?);
         let (server, files) = open(&self.state, request.server_id).await?;
-        let (f, t) = (from.clone(), to.clone());
-        blocking(move || files.rename(&f, &t)).await?;
+        files.rename(&from, &to).await.map_err(file_error)?;
         self.record(
             &user,
             "file.rename",
@@ -185,8 +181,7 @@ impl pb::FileService for FileRpc {
         let user = require(&ctx, Permission::ManageServers)?.clone();
         let (from, to) = (path(request.from)?, path(request.to)?);
         let (server, files) = open(&self.state, request.server_id).await?;
-        let (f, t) = (from.clone(), to.clone());
-        let report = blocking(move || files.copy(&f, &t)).await?;
+        let report = files.copy(&from, &to).await.map_err(file_error)?;
         self.record(
             &user,
             "file.copy",
@@ -217,14 +212,10 @@ impl pb::FileService for FileRpc {
         }
         let (server, files) = open(&self.state, request.server_id).await?;
         let shown: Vec<String> = paths.iter().map(|p| p.as_str().to_owned()).collect();
-        let items = blocking(move || {
-            files.purge_expired(TRASH_RETENTION)?;
-            paths
-                .iter()
-                .map(|p| files.delete(p))
-                .collect::<Result<Vec<_>, _>>()
-        })
-        .await?;
+        let items = files
+            .delete(paths, TRASH_RETENTION)
+            .await
+            .map_err(file_error)?;
         self.record(&user, "file.delete", &server.id, json!({ "paths": shown }))
             .await;
         Response::ok(pb::DeleteFilesResponse {
@@ -240,11 +231,7 @@ impl pb::FileService for FileRpc {
     ) -> ServiceResult<pb::ListTrashResponse> {
         require(&ctx, Permission::ManageServers)?;
         let (_, files) = open(&self.state, request.server_id).await?;
-        let items = blocking(move || {
-            files.purge_expired(TRASH_RETENTION)?;
-            files.trash()
-        })
-        .await?;
+        let items = files.trash(TRASH_RETENTION).await.map_err(file_error)?;
         Response::ok(pb::ListTrashResponse {
             items: items.into_iter().map(trash_item).collect(),
             retention_days: u32::try_from(TRASH_RETENTION.as_secs() / 86_400).unwrap_or(30),
@@ -259,8 +246,7 @@ impl pb::FileService for FileRpc {
     ) -> ServiceResult<pb::RestoreFileResponse> {
         let user = require(&ctx, Permission::ManageServers)?.clone();
         let (server, files) = open(&self.state, request.server_id).await?;
-        let id = request.trash_id.to_owned();
-        let restored = blocking(move || files.restore(&id)).await?;
+        let restored = files.restore(request.trash_id).await.map_err(file_error)?;
         self.record(
             &user,
             "file.restore",
@@ -281,13 +267,9 @@ impl pb::FileService for FileRpc {
     ) -> ServiceResult<pb::PurgeTrashResponse> {
         let user = require(&ctx, Permission::ManageServers)?.clone();
         let (server, files) = open(&self.state, request.server_id).await?;
-        let id = request.trash_id.map(str::to_owned);
+        let id = request.trash_id;
         let details = json!({ "trash_id": id });
-        blocking(move || match id {
-            Some(id) => files.purge(&id),
-            None => files.empty_trash(),
-        })
-        .await?;
+        files.purge(id).await.map_err(file_error)?;
         self.record(&user, "file.purge", &server.id, details).await;
         Response::ok(pb::PurgeTrashResponse::default())
     }
@@ -302,8 +284,7 @@ impl pb::FileService for FileRpc {
         let overwrite = request.overwrite;
         let (server, files) = open(&self.state, request.server_id).await?;
         let details = json!({ "archive": archive.as_str(), "destination": dest.as_str() });
-        let job_id =
-            crate::files::start_extract(&self.state, &server.id, files, archive, dest, overwrite);
+        let job_id = files.extract(archive, dest, overwrite);
         self.record(&user, "file.extract", &server.id, details)
             .await;
         Response::ok(pb::ExtractArchiveResponse {
@@ -329,14 +310,7 @@ impl pb::FileService for FileRpc {
             "paths": sources.iter().map(RelPath::as_str).collect::<Vec<_>>(),
             "destination": dest.as_str(),
         });
-        let job_id = spawn_job(&self.state, &server.id, "compress", move |progress| {
-            let report = files.compress(&sources, &dest, progress)?;
-            let mut message = format!("Compressed {} files into {dest}", report.files);
-            if report.skipped_links > 0 {
-                message.push_str(&format!(" ({} links left out)", report.skipped_links));
-            }
-            Ok(message)
-        });
+        let job_id = files.compress(sources, dest);
         self.record(&user, "file.compress", &server.id, details)
             .await;
         Response::ok(pb::CompressFilesResponse {

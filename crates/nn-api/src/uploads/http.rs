@@ -20,7 +20,7 @@ use serde_json::json;
 
 use super::finish;
 use crate::AppState;
-use crate::files::{blocking, open};
+use crate::files::{file_error, open};
 use crate::files_http::authorize;
 use crate::middleware::CurrentUser;
 
@@ -208,10 +208,10 @@ async fn create_inner(
     let (server, files) = open(state, server_id)
         .await
         .map_err(|e| refuse(connect_status(&e), e.message.unwrap_or_default()))?;
-    let checked = dir.clone();
-    let entry = blocking(move || files.stat(&checked))
-        .await
-        .map_err(|e| refuse(connect_status(&e), e.message.unwrap_or_default()))?;
+    let entry = files.stat(&dir).await.map_err(|e| {
+        let e = file_error(e);
+        refuse(connect_status(&e), e.message.unwrap_or_default())
+    })?;
     if entry.kind != EntryKind::Directory {
         return Err(refuse(
             StatusCode::BAD_REQUEST,

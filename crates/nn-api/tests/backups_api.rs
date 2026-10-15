@@ -59,6 +59,7 @@ async fn harness() -> Harness {
         nodes: Nodes::new(LocalNode::without_docker(
             "not connected",
             Some(servers_dir.clone()),
+            events.clone(),
         )),
     });
     let owner = auth
@@ -90,7 +91,7 @@ async fn harness() -> Harness {
     std::fs::write(root.join("libraries/big.jar"), b"downloaded again").unwrap();
     Harness {
         app,
-        events,
+        events: events.clone(),
         owner,
         root,
         data,

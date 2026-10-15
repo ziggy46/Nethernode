@@ -58,7 +58,7 @@ async fn harness() -> Harness {
     let app = nn_api::router(AppState {
         proxy: Arc::new(ProxyRuntime::new(proxy, store.clone(), true)),
         auth: auth.clone(),
-        events,
+        events: events.clone(),
         config: Arc::new(ApiConfig::default()),
         metrics: None,
         shutdown: shutdown_rx,
@@ -70,6 +70,7 @@ async fn harness() -> Harness {
         nodes: Nodes::new(LocalNode::without_docker(
             "not connected",
             Some(servers_dir.clone()),
+            events.clone(),
         )),
     });
     let owner = auth

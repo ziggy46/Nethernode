@@ -7,7 +7,7 @@ use nn_store::{NewAuditEntry, Upload};
 use serde_json::json;
 
 use crate::AppState;
-use crate::files::{open, start_extract};
+use crate::files::open;
 
 /// Verifies and places a fully received upload in the background (it can
 /// take a while for a large file with a checksum, longer than a proxy lets
@@ -50,13 +50,10 @@ async fn finish(state: &AppState, upload: &Upload) -> Result<(), String> {
     let (server, files) = open(state, &upload.server_id)
         .await
         .map_err(|e| e.message.unwrap_or_default())?;
-    let (placed_files, name, placed_dir) = (files.clone(), upload.filename.clone(), dir.clone());
-    let adopted = tokio::task::spawn_blocking(move || {
-        placed_files.adopt(&src, &placed_dir, &name, on_conflict)
-    })
-    .await
-    .map_err(|e| e.to_string())?
-    .map_err(|e| e.to_string())?;
+    let adopted = files
+        .adopt(src, &dir, &upload.filename, on_conflict)
+        .await
+        .map_err(|e| e.to_string())?;
 
     let (path, message) = match &adopted {
         Adopted::Placed(path) => (path.clone(), format!("Uploaded {path}.")),
@@ -101,14 +98,7 @@ async fn finish(state: &AppState, upload: &Upload) -> Result<(), String> {
         && let Adopted::Placed(archive) = adopted
         && archive.as_str().to_ascii_lowercase().ends_with(".zip")
     {
-        start_extract(
-            state,
-            &server.id,
-            files,
-            archive.clone(),
-            dir.clone(),
-            false,
-        );
+        files.extract(archive.clone(), dir.clone(), false);
         let entry = NewAuditEntry {
             user_id: Some(&upload.user_id),
             action: "file.extract",

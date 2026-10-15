@@ -11,11 +11,14 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+nn-catalog.workspace = true
+nn-events.workspace = true
 nn-files.workspace = true
 nn-orchestrator.workspace = true
 nn-players.workspace = true
 nn-store.workspace = true
 nn-uploads.workspace = true
+jiff.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true

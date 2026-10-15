@@ -211,15 +211,7 @@ pub(crate) async fn mod_icon(
         Ok((_, files)) => files,
         Err(e) => return e.into_response(),
     };
-    let found = tokio::task::spawn_blocking(move || {
-        let (file, _) = files.open_read(&path).ok()?;
-        let info = nn_catalog::jar::read_mod_info(std::io::BufReader::new(file))?;
-        let (file, _) = files.open_read(&path).ok()?;
-        nn_catalog::jar::read_icon(std::io::BufReader::new(file), info.icon.as_deref()?)
-    })
-    .await
-    .ok()
-    .flatten();
+    let found = files.mod_icon(&path).await.ok().flatten();
     match found {
         Some(bytes) => image(bytes),
         None => StatusCode::NOT_FOUND.into_response(),

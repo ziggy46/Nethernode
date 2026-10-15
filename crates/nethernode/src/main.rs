@@ -263,7 +263,7 @@ async fn start_orchestrator(
     };
     let unavailable = |reason: String| {
         tracing::warn!(socket = %config.docker.socket, %reason, "Docker isn't available; server management is disabled");
-        LocalNode::without_docker(reason, servers_dir.clone())
+        LocalNode::without_docker(reason, servers_dir.clone(), events.clone())
     };
     let Some(secrets) = secrets else {
         return unavailable("the data key couldn't be loaded".into());
@@ -294,7 +294,7 @@ async fn start_orchestrator(
         Ok(orchestrator) => {
             nn_orchestrator::spawn_background(&orchestrator);
             tracing::info!(socket = %config.docker.socket, "connected to Docker");
-            LocalNode::new(orchestrator, dir_for_node)
+            LocalNode::new(orchestrator, dir_for_node, events.clone())
         }
         Err(e) => unavailable(e.to_string()),
     }

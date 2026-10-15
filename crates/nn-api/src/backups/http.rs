@@ -27,17 +27,11 @@ pub(crate) async fn download(
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     };
-    let Some(path) = super::archive_path(&state, &backup) else {
-        return StatusCode::NOT_FOUND.into_response();
-    };
-    let opened = tokio::task::spawn_blocking(move || {
-        let file = std::fs::File::open(&path)?;
-        let size = file.metadata()?.len();
-        Ok::<_, std::io::Error>((file, size))
-    })
-    .await;
-    match opened {
-        Ok(Ok((file, size))) => stream_file(file, size, &backup.file_name, &headers).await,
-        _ => StatusCode::NOT_FOUND.into_response(),
+    match super::node_of(&state, &backup)
+        .open_backup(&backup.file_name)
+        .await
+    {
+        Some(file) => stream_file(file, &backup.file_name, &headers).await,
+        None => StatusCode::NOT_FOUND.into_response(),
     }
 }

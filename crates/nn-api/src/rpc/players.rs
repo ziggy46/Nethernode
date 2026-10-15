@@ -7,7 +7,7 @@ use std::collections::{BTreeMap, HashMap};
 use connectrpc::{ConnectError, RequestContext, Response, ServiceRequest, ServiceResult};
 use nn_auth::{AuthUser, Permission};
 use nn_events::Event;
-use nn_files::{EDITOR_LIMIT, FileError, RelPath};
+use nn_files::{EDITOR_LIMIT, RelPath};
 use nn_players::commands::{Destination, GameMode};
 use nn_players::profile::Profile;
 use nn_players::{nbt, playerdata};
@@ -15,7 +15,7 @@ use nn_store::{NewPlayerBan, PlayerBan};
 use serde_json::json;
 
 use crate::AppState;
-use crate::files::blocking;
+use crate::files::file_error;
 use crate::players::backend::{Ctx, Via};
 use crate::players::resolve;
 use crate::proto::nethernode::v1 as pb;
@@ -393,40 +393,37 @@ impl pb::PlayerService for PlayerRpc {
         let uuid = nn_players::profile::normalize_uuid(request.uuid)
             .ok_or_else(|| ConnectError::invalid_argument("not a player UUID"))?;
         let (_, files) = crate::files::open(&self.state, request.server_id).await?;
-        let found = blocking(move || {
-            let read = |path: &str| -> Result<Option<(Vec<u8>, i64)>, FileError> {
-                let rel = RelPath::parse(path)?;
-                match files.read(&rel, EDITOR_LIMIT) {
-                    Ok(content) => Ok(Some((content.data, content.modified_ms))),
-                    Err(FileError::NotFound(_)) => Ok(None),
-                    Err(e) => Err(e),
-                }
-            };
-            let level = match read("server.properties")? {
-                Some((bytes, _)) => nn_files::Properties::parse(&String::from_utf8_lossy(&bytes))
-                    .get("level-name")
-                    .filter(|l| nn_files::validate_name(l).is_ok())
-                    .unwrap_or("world")
-                    .to_owned(),
-                None => "world".to_owned(),
-            };
-            let mut data = None;
-            for path in playerdata::data_paths(&level, &uuid) {
-                if let Some(found) = read(&path)? {
-                    data = Some(found);
-                    break;
-                }
+        let read = async |path: &str| -> Result<Option<(Vec<u8>, i64)>, ConnectError> {
+            let rel = RelPath::parse(path).map_err(file_error)?;
+            let content = files
+                .read_if_exists(&rel, EDITOR_LIMIT)
+                .await
+                .map_err(file_error)?;
+            Ok(content.map(|c| (c.data, c.modified_ms)))
+        };
+        let level = match read("server.properties").await? {
+            Some((bytes, _)) => nn_files::Properties::parse(&String::from_utf8_lossy(&bytes))
+                .get("level-name")
+                .filter(|l| nn_files::validate_name(l).is_ok())
+                .unwrap_or("world")
+                .to_owned(),
+            None => "world".to_owned(),
+        };
+        let mut data = None;
+        for path in playerdata::data_paths(&level, &uuid) {
+            if let Some(found) = read(&path).await? {
+                data = Some(found);
+                break;
             }
-            let mut stats = Vec::new();
-            for path in playerdata::stats_paths(&level, &uuid) {
-                if let Some((bytes, _)) = read(&path)? {
-                    stats = playerdata::parse_stats(&bytes);
-                    break;
-                }
+        }
+        let mut stats = Vec::new();
+        for path in playerdata::stats_paths(&level, &uuid) {
+            if let Some((bytes, _)) = read(&path).await? {
+                stats = playerdata::parse_stats(&bytes);
+                break;
             }
-            Ok((data, stats))
-        })
-        .await?;
+        }
+        let found = (data, stats);
         let (Some((bytes, saved_ms)), stats) = found else {
             return Response::ok(pb::GetPlayerDataResponse::default());
         };

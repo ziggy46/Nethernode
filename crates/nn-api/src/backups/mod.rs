@@ -1,20 +1,15 @@
 //! Backing up and restoring server folders.
 //!
-//! Archives live in `<data>/backups/<slug>-<time>-<id>.tar.zst`. A running
-//! server's saving is paused (`save-off`, `save-all flush`) while its folder
-//! is read, and turned back on (`save-on`) however the backup ends. The
-//! server's lifecycle lock is held throughout, so nothing starts, stops, or
-//! wakes it mid-backup.
+//! The panel keeps the records and names the archives
+//! (`<slug>-<time>-<id>.tar.zst`); the server's node makes, restores, and
+//! stores them (see `nn_node::Node::backup`).
 
 pub mod http;
 pub mod tasks;
 
-use std::path::{Path, PathBuf};
-
 use connectrpc::ConnectError;
 use nn_events::Event;
-use nn_files::FileError;
-use nn_files::backup::{REGENERATED, restore_into};
+use nn_node::Archive;
 use nn_store::{Backup, Server};
 use serde_json::json;
 
@@ -42,52 +37,6 @@ impl Kind {
             Kind::Manual => "manual",
             Kind::Scheduled => "scheduled",
             Kind::PreRestore => "pre-restore",
-        }
-    }
-}
-
-/// `<data>/backups`.
-pub(crate) fn backups_dir(state: &AppState) -> Option<PathBuf> {
-    Some(
-        state
-            .nodes
-            .local_node()
-            .servers_dir()?
-            .parent()?
-            .join("backups"),
-    )
-}
-
-/// The archive file of a backup record, refusing anything but a plain name.
-pub(crate) fn archive_path(state: &AppState, backup: &Backup) -> Option<PathBuf> {
-    let name = &backup.file_name;
-    if name.contains(['/', '\\']) || name.starts_with('.') || !name.ends_with(".tar.zst") {
-        return None;
-    }
-    Some(backups_dir(state)?.join(name))
-}
-
-fn job_events(
-    state: &AppState,
-    server_id: &str,
-    job_id: &str,
-    kind: &'static str,
-) -> impl FnMut(u64, u64) + Send + use<> {
-    let events = state.events.clone();
-    let (server_id, job_id) = (server_id.to_owned(), job_id.to_owned());
-    let mut last = None;
-    move |done, total| {
-        let percent = (done.min(total) * 100)
-            .checked_div(total)
-            .map_or(0, |p| u8::try_from(p).unwrap_or(100));
-        if last != Some(percent) {
-            last = Some(percent);
-            events.publish(Event::FileJobProgress {
-                server_id: server_id.clone(),
-                job_id: job_id.clone(),
-                kind: kind.to_owned(),
-                percent,
-            });
         }
     }
 }
@@ -120,7 +69,7 @@ pub(crate) async fn start_backup(
     kind: Kind,
     user_id: Option<&str>,
 ) -> Result<(String, String), ConnectError> {
-    let (backup_id, file) = begin(state, server, kind, user_id).await?;
+    let (backup_id, name) = begin(state, server, kind, user_id).await?;
     let job_id = nn_store::new_id();
     let (state2, server2, job2, backup2) = (
         state.clone(),
@@ -130,7 +79,7 @@ pub(crate) async fn start_backup(
     );
     tokio::spawn(async move {
         // The outcome is reported through file_job_finished.
-        let _ = run(&state2, &server2, &backup2, &file, &job2).await;
+        let _ = run(&state2, &server2, &backup2, &name, &job2).await;
     });
     Ok((backup_id, job_id))
 }
@@ -141,117 +90,39 @@ pub(crate) async fn backup_and_wait(
     server: &Server,
     kind: Kind,
 ) -> Result<String, String> {
-    let (backup_id, file) = begin(state, server, kind, None)
+    let (backup_id, name) = begin(state, server, kind, None)
         .await
         .map_err(|e| e.message.unwrap_or_default())?;
-    run(state, server, &backup_id, &file, &nn_store::new_id()).await
+    run(state, server, &backup_id, &name, &nn_store::new_id()).await
 }
 
 async fn run(
     state: &AppState,
     server: &Server,
     backup_id: &str,
-    file: &Path,
+    name: &str,
     job_id: &str,
 ) -> Result<String, String> {
-    let result = run_locked(state, server, async |current| {
-        make(state, &current, backup_id, file, job_id).await
-    })
-    .await;
-    if let Err(message) = &result {
-        // Failed before the archive was started (the lock, say).
-        let _ = state
-            .auth
-            .store()
-            .finish_backup(backup_id, "failed", 0, 0, 0, Some(message))
-            .await;
-    }
+    let made = state
+        .nodes
+        .for_server(server)
+        .backup(server, name, job_id)
+        .await;
+    let result = record(state, server, backup_id, made).await;
     finished(state, &server.id, job_id, "backup", &result);
     result
 }
 
-/// Checks space and records a backup about to be made.
-async fn begin(
-    state: &AppState,
-    server: &Server,
-    kind: Kind,
-    user_id: Option<&str>,
-) -> Result<(String, PathBuf), ConnectError> {
-    let dir = backups_dir(state).ok_or_else(|| {
-        ConnectError::unavailable("the data folder isn't available, so backups can't be made")
-    })?;
-    tokio::fs::create_dir_all(&dir)
-        .await
-        .map_err(|e| ConnectError::internal(format!("couldn't create the backups folder: {e}")))?;
-    if let Some(free) = nn_uploads::available_space(&dir)
-        && free < DISK_MARGIN
-    {
-        return Err(ConnectError::resource_exhausted(format!(
-            "less than {} free; free up space before backing up",
-            human(DISK_MARGIN)
-        )));
-    }
-    let stamp = jiff::Timestamp::now().strftime("%Y%m%d-%H%M%S").to_string();
-    // A ULID's leading characters are its timestamp; the tail is random.
-    let ulid = nn_store::new_id();
-    let name = format!(
-        "{}-{stamp}-{}.tar.zst",
-        server.slug,
-        ulid[ulid.len() - 8..].to_ascii_lowercase()
-    );
-    let id = state
-        .auth
-        .store()
-        .insert_backup(&server.id, &server.name, &name, kind.as_str(), user_id)
-        .await
-        .map_err(store_error)?;
-    Ok((id, dir.join(name)))
-}
-
-/// Holds the lifecycle lock (when Docker is available) for `work`.
-async fn run_locked<T>(
-    state: &AppState,
-    server: &Server,
-    work: impl AsyncFnOnce(Server) -> Result<T, String>,
-) -> Result<T, String> {
-    match &state.nodes.local_node().orchestrator_for_backups() {
-        Some(orch) => orch
-            .locked(&server.id, work)
-            .await
-            .map_err(|e| e.to_string())?,
-        None => work(server.clone()).await,
-    }
-}
-
-/// Makes the archive (lock already held). Pauses saving on a running server.
-async fn make(
+/// Records how making an archive went.
+async fn record(
     state: &AppState,
     server: &Server,
     backup_id: &str,
-    file: &Path,
-    job_id: &str,
+    made: Result<Archive, String>,
 ) -> Result<String, String> {
-    let running = server.status == "running";
-    let orch = state.nodes.local_node().orchestrator_for_backups();
-    if running && let Some(orch) = &orch {
-        orch.command(&server.id, "save-off")
-            .await
-            .map_err(|e| format!("couldn't pause saving: {e}"))?;
-        if let Err(e) = orch.command(&server.id, "save-all flush").await {
-            let _ = orch.command(&server.id, "save-on").await;
-            return Err(format!("couldn't save the world first: {e}"));
-        }
-    }
-    let result = write_archive(state, server, file, job_id).await;
-    if running && let Some(orch) = &orch {
-        // Always turn saving back on, whatever happened.
-        if let Err(e) = orch.command(&server.id, "save-on").await {
-            tracing::warn!(server = %server.id, error = %e, "couldn't turn saving back on after a backup");
-        }
-    }
     let store = state.auth.store();
-    match result {
-        Ok((size, report)) => {
+    match made {
+        Ok(Archive { size, report }) => {
             let note = (report.skipped_links > 0)
                 .then(|| format!("{} links left out", report.skipped_links));
             if let Err(e) = store
@@ -275,7 +146,6 @@ async fn make(
             ))
         }
         Err(message) => {
-            let _ = tokio::fs::remove_file(file).await;
             let _ = store
                 .finish_backup(backup_id, "failed", 0, 0, 0, Some(&message))
                 .await;
@@ -284,44 +154,43 @@ async fn make(
     }
 }
 
-async fn write_archive(
+/// Checks space and records a backup about to be made. Returns its ID and
+/// archive name.
+async fn begin(
     state: &AppState,
     server: &Server,
-    file: &Path,
-    job_id: &str,
-) -> Result<(u64, nn_files::backup::BackupReport), String> {
-    let (_, files) = crate::files::open(state, &server.id)
+    kind: Kind,
+    user_id: Option<&str>,
+) -> Result<(String, String), ConnectError> {
+    let free = state
+        .nodes
+        .for_server(server)
+        .backups_free_space()
         .await
-        .map_err(|e| e.message.unwrap_or_default())?;
-    let tmp = file.with_extension("zst.tmp");
-    let (file, tmp2) = (file.to_owned(), tmp.clone());
-    let mut progress = job_events(state, &server.id, job_id, "backup");
-    let result = tokio::task::spawn_blocking(
-        move || -> Result<(u64, nn_files::backup::BackupReport), FileError> {
-            let out = std::fs::OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .open(&tmp2)?;
-            let (out, report) = files.backup_to(
-                std::io::BufWriter::with_capacity(1 << 20, out),
-                &mut progress,
-            )?;
-            let out = out
-                .into_inner()
-                .map_err(|e| FileError::Io(e.into_error()))?;
-            out.sync_all()?;
-            let size = out.metadata()?.len();
-            drop(out);
-            std::fs::rename(&tmp2, &file)?;
-            Ok((size, report))
-        },
-    )
-    .await
-    .map_err(|e| e.to_string())?;
-    if result.is_err() {
-        let _ = tokio::fs::remove_file(&tmp).await;
+        .map_err(ConnectError::unavailable)?;
+    if let Some(free) = free
+        && free < DISK_MARGIN
+    {
+        return Err(ConnectError::resource_exhausted(format!(
+            "less than {} free; free up space before backing up",
+            human(DISK_MARGIN)
+        )));
     }
-    result.map_err(|e| e.to_string())
+    let stamp = jiff::Timestamp::now().strftime("%Y%m%d-%H%M%S").to_string();
+    // A ULID's leading characters are its timestamp; the tail is random.
+    let ulid = nn_store::new_id();
+    let name = format!(
+        "{}-{stamp}-{}.tar.zst",
+        server.slug,
+        ulid[ulid.len() - 8..].to_ascii_lowercase()
+    );
+    let id = state
+        .auth
+        .store()
+        .insert_backup(&server.id, &server.name, &name, kind.as_str(), user_id)
+        .await
+        .map_err(store_error)?;
+    Ok((id, name))
 }
 
 /// Restores `backup` over its server in the background: stops it, backs up
@@ -333,14 +202,13 @@ pub(crate) async fn start_restore(
     user_id: &str,
     start_after: bool,
 ) -> Result<String, ConnectError> {
-    let source = archive_path(state, &backup)
-        .ok_or_else(|| ConnectError::not_found("the backup's file is missing"))?;
-    if !tokio::fs::try_exists(&source).await.unwrap_or(false) {
+    let node = state.nodes.for_server(&server).clone();
+    if !node.has_backup(&backup.file_name).await {
         return Err(ConnectError::not_found("the backup's file is missing"));
     }
     // Without Docker no server can be running, so there's nothing to stop.
-    let orch = state.nodes.local_node().orchestrator_for_backups();
-    if start_after && orch.is_none() {
+    let docker = node.unavailable().is_none();
+    if start_after && !docker {
         return Err(ConnectError::unavailable(
             "Docker isn't available, so the server can't be started afterwards",
         ));
@@ -349,39 +217,36 @@ pub(crate) async fn start_restore(
     let (state2, job2, user) = (state.clone(), job_id.clone(), user_id.to_owned());
     tokio::spawn(async move {
         let result = async {
-            if let Some(orch) = &orch
-                && server.status != "stopped"
-                && server.status != "crashed"
-            {
-                orch.stop(&server.id, false)
+            if docker && server.status != "stopped" && server.status != "crashed" {
+                node.stop(&server.id, false)
                     .await
                     .map_err(|e| format!("couldn't stop the server: {e}"))?;
             }
-            let restored = run_locked(&state2, &server, async |current| {
-                if !matches!(
-                    current.status.as_str(),
-                    "stopped" | "crashed" | "sleeping" | "installing"
-                ) {
-                    return Err(
-                        "the server started again before the restore could begin; try again"
-                            .to_owned(),
-                    );
-                }
-                // A copy of what's being replaced, just in case.
-                let (pre_id, pre_file) = begin(&state2, &current, Kind::PreRestore, Some(&user))
-                    .await
-                    .map_err(|e| e.message.unwrap_or_default())?;
-                make(&state2, &current, &pre_id, &pre_file, &job2).await?;
-                swap_in(&state2, &current, &source, &job2).await
-            })
-            .await?;
-            if start_after
-                && let Some(orch) = &orch
-                && let Err(e) = orch.start(&server.id).await
+            // A copy of what's being replaced, just in case.
+            let (pre_id, pre_name) = begin(&state2, &server, Kind::PreRestore, Some(&user))
+                .await
+                .map_err(|e| e.message.unwrap_or_default())?;
+            let restored = match node
+                .restore(&server, &backup.file_name, &pre_name, &job2)
+                .await
             {
-                return Ok(format!("{restored} It didn't start again: {e}"));
+                Ok(restored) => restored,
+                Err(message) => {
+                    // Nothing was made or changed.
+                    let _ = state2.auth.store().delete_backup(&pre_id).await;
+                    return Err(message);
+                }
+            };
+            record(&state2, &server, &pre_id, restored.pre_restore).await?;
+            let files = restored.files?;
+            let message = format!(
+                "Restored {} ({files} files). What was there before is kept as a pre-restore backup.",
+                server.name
+            );
+            if start_after && let Err(e) = node.start(&server.id).await {
+                return Ok(format!("{message} It didn't start again: {e}"));
             }
-            Ok(restored)
+            Ok(message)
         }
         .await;
         finished(&state2, &server.id, &job2, "restore", &result);
@@ -389,82 +254,13 @@ pub(crate) async fn start_restore(
     Ok(job_id)
 }
 
-/// Extracts `source` beside the server's folder and swaps it in, carrying
-/// over the folders backups leave out so they aren't downloaded again.
-async fn swap_in(
-    state: &AppState,
-    server: &Server,
-    source: &Path,
-    job_id: &str,
-) -> Result<String, String> {
-    let servers_dir = state
+/// The node holding a backup's archive.
+// TODO(multi-node step 6): record the node with the backup, since a
+// backup outlives its server.
+pub(crate) fn node_of<'a>(state: &'a AppState, backup: &Backup) -> &'a nn_node::Node {
+    state
         .nodes
-        .local_node()
-        .servers_dir()
-        .map(Path::to_path_buf)
-        .ok_or("the data folder isn't available")?;
-    let (_, files) = crate::files::open(state, &server.id)
-        .await
-        .map_err(|e| e.message.unwrap_or_default())?;
-    let owner = files.owner();
-    drop(files);
-    let stamp = jiff::Timestamp::now().as_second();
-    let live = servers_dir.join(&server.slug);
-    let incoming_name = format!("{}.restoring-{stamp}", server.slug);
-    let replaced = servers_dir.join(format!("{}.replaced-{stamp}", server.slug));
-    let (source, incoming_dir) = (source.to_owned(), servers_dir.clone());
-    let mut progress = job_events(state, &server.id, job_id, "restore");
-    let name2 = incoming_name.clone();
-    let report = tokio::task::spawn_blocking(move || {
-        let size = std::fs::metadata(&source)?.len();
-        let file = std::fs::File::open(&source)?;
-        restore_into(
-            std::io::BufReader::with_capacity(1 << 20, file),
-            size,
-            &incoming_dir,
-            &name2,
-            owner,
-            nn_files::Limits::default(),
-            &mut progress,
-        )
-    })
-    .await
-    .map_err(|e| e.to_string())?
-    .map_err(|e| format!("couldn't read the backup: {e}"))?;
-    let incoming = servers_dir.join(&incoming_name);
-
-    let (live2, incoming2, replaced2) = (live.clone(), incoming.clone(), replaced.clone());
-    tokio::task::spawn_blocking(move || -> std::io::Result<()> {
-        for name in REGENERATED {
-            let (from, to) = (live2.join(name), incoming2.join(name));
-            if from.is_dir() && !to.exists() {
-                std::fs::rename(&from, &to)?;
-            }
-        }
-        std::fs::rename(&live2, &replaced2)?;
-        if let Err(e) = std::fs::rename(&incoming2, &live2) {
-            // Put the original back.
-            let _ = std::fs::rename(&replaced2, &live2);
-            return Err(e);
-        }
-        Ok(())
-    })
-    .await
-    .map_err(|e| e.to_string())?
-    .map_err(|e| {
-        let _ = std::fs::remove_dir_all(&incoming);
-        format!("couldn't swap the folders: {e}")
-    })?;
-    // The old folder is in the pre-restore backup; remove it.
-    if let Ok(Err(e)) =
-        tokio::task::spawn_blocking(move || std::fs::remove_dir_all(&replaced)).await
-    {
-        tracing::warn!(error = %e, "couldn't remove the replaced server folder");
-    }
-    Ok(format!(
-        "Restored {} ({} files). What was there before is kept as a pre-restore backup.",
-        server.name, report.files
-    ))
+        .for_server_id(backup.server_id.as_deref().unwrap_or_default())
 }
 
 /// Deletes a backup's file and record.
@@ -474,16 +270,10 @@ pub(crate) async fn delete(state: &AppState, backup: &Backup) -> Result<(), Conn
             "this backup is still being made",
         ));
     }
-    if let Some(path) = archive_path(state, backup) {
-        match tokio::fs::remove_file(&path).await {
-            Err(e) if e.kind() != std::io::ErrorKind::NotFound => {
-                return Err(ConnectError::internal(format!(
-                    "couldn't delete the backup: {e}"
-                )));
-            }
-            _ => {}
-        }
-    }
+    node_of(state, backup)
+        .delete_backup(&backup.file_name)
+        .await
+        .map_err(ConnectError::internal)?;
     state
         .auth
         .store()

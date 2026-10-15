@@ -10,8 +10,8 @@
 use std::sync::Arc;
 
 use connectrpc::ConnectError;
-use nn_files::{EDITOR_LIMIT, Expect, FileError, Properties, RelPath, ServerFiles};
-use nn_node::Node;
+use nn_files::{EDITOR_LIMIT, Expect, Properties, RelPath};
+use nn_node::{Folder, Node};
 use nn_players::commands::{self, Destination, GameMode, Outcome};
 use nn_players::lists::{self, BanEntry, ListEntry, OpEntry};
 use nn_players::mgmt::{MgmtClient, MgmtError, Operator, UserBan};
@@ -21,7 +21,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use crate::AppState;
-use crate::files::{blocking, file_error};
+use crate::files::file_error;
 use crate::proto::nethernode::v1 as pb;
 use crate::rpc::servers::node_error;
 use crate::rpc::store_error;
@@ -170,7 +170,7 @@ impl<'a> Ctx<'a> {
 
     // ----- reading -----
 
-    async fn files(&self) -> Result<Arc<ServerFiles>, ConnectError> {
+    async fn files(&self) -> Result<Folder, ConnectError> {
         crate::files::open(self.state, &self.server.id)
             .await
             .map(|(_, f)| f)
@@ -183,12 +183,11 @@ impl<'a> Ctx<'a> {
             Err(_) => return Ok(Vec::new()),
         };
         let path = RelPath::parse(path).map_err(file_error)?;
-        blocking(move || match files.read(&path, EDITOR_LIMIT) {
-            Ok(content) => Ok(content.data),
-            Err(FileError::NotFound(_)) => Ok(Vec::new()),
-            Err(e) => Err(e),
-        })
-        .await
+        let content = files
+            .read_if_exists(&path, EDITOR_LIMIT)
+            .await
+            .map_err(file_error)?;
+        Ok(content.map(|c| c.data).unwrap_or_default())
     }
 
     async fn properties(&self) -> Properties {
@@ -305,19 +304,21 @@ impl<'a> Ctx<'a> {
     {
         let files = self.files().await?;
         let path = RelPath::parse(file).map_err(file_error)?;
-        blocking(move || {
-            let bytes = match files.read(&path, EDITOR_LIMIT) {
-                Ok(content) => content.data,
-                Err(FileError::NotFound(_)) => Vec::new(),
-                Err(e) => return Err(e),
-            };
-            let mut list: Vec<T> = lists::parse(&bytes);
-            edit(&mut list);
-            files
-                .write(&path, &lists::to_bytes(&list), Expect::Any)
-                .map(drop)
-        })
-        .await
+        let (bytes, expect) = match files
+            .read_if_exists(&path, EDITOR_LIMIT)
+            .await
+            .map_err(file_error)?
+        {
+            Some(content) => (content.data, Expect::Version(content.version)),
+            None => (Vec::new(), Expect::New),
+        };
+        let mut list: Vec<T> = lists::parse(&bytes);
+        edit(&mut list);
+        files
+            .write(&path, lists::to_bytes(&list), expect)
+            .await
+            .map(drop)
+            .map_err(file_error)
     }
 
     async fn set_property(
@@ -326,19 +327,24 @@ impl<'a> Ctx<'a> {
         value: &'static str,
     ) -> Result<(), ConnectError> {
         let files = self.files().await?;
-        blocking(move || {
-            let path = RelPath::parse("server.properties")?;
-            let mut props = match files.read(&path, EDITOR_LIMIT) {
-                Ok(content) => Properties::parse(&String::from_utf8_lossy(&content.data)),
-                Err(FileError::NotFound(_)) => Properties::default(),
-                Err(e) => return Err(e),
-            };
-            props.set(key, value);
-            files
-                .write(&path, props.to_string().as_bytes(), Expect::Any)
-                .map(drop)
-        })
-        .await
+        let path = RelPath::parse("server.properties").map_err(file_error)?;
+        let (mut props, expect) = match files
+            .read_if_exists(&path, EDITOR_LIMIT)
+            .await
+            .map_err(file_error)?
+        {
+            Some(content) => (
+                Properties::parse(&String::from_utf8_lossy(&content.data)),
+                Expect::Version(content.version),
+            ),
+            None => (Properties::default(), Expect::New),
+        };
+        props.set(key, value);
+        files
+            .write(&path, props.to_string().into_bytes(), expect)
+            .await
+            .map(drop)
+            .map_err(file_error)
     }
 
     /// The management protocol drops entries it can't verify (an

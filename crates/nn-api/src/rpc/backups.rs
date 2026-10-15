@@ -99,8 +99,8 @@ impl pb::BackupService for BackupRpc {
                 .into_iter()
                 .map(|b| proto_backup(b, &users))
                 .collect(),
-            free_bytes: backups::backups_dir(&self.state)
-                .and_then(|d| nn_uploads::available_space(d.parent().unwrap_or(&d))),
+            // TODO(multi-node step 6): per node.
+            free_bytes: self.state.nodes.local().disk_space().map(|(_, free)| free),
             ..Default::default()
         })
     }

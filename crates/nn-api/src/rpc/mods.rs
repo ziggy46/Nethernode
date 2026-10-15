@@ -1,19 +1,19 @@
 //! ModService: the mods folder of modded servers.
 
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
 
 use connectrpc::{ConnectError, RequestContext, Response, ServiceRequest, ServiceResult};
 use nn_auth::{AuthUser, Permission};
-use nn_catalog::jar::{read_mod_info, sha1_hex};
-use nn_catalog::{Platform, ProjectVersion};
-use nn_files::{EntryKind, Expect, FileError, RelPath, ServerFiles};
+use nn_catalog::{Catalog, Platform, ProjectVersion};
+use nn_files::{EntryKind, Expect, FileError, RelPath, TRASH_RETENTION};
+use nn_node::Folder;
+use nn_node::jobs::{self, Progress};
 use nn_store::Server;
 use serde_json::json;
 
 use crate::AppState;
 use crate::content::{catalog_error, manual};
-use crate::files::{blocking, open, spawn_job};
+use crate::files::{file_error, open};
 use crate::proto::nethernode::v1 as pb;
 use crate::rpc::catalog::{platform, proto_project, proto_version};
 use crate::rpc::{audit, require};
@@ -77,17 +77,10 @@ fn is_mod_file(name: &str) -> bool {
     name.ends_with(".jar") || name.ends_with(".jar.disabled")
 }
 
-/// A jar's SHA-1 (how Modrinth identifies files).
-fn sha1_of(files: &ServerFiles, entry: &nn_files::Entry) -> Option<String> {
-    let path = mods_dir().join(&entry.name).ok()?;
-    let (file, _) = files.open_read(&path).ok()?;
-    sha1_hex(std::io::BufReader::new(file)).ok()
-}
-
 async fn mod_server(
     state: &AppState,
     server_id: &str,
-) -> Result<(Server, Arc<ServerFiles>, String), ConnectError> {
+) -> Result<(Server, Folder, String), ConnectError> {
     let (server, files) = open(state, server_id).await?;
     let loader = mod_loader(&server).ok_or_else(|| {
         ConnectError::failed_precondition(format!("{} doesn't run mods", server.name))
@@ -95,12 +88,70 @@ async fn mod_server(
     Ok((server, files, loader))
 }
 
-/// Creates mods/ if it isn't there yet.
-fn ensure_mods_dir(files: &ServerFiles) -> Result<(), FileError> {
-    match files.mkdir(&mods_dir()) {
-        Err(FileError::AlreadyExists(_)) | Ok(()) => Ok(()),
+/// The mod files in mods/, or none if there's no mods/ yet.
+async fn mod_entries(files: &Folder) -> Result<Vec<nn_files::Entry>, FileError> {
+    match files.list(&mods_dir()).await {
+        Ok(entries) => Ok(entries
+            .into_iter()
+            .filter(|e| e.kind == EntryKind::File && is_mod_file(&e.name))
+            .collect()),
+        Err(FileError::NotFound(_)) => Ok(Vec::new()),
         Err(e) => Err(e),
     }
+}
+
+/// Downloads `plan` into mods/, skipping files already there. `replace` is
+/// trashed once its replacement is in.
+async fn install(
+    files: &Folder,
+    catalog: &Catalog,
+    plan: &[ProjectVersion],
+    replace: Option<&RelPath>,
+    progress: &mut Progress,
+) -> Result<String, FileError> {
+    files.ensure_dir(&mods_dir()).await?;
+    let existing: HashSet<String> = files
+        .list(&mods_dir())
+        .await?
+        .into_iter()
+        .map(|e| e.name.trim_end_matches(DISABLED).to_owned())
+        .collect();
+    let total = plan.len() as u64;
+    let mut installed = Vec::new();
+    for (n, version) in plan.iter().enumerate() {
+        progress.report(n as u64, total);
+        let Some(file) = version.primary_file() else {
+            continue;
+        };
+        if existing.contains(&file.filename) && replace.is_none() {
+            continue;
+        }
+        nn_files::validate_name(&file.filename)?;
+        let data = catalog
+            .download(file, MAX_MOD)
+            .await
+            .map_err(|e| FileError::Invalid(e.to_string()))?;
+        let path = mods_dir().join(&file.filename)?;
+        files.write(&path, data.to_vec(), Expect::Any).await?;
+        installed.push(file.filename.clone());
+    }
+    if let Some(old) = replace
+        && !installed
+            .iter()
+            .any(|name| old.file_name() == Some(name.as_str()))
+    {
+        files.delete(vec![old.clone()], TRASH_RETENTION).await?;
+    }
+    progress.report(total, total);
+    Ok(match installed.as_slice() {
+        [] => "Already installed.".to_owned(),
+        [one] => format!("Installed {one}. Restart the server to load it."),
+        many => format!(
+            "Installed {} files ({}). Restart the server to load them.",
+            many.len(),
+            many.join(", ")
+        ),
+    })
 }
 
 impl ModRpc {
@@ -197,60 +248,25 @@ impl ModRpc {
         Ok(plan)
     }
 
-    /// Downloads `plan` into mods/ as a background job, skipping files
-    /// already there. `replace` is trashed once its replacement is in.
+    /// Downloads `plan` into mods/ as a background job. Returns the job ID.
     fn start_install(
         &self,
         server: &Server,
-        files: Arc<ServerFiles>,
+        files: Folder,
         plan: Vec<ProjectVersion>,
         replace: Option<RelPath>,
     ) -> String {
         let catalog = self.state.content.catalog.clone();
-        let handle = tokio::runtime::Handle::current();
-        spawn_job(&self.state, &server.id, "install", move |progress| {
-            ensure_mods_dir(&files)?;
-            let existing: HashSet<String> = files
-                .list(&mods_dir())?
-                .into_iter()
-                .map(|e| e.name.trim_end_matches(DISABLED).to_owned())
-                .collect();
-            let total = plan.len() as u64;
-            let mut installed = Vec::new();
-            for (n, version) in plan.iter().enumerate() {
-                progress(n as u64, total);
-                let Some(file) = version.primary_file() else {
-                    continue;
-                };
-                if existing.contains(&file.filename) && replace.is_none() {
-                    continue;
-                }
-                nn_files::validate_name(&file.filename)?;
-                let data = handle
-                    .block_on(catalog.download(file, MAX_MOD))
-                    .map_err(|e| FileError::Invalid(e.to_string()))?;
-                let path = mods_dir().join(&file.filename)?;
-                files.write(&path, &data, Expect::Any)?;
-                installed.push(file.filename.clone());
-            }
-            if let Some(old) = &replace
-                && !installed
-                    .iter()
-                    .any(|name| old.file_name() == Some(name.as_str()))
-            {
-                files.delete(old)?;
-            }
-            progress(total, total);
-            Ok(match installed.as_slice() {
-                [] => "Already installed.".to_owned(),
-                [one] => format!("Installed {one}. Restart the server to load it."),
-                many => format!(
-                    "Installed {} files ({}). Restart the server to load them.",
-                    many.len(),
-                    many.join(", ")
-                ),
-            })
-        })
+        jobs::spawn(
+            &self.state.events,
+            &server.id,
+            "install",
+            move |mut progress| async move {
+                let result =
+                    install(&files, &catalog, &plan, replace.as_ref(), &mut progress).await;
+                (progress, result)
+            },
+        )
     }
 }
 
@@ -271,67 +287,62 @@ impl pb::ModService for ModRpc {
             });
         };
         let curseforge = server.loader == "curseforge";
-        let (mods, manual_downloads) = blocking(move || {
-            let entries = match files.list(&mods_dir()) {
-                Ok(entries) => entries,
-                Err(FileError::NotFound(_)) => Vec::new(),
-                Err(e) => return Err(e),
-            };
-            let mut mods = Vec::new();
-            for entry in entries
-                .into_iter()
-                .filter(|e| e.kind == EntryKind::File && is_mod_file(&e.name))
-            {
-                let path = mods_dir().join(&entry.name)?;
-                let info = files
-                    .open_read(&path)
-                    .ok()
-                    .and_then(|(file, _)| read_mod_info(std::io::BufReader::new(file)))
-                    .unwrap_or_default();
-                mods.push(pb::InstalledMod {
-                    enabled: !entry.name.ends_with(DISABLED),
-                    size: entry.size,
-                    modified_ms: entry.modified_ms,
-                    name: info.name.unwrap_or_default(),
-                    version: info.version.unwrap_or_default(),
-                    description: info.description.unwrap_or_default(),
-                    authors: info.authors,
-                    loader: info.loader.unwrap_or_default(),
-                    has_icon: info.icon.is_some(),
-                    environment: info.environment.unwrap_or_default(),
-                    filename: entry.name,
+        let mut mods = Vec::new();
+        for entry in mod_entries(&files).await.map_err(file_error)? {
+            let path = mods_dir().join(&entry.name).map_err(file_error)?;
+            let info = files
+                .mod_info(&path)
+                .await
+                .ok()
+                .flatten()
+                .unwrap_or_default();
+            mods.push(pb::InstalledMod {
+                enabled: !entry.name.ends_with(DISABLED),
+                size: entry.size,
+                modified_ms: entry.modified_ms,
+                name: info.name.unwrap_or_default(),
+                version: info.version.unwrap_or_default(),
+                description: info.description.unwrap_or_default(),
+                authors: info.authors,
+                loader: info.loader.unwrap_or_default(),
+                has_icon: info.icon.is_some(),
+                environment: info.environment.unwrap_or_default(),
+                filename: entry.name,
+                ..Default::default()
+            });
+        }
+        let mut manual_downloads = Vec::new();
+        let needs = RelPath::parse(manual::NEEDS_DOWNLOAD_FILE).map_err(file_error)?;
+        if curseforge && let Ok(content) = files.read(&needs, 256 * 1024).await {
+            for f in manual::parse(&String::from_utf8_lossy(&content.data)) {
+                let mut present = false;
+                for sub in ["", "mods/"] {
+                    let Ok(p) = RelPath::parse(&format!(
+                        "{}/{sub}{}",
+                        nn_orchestrator::spec::CURSEFORGE_DOWNLOADS_DIR,
+                        f.filename
+                    )) else {
+                        continue;
+                    };
+                    if files
+                        .stat(&p)
+                        .await
+                        .is_ok_and(|e| e.kind == EntryKind::File)
+                    {
+                        present = true;
+                        break;
+                    }
+                }
+                manual_downloads.push(pb::ManualDownload {
+                    r#mod: f.mod_name,
+                    version_name: f.version_name,
+                    filename: f.filename,
+                    download_page: f.download_page,
+                    present,
                     ..Default::default()
                 });
             }
-            let mut manual_downloads = Vec::new();
-            if curseforge {
-                let needs = RelPath::parse(manual::NEEDS_DOWNLOAD_FILE)?;
-                if let Ok(content) = files.read(&needs, 256 * 1024) {
-                    for f in manual::parse(&String::from_utf8_lossy(&content.data)) {
-                        let present = ["", "mods/"].iter().any(|sub| {
-                            RelPath::parse(&format!(
-                                "{}/{sub}{}",
-                                nn_orchestrator::spec::CURSEFORGE_DOWNLOADS_DIR,
-                                f.filename
-                            ))
-                            .ok()
-                            .and_then(|p| files.stat(&p).ok())
-                            .is_some_and(|e| e.kind == EntryKind::File)
-                        });
-                        manual_downloads.push(pb::ManualDownload {
-                            r#mod: f.mod_name,
-                            version_name: f.version_name,
-                            filename: f.filename,
-                            download_page: f.download_page,
-                            present,
-                            ..Default::default()
-                        });
-                    }
-                }
-            }
-            Ok((mods, manual_downloads))
-        })
-        .await?;
+        }
         Response::ok(pb::ListModsResponse {
             supported: true,
             loader,
@@ -354,19 +365,15 @@ impl pb::ModService for ModRpc {
     ) -> ServiceResult<pb::CheckModUpdatesResponse> {
         require(&ctx, Permission::ManageServers)?;
         let (server, files, loader) = mod_server(&self.state, request.server_id).await?;
-        let hashes: Vec<(String, String)> = blocking(move || {
-            let entries = match files.list(&mods_dir()) {
-                Ok(entries) => entries,
-                Err(FileError::NotFound(_)) => Vec::new(),
-                Err(e) => return Err(e),
+        let mut hashes: Vec<(String, String)> = Vec::new();
+        for entry in mod_entries(&files).await.map_err(file_error)? {
+            let Ok(path) = mods_dir().join(&entry.name) else {
+                continue;
             };
-            Ok(entries
-                .iter()
-                .filter(|e| e.kind == EntryKind::File && is_mod_file(&e.name))
-                .filter_map(|e| Some((sha1_of(&files, e)?, e.name.clone())))
-                .collect())
-        })
-        .await?;
+            if let Ok(sha1) = files.sha1(&path).await {
+                hashes.push((sha1, entry.name));
+            }
+        }
         let catalog = &self.state.content.catalog;
         let sha1s: Vec<String> = hashes.iter().map(|(h, _)| h.clone()).collect();
         let known = catalog
@@ -519,7 +526,7 @@ impl pb::ModService for ModRpc {
             });
         }
         let to = mod_path(&target)?;
-        blocking(move || files.rename(&from, &to)).await?;
+        files.rename(&from, &to).await.map_err(file_error)?;
         self.record(
             &user,
             if request.enabled {
@@ -545,7 +552,10 @@ impl pb::ModService for ModRpc {
         let user = require(&ctx, Permission::ManageServers)?.clone();
         let (server, files, _) = mod_server(&self.state, request.server_id).await?;
         let path = mod_path(request.filename)?;
-        blocking(move || files.delete(&path)).await?;
+        files
+            .delete(vec![path], TRASH_RETENTION)
+            .await
+            .map_err(file_error)?;
         self.record(
             &user,
             "mod.delete",

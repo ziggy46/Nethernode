@@ -12,7 +12,7 @@ use nn_store::{Server, ServerSettings};
 use serde_json::json;
 
 use crate::AppState;
-use crate::files::{blocking, file_error, open};
+use crate::files::{file_error, open};
 use crate::proto::nethernode::v1 as pb;
 use crate::rpc::{audit, require, store_error};
 
@@ -138,14 +138,13 @@ const PROPERTIES_FILE: &str = "server.properties";
 
 /// Reads `server.properties` as form fields, plus the file version.
 async fn read_properties(
-    files: std::sync::Arc<nn_files::ServerFiles>,
+    files: &nn_node::Folder,
 ) -> Result<Option<(nn_files::Properties, String)>, ConnectError> {
     let path = RelPath::parse(PROPERTIES_FILE).map_err(file_error)?;
-    let content = blocking(move || match files.read(&path, nn_files::EDITOR_LIMIT) {
-        Err(FileError::NotFound(_)) => Ok(None),
-        other => other.map(Some),
-    })
-    .await?;
+    let content = files
+        .read_if_exists(&path, nn_files::EDITOR_LIMIT)
+        .await
+        .map_err(file_error)?;
     Ok(content.map(|c| {
         (
             nn_files::Properties::parse(&String::from_utf8_lossy(&c.data)),
@@ -236,6 +235,8 @@ pub(crate) fn node_error(err: NodeError) -> ConnectError {
     match err {
         NodeError::Unavailable(_) => ConnectError::failed_precondition(err.to_string()),
         NodeError::Orchestrator(e) => orchestrator_error(e),
+        NodeError::NoDataFolder => ConnectError::unavailable(err.to_string()),
+        NodeError::File(e) => crate::files::file_error(e),
     }
 }
 
@@ -697,7 +698,7 @@ impl pb::ServerService for ServerRpc {
     ) -> ServiceResult<pb::GetServerPropertiesResponse> {
         require(&ctx, Permission::ManageServers)?;
         let (_, files) = open(&self.state, request.id).await?;
-        Response::ok(properties_response(read_properties(files).await?))
+        Response::ok(properties_response(read_properties(&files).await?))
     }
 
     async fn update_server_properties(
@@ -713,7 +714,7 @@ impl pb::ServerService for ServerRpc {
             changes.push(((*key).to_owned(), value.trim().to_owned()));
         }
         let (server, files) = open(&self.state, request.id).await?;
-        let Some((mut props, version)) = read_properties(files.clone()).await? else {
+        let Some((mut props, version)) = read_properties(&files).await? else {
             return Err(ConnectError::failed_precondition(
                 "server.properties doesn't exist yet; start the server once to create it",
             ));
@@ -726,8 +727,10 @@ impl pb::ServerService for ServerRpc {
         }
         let text = props.to_string();
         let path = RelPath::parse(PROPERTIES_FILE).map_err(file_error)?;
-        let writer = files.clone();
-        blocking(move || writer.write(&path, text.as_bytes(), Expect::Version(version))).await?;
+        files
+            .write(&path, text.into_bytes(), Expect::Version(version))
+            .await
+            .map_err(file_error)?;
         let details: serde_json::Map<String, serde_json::Value> = changes
             .into_iter()
             .map(|(k, v)| (k, serde_json::Value::String(v)))
@@ -741,7 +744,7 @@ impl pb::ServerService for ServerRpc {
         )
         .await;
         Response::ok(pb::UpdateServerPropertiesResponse {
-            properties: properties_response(read_properties(files).await?).into(),
+            properties: properties_response(read_properties(&files).await?).into(),
             ..Default::default()
         })
     }

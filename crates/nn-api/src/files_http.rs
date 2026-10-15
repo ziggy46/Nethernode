@@ -6,8 +6,6 @@
 //! Uploads use tus (see [`crate::uploads`]). Downloads need a session with
 //! permission to manage servers.
 
-use std::io::SeekFrom;
-
 use axum::Extension;
 use axum::body::Body;
 use axum::extract::{Query, State};
@@ -16,11 +14,12 @@ use connectrpc::ConnectError;
 use http::{HeaderMap, HeaderValue, StatusCode, header};
 use nn_auth::{AuthUser, Permission};
 use nn_files::RelPath;
-use tokio::io::{AsyncReadExt, AsyncSeekExt};
+use nn_node::FileReader;
+use tokio::io::AsyncReadExt;
 use tokio_util::io::ReaderStream;
 
 use crate::AppState;
-use crate::files::{blocking, file_error, open};
+use crate::files::{file_error, open};
 use crate::middleware::CurrentUser;
 
 #[derive(serde::Deserialize)]
@@ -58,23 +57,18 @@ pub(crate) async fn download(
         Ok((_, files)) => files,
         Err(e) => return e.into_response(),
     };
-    let opened = path.clone();
-    let (file, size) = match blocking(move || files.open_read(&opened)).await {
+    let file = match files.open_read(&path).await {
         Ok(found) => found,
-        Err(e) => return e.into_response(),
+        Err(e) => return file_error(e).into_response(),
     };
 
-    stream_file(file, size, path.file_name().unwrap_or("download"), &headers).await
+    stream_file(file, path.file_name().unwrap_or("download"), &headers).await
 }
 
-/// Streams `file` (of `size` bytes) as a download named `name`, honoring a
-/// single `Range` header.
-pub(crate) async fn stream_file(
-    file: std::fs::File,
-    size: u64,
-    name: &str,
-    headers: &HeaderMap,
-) -> Response {
+/// Streams `file` as a download named `name`, honoring a single `Range`
+/// header.
+pub(crate) async fn stream_file(file: FileReader, name: &str, headers: &HeaderMap) -> Response {
+    let size = file.size();
     let range = headers
         .get(header::RANGE)
         .and_then(|v| v.to_str().ok())
@@ -91,13 +85,13 @@ pub(crate) async fn stream_file(
         // No Range header, or one we don't support: send everything.
         Some(None) | None => (StatusCode::OK, 0, size),
     };
-    let mut file = tokio::fs::File::from_std(file);
-    if start > 0
-        && let Err(e) = file.seek(SeekFrom::Start(start)).await
-    {
-        tracing::warn!(error = %e, "seek for range download failed");
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-    }
+    let file = match file.from_offset(start).await {
+        Ok(file) => file,
+        Err(e) => {
+            tracing::warn!(error = %e, "seek for range download failed");
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
+    };
     let body = Body::from_stream(ReaderStream::new(file.take(len)));
 
     let mut response = Response::new(body);

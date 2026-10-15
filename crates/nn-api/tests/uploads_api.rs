@@ -62,7 +62,7 @@ async fn harness_with(settings: UploadSettings) -> Harness {
     let state = AppState {
         proxy: Arc::new(ProxyRuntime::new(proxy, store.clone(), true)),
         auth: auth.clone(),
-        events,
+        events: events.clone(),
         config: Arc::new(ApiConfig::default()),
         metrics: None,
         shutdown: shutdown_rx,
@@ -77,6 +77,7 @@ async fn harness_with(settings: UploadSettings) -> Harness {
         nodes: Nodes::new(LocalNode::without_docker(
             "not connected",
             Some(servers_dir.clone()),
+            events.clone(),
         )),
     };
     let app = nn_api::router(state.clone());

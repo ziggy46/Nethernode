@@ -8,9 +8,12 @@
 //! returns is plain data (server IDs, paths inside a server's folder, bytes,
 //! records) that could just as well cross the network.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
+
+use nn_events::EventBus;
+use nn_files::{FileError, ServerFiles};
 
 use nn_orchestrator::{
     BeforeStart, CreateServer, HostInfo, Orchestrator, OrchestratorError, Players, StatSample,
@@ -18,6 +21,13 @@ use nn_orchestrator::{
 use nn_players::{MgmtClient, MgmtError};
 use nn_store::{Server, ServerSettings};
 use tokio::sync::broadcast;
+
+mod backups;
+mod folder;
+pub mod jobs;
+
+pub use backups::{Archive, Restored};
+pub use folder::{FileReader, Folder};
 
 /// Why a node operation failed.
 #[derive(Debug, thiserror::Error)]
@@ -30,6 +40,12 @@ pub enum NodeError {
     /// The operation itself failed.
     #[error(transparent)]
     Orchestrator(#[from] OrchestratorError),
+    /// The node's data folder can't be reached.
+    #[error("the data directory isn't available, so server files can't be reached")]
+    NoDataFolder,
+    /// A file operation failed.
+    #[error(transparent)]
+    File(#[from] FileError),
 }
 
 /// Result alias.
@@ -48,25 +64,32 @@ pub struct LocalNode {
     orchestrator: Option<Arc<Orchestrator>>,
     unavailable_reason: Arc<str>,
     servers_dir: Option<PathBuf>,
+    events: EventBus,
 }
 
 impl LocalNode {
-    /// A node with Docker.
-    pub fn new(orchestrator: Arc<Orchestrator>, servers_dir: PathBuf) -> Self {
+    /// A node with Docker. File jobs report progress on `events`.
+    pub fn new(orchestrator: Arc<Orchestrator>, servers_dir: PathBuf, events: EventBus) -> Self {
         Self {
             orchestrator: Some(orchestrator),
             unavailable_reason: Arc::from("not connected"),
             servers_dir: Some(servers_dir),
+            events,
         }
     }
 
     /// A node whose Docker can't be reached, for `reason`. Server files stay
     /// reachable when `servers_dir` is known.
-    pub fn without_docker(reason: impl Into<Arc<str>>, servers_dir: Option<PathBuf>) -> Self {
+    pub fn without_docker(
+        reason: impl Into<Arc<str>>,
+        servers_dir: Option<PathBuf>,
+        events: EventBus,
+    ) -> Self {
         Self {
             orchestrator: None,
             unavailable_reason: reason.into(),
             servers_dir,
+            events,
         }
     }
 
@@ -76,24 +99,34 @@ impl LocalNode {
             .ok_or_else(|| NodeError::Unavailable(self.unavailable_reason.clone()))
     }
 
+    async fn open_folder(&self, server: &Server) -> Result<Folder> {
+        let dir = self.servers_dir.as_ref().ok_or(NodeError::NoDataFolder)?;
+        // Slugs are checked when servers are created; check again since this
+        // becomes a path.
+        if nn_files::validate_name(&server.slug).is_err() || server.slug.starts_with('.') {
+            return Err(FileError::Invalid("invalid server folder".into()).into());
+        }
+        let root = dir.join(&server.slug);
+        let opened = tokio::task::spawn_blocking(move || match ServerFiles::open(&root) {
+            Err(FileError::NotFound(_)) => Err(FileError::Invalid(
+                "this server's folder doesn't exist yet; start the server once to create it".into(),
+            )),
+            other => other,
+        })
+        .await
+        .map_err(|e| FileError::Io(std::io::Error::other(e.to_string())))??;
+        Ok(Folder::local(
+            server.id.clone(),
+            self.events.clone(),
+            opened,
+        ))
+    }
+
     /// Work to do just before any server on this machine starts.
     pub fn set_before_start(&self, hook: Arc<dyn BeforeStart>) {
         if let Some(orchestrator) = &self.orchestrator {
             orchestrator.set_before_start(hook);
         }
-    }
-
-    /// The folder holding each server's files.
-    // TODO(multi-node step 1b/1c): file and backup operations move into the
-    // node, and this goes away.
-    pub fn servers_dir(&self) -> Option<&Path> {
-        self.servers_dir.as_deref()
-    }
-
-    /// The orchestrator, for the backup code until it moves into the node.
-    // TODO(multi-node step 1c): remove.
-    pub fn orchestrator_for_backups(&self) -> Option<Arc<Orchestrator>> {
-        self.orchestrator.clone()
     }
 }
 
@@ -203,6 +236,14 @@ impl Node {
         nn_uploads::disk_space(dir.parent().unwrap_or(dir))
     }
 
+    // ----- files -----
+
+    /// The server's folder. Fails if it doesn't exist yet (servers create it
+    /// on their first start).
+    pub async fn folder(&self, server: &Server) -> Result<Folder> {
+        self.local().open_folder(server).await
+    }
+
     // ----- console and protocols -----
 
     /// The server's console output.
@@ -284,6 +325,10 @@ impl Nodes {
 impl Default for Nodes {
     /// No Docker and no data folder: nothing works, and says why.
     fn default() -> Self {
-        Self::new(LocalNode::without_docker("not connected", None))
+        Self::new(LocalNode::without_docker(
+            "not connected",
+            None,
+            EventBus::default(),
+        ))
     }
 }
