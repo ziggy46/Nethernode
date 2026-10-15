@@ -72,6 +72,7 @@ async fn harness_with(settings: UploadSettings) -> Harness {
         )),
         content: Default::default(),
         notifier: Default::default(),
+        install_count: Default::default(),
         servers: ServerManager {
             servers_dir: Some(servers_dir.clone()),
             ..Default::default()

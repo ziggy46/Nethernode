@@ -79,6 +79,7 @@ async fn harness() -> Harness {
         uploads: Default::default(),
         content: Default::default(),
         notifier: Default::default(),
+        install_count: Default::default(),
         servers: ServerManager {
             servers_dir: Some(servers_dir),
             ..Default::default()

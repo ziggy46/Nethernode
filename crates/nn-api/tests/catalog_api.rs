@@ -39,6 +39,7 @@ async fn harness() -> (Router, String, String) {
         uploads: Default::default(),
         content: Default::default(),
         notifier: Default::default(),
+        install_count: Default::default(),
         servers: ServerManager::default(),
     });
     let owner = auth

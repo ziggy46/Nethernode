@@ -7,6 +7,7 @@ import { lazy, Suspense } from "react";
 import { Footer, PageHeader, Panel, PanelHeader } from "@/components/page";
 import { useSignOut } from "@/components/shell/use-sign-out";
 import { Button } from "@/components/ui/button";
+import { Role } from "@/gen/nethernode/v1/auth_pb";
 import { healthQuery } from "@/lib/health";
 import { ROLE_LABELS, useCanManage, useCurrentUser } from "@/lib/session";
 import { useDocumentTitle } from "@/lib/use-document-title";
@@ -15,6 +16,7 @@ export const Route = createFileRoute("/_app/settings")({ component: SettingsPage
 
 const SecurityPanel = lazy(() => import("@/features/account/security-panel"));
 const DiscordPanel = lazy(() => import("@/features/notifications/discord-panel"));
+const InstallCountPanel = lazy(() => import("@/features/install-count/install-count-panel"));
 
 const CurseForgeKey = lazy(() =>
   import("@/features/catalog/curseforge-key").then((m) => ({ default: m.CurseForgeKey })),
@@ -86,6 +88,12 @@ function SettingsPage() {
               </Suspense>
             </div>
           </Panel>
+        )}
+
+        {user.role === Role.OWNER && (
+          <Suspense fallback={<div className="h-28 animate-pulse rounded-lg bg-surface-subtle" />}>
+            <InstallCountPanel />
+          </Suspense>
         )}
 
         <Panel>

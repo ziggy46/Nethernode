@@ -46,6 +46,7 @@ async fn app() -> (Router, String) {
         uploads: Default::default(),
         content,
         notifier: Default::default(),
+        install_count: Default::default(),
         servers: Default::default(),
     });
     let owner = auth
@@ -492,6 +493,65 @@ async fn discord_notifications_are_configured_by_admins() {
         .await;
     let (status, _) = viewer
         .call("NotificationService/GetNotifications", json!({}))
+        .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn the_install_count_is_off_until_an_owner_turns_it_on() {
+    let (app, owner) = app().await;
+    let mut owner = Client::new(&app, Some(owner));
+    let off = owner
+        .ok("InstallCountService/GetInstallCount", json!({}))
+        .await;
+    assert!(off.get("enabled").is_none() && off.get("payload").is_none());
+    owner
+        .ok(
+            "InstallCountService/SetInstallCount",
+            json!({ "enabled": true }),
+        )
+        .await;
+    let on = owner
+        .ok("InstallCountService/GetInstallCount", json!({}))
+        .await;
+    assert_eq!(on["enabled"], true);
+    let payload: Value = serde_json::from_str(on["payload"].as_str().unwrap()).unwrap();
+    assert_eq!(
+        payload.as_object().unwrap().keys().collect::<Vec<_>>(),
+        ["id", "version"]
+    );
+    owner
+        .ok(
+            "InstallCountService/SetInstallCount",
+            json!({ "enabled": false }),
+        )
+        .await;
+
+    // Administrators can't change it; it's the owners' decision.
+    let created = owner
+        .ok(
+            "UserService/CreateUser",
+            json!({ "username": "admin2", "role": "ROLE_ADMIN" }),
+        )
+        .await;
+    let mut admin = Client::new(&app, None);
+    admin
+        .ok(
+            "AuthService/Login",
+            json!({ "username": "admin2", "password": created["password"] }),
+        )
+        .await;
+    admin
+        .ok(
+            "AccountService/ChangePassword",
+            json!({ "currentPassword": created["password"], "newPassword": "administrating now" }),
+        )
+        .await;
+    let (status, _) = admin
+        .call(
+            "InstallCountService/SetInstallCount",
+            json!({ "enabled": true }),
+        )
         .await;
     assert_eq!(status, StatusCode::FORBIDDEN);
 }

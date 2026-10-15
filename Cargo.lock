@@ -2294,6 +2294,7 @@ dependencies = [
  "nn-proxy",
  "nn-store",
  "nn-uploads",
+ "rand 0.10.3",
  "reqwest",
  "rust-embed",
  "serde",
@@ -2307,6 +2308,7 @@ dependencies = [
  "tower",
  "tower-http 0.7.1",
  "tracing",
+ "uuid",
  "zip",
 ]
 

@@ -25,6 +25,29 @@ pub struct Config {
     pub proxy: ProxyConfig,
     /// Resumable uploads.
     pub uploads: UploadsConfig,
+    /// The opt-in active installs count.
+    pub install_count: InstallCountConfig,
+}
+
+/// `[install_count]`
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(default, deny_unknown_fields)]
+pub struct InstallCountConfig {
+    /// Report this install to the counter once a day (a random ID and the
+    /// version, nothing else). Off by default; owners can also turn it on
+    /// in Settings.
+    pub enabled: bool,
+    /// Where reports go.
+    pub url: String,
+}
+
+impl Default for InstallCountConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            url: nn_api::install_count::DEFAULT_URL.to_owned(),
+        }
+    }
 }
 
 /// `[http]`
@@ -269,6 +292,7 @@ mod tests {
             jail.set_env("NETHERNODE_DATA__DIR", "/srv/nn");
             jail.set_env("NETHERNODE_DOCKER__BACKEND_IP", "172.17.0.1");
             jail.set_env("NETHERNODE_DOCKER__HOST_DATA_DIR", "/srv/host/nn");
+            jail.set_env("NETHERNODE_INSTALL_COUNT__ENABLED", "true");
             let config = Config::load(Path::new("nethernode.toml")).map_err(|e| *e)?;
             assert_eq!(config.docker.backend_ip.to_string(), "172.17.0.1");
             assert_eq!(

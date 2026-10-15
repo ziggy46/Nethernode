@@ -139,6 +139,10 @@ async fn serve(config: Config) -> Result<()> {
     let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
     let notifier = Arc::new(nn_api::notify::Notifier::default());
     notifier.load(&store, secrets.as_deref()).await;
+    let install_count = Arc::new(nn_api::install_count::InstallCount::new(
+        config.install_count.url.clone(),
+        config.install_count.enabled,
+    ));
     let state = AppState {
         auth: auth.clone(),
         proxy: proxy.clone(),
@@ -154,12 +158,14 @@ async fn serve(config: Config) -> Result<()> {
         uploads: Arc::new(uploads),
         content: content.clone(),
         notifier: notifier.clone(),
+        install_count,
     };
     nn_api::players::tasks::spawn(state.clone());
     nn_api::uploads::tasks::spawn(state.clone());
     nn_api::backups::tasks::recover(&state).await;
     nn_api::schedules::runner::spawn(state.clone());
     nn_api::notify::spawn(state.clone());
+    nn_api::install_count::spawn(state.clone());
     let app = nn_api::router(state);
 
     let listener = tokio::net::TcpListener::bind(config.http.bind)

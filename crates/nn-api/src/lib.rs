@@ -36,6 +36,7 @@ mod cookies;
 mod events;
 mod files;
 mod files_http;
+pub mod install_count;
 mod middleware;
 pub mod notify;
 mod observability;
@@ -123,6 +124,8 @@ pub struct AppState {
     pub content: Arc<content::Content>,
     /// Discord notifications.
     pub notifier: Arc<notify::Notifier>,
+    /// The opt-in active installs count.
+    pub install_count: Arc<install_count::InstallCount>,
 }
 
 /// Server lifecycle management, which needs Docker.

@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package nethernode.v1;
+
+// The opt-in active installs count. Owners only.
+service InstallCountService {
+  rpc GetInstallCount(GetInstallCountRequest) returns (GetInstallCountResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  // Turning it off deletes the install ID. Fails with FAILED_PRECONDITION
+  // when the configuration turned it on.
+  rpc SetInstallCount(SetInstallCountRequest) returns (SetInstallCountResponse);
+}
+
+message GetInstallCountRequest {}
+
+message GetInstallCountResponse {
+  bool enabled = 1;
+  // Turned on in NetherNode's configuration; the switch can't turn it off.
+  bool forced = 2;
+  // Exactly what's sent each day (JSON), while on.
+  string payload = 3;
+  // Where it's sent.
+  string url = 4;
+  optional int64 last_sent_ms = 5;
+  // Why the last report didn't go through.
+  string last_error = 6;
+}
+
+message SetInstallCountRequest {
+  bool enabled = 1;
+}
+
+message SetInstallCountResponse {}

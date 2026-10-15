@@ -10,8 +10,8 @@ use crate::AppState;
 use crate::middleware::CurrentUser;
 use crate::proto::nethernode::v1::{
     AccountServiceExt, AuditServiceExt, AuthServiceExt, BackupServiceExt, CatalogServiceExt,
-    FileServiceExt, ModServiceExt, NotificationServiceExt, PlayerServiceExt, ProxyServiceExt,
-    ScheduleServiceExt, ServerServiceExt, UserServiceExt,
+    FileServiceExt, InstallCountServiceExt, ModServiceExt, NotificationServiceExt,
+    PlayerServiceExt, ProxyServiceExt, ScheduleServiceExt, ServerServiceExt, UserServiceExt,
 };
 
 mod account;
@@ -20,6 +20,7 @@ mod auth;
 pub(crate) mod backups;
 pub(crate) mod catalog;
 mod files;
+mod install_count;
 pub(crate) mod mods;
 mod notifications;
 mod players;
@@ -34,6 +35,7 @@ pub(crate) fn register(router: ConnectRouter, state: &AppState) -> ConnectRouter
     let router = Arc::new(account::AccountRpc::new(state.clone())).register(router);
     let router = Arc::new(audit::AuditRpc::new(state.clone())).register(router);
     let router = Arc::new(notifications::NotificationRpc::new(state.clone())).register(router);
+    let router = Arc::new(install_count::InstallCountRpc::new(state.clone())).register(router);
     let router = Arc::new(servers::ServerRpc::new(state.clone())).register(router);
     let router = Arc::new(files::FileRpc::new(state.clone())).register(router);
     let router = Arc::new(players::PlayerRpc::new(state.clone())).register(router);
