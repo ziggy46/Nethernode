@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!\", name, slug, status, mc_version, loader, loader_version, image,\n                      java_version, memory_mb, cpu_limit, internal_port, public_port, hostname,\n                      auto_start AS \"auto_start: bool\", auto_stop_idle_minutes,\n                      sleep_when_empty AS \"sleep_when_empty: bool\", rcon_password_enc, env_json,\n                      created_at, updated_at, rcon_port, container_id, eula_accepted_at, card_theme,\n                      restart_on_crash AS \"restart_on_crash: bool\",\n                      use_aikar_flags AS \"use_aikar_flags: bool\", motd, max_players, last_started_at,\n                      mgmt_port, mgmt_secret_enc, modpack_json\n               FROM servers WHERE id = ?1",
+  "query": "SELECT id AS \"id!\", name, slug, status, mc_version, loader, loader_version, image,\n                      java_version, memory_mb, cpu_limit, internal_port, public_port, hostname,\n                      auto_start AS \"auto_start: bool\", auto_stop_idle_minutes,\n                      sleep_when_empty AS \"sleep_when_empty: bool\", rcon_password_enc, env_json,\n                      created_at, updated_at, rcon_port, container_id, eula_accepted_at, card_theme,\n                      restart_on_crash AS \"restart_on_crash: bool\",\n                      use_aikar_flags AS \"use_aikar_flags: bool\", motd, max_players, last_started_at,\n                      mgmt_port, mgmt_secret_enc, modpack_json, node_id\n               FROM servers WHERE id = ?1",
   "describe": {
     "columns": [
       {
@@ -365,6 +365,17 @@
             "name": "modpack_json"
           }
         }
+      },
+      {
+        "name": "node_id",
+        "ordinal": 33,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "node_id"
+          }
+        }
       }
     ],
     "parameters": {
@@ -403,8 +414,9 @@
       true,
       true,
       true,
-      true
+      true,
+      false
     ]
   },
-  "hash": "3a1000f05ff3fda4854c1026ae2153aec2769386826aaa57136b987b2853a3fd"
+  "hash": "498f22d4286b3911382d7450eaef84e6742c91fe00dee17c72d8c0af63f8fcf3"
 }

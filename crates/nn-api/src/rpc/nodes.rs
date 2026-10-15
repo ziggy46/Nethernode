@@ -192,13 +192,16 @@ impl pb::NodeService for NodeRpc {
         require(&ctx, Permission::View)?;
         let store = self.state.auth.store();
         let _ = store.prune_join_codes(nn_store::now_ms()).await;
-        // Every server is on this machine until servers can live elsewhere.
-        let servers = u32::try_from(store.list_servers().await.map_err(store_error)?.len())
-            .unwrap_or(u32::MAX);
         let mut nodes = Vec::new();
         for node in store.list_nodes().await.map_err(store_error)? {
-            let count = if node.is_local() { servers } else { 0 };
-            nodes.push(self.to_proto(node, count).await);
+            let count = store
+                .count_servers_on(&node.id)
+                .await
+                .map_err(store_error)?;
+            nodes.push(
+                self.to_proto(node, u32::try_from(count).unwrap_or(u32::MAX))
+                    .await,
+            );
         }
         Response::ok(pb::ListNodesResponse {
             nodes,
@@ -294,12 +297,11 @@ impl pb::NodeService for NodeRpc {
         )
         .await;
         let node = self.load(request.id).await?;
-        let count = if node.is_local() {
-            u32::try_from(store.list_servers().await.map_err(store_error)?.len())
-                .unwrap_or(u32::MAX)
-        } else {
-            0
-        };
+        let count = store
+            .count_servers_on(&node.id)
+            .await
+            .map_err(store_error)?;
+        let count = u32::try_from(count).unwrap_or(u32::MAX);
         let node = self.to_proto(node, count).await;
         self.state.events.publish(nn_events::Event::NodeChanged {
             node_id: node.id.clone(),
@@ -322,6 +324,19 @@ impl pb::NodeService for NodeRpc {
             return Err(ConnectError::failed_precondition(
                 "This machine can't be removed.",
             ));
+        }
+        let servers = self
+            .state
+            .auth
+            .store()
+            .count_servers_on(&node.id)
+            .await
+            .map_err(store_error)?;
+        if servers > 0 {
+            return Err(ConnectError::failed_precondition(format!(
+                "{} still has servers. Delete them first.",
+                node.name
+            )));
         }
         self.state
             .auth

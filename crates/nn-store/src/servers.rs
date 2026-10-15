@@ -3,7 +3,7 @@
 use crate::{Result, Store, new_id, now_ms};
 
 /// A managed server.
-#[derive(Debug, Clone, PartialEq, sqlx::FromRow)]
+#[derive(Debug, Clone, PartialEq, sqlx::FromRow, serde::Serialize, serde::Deserialize)]
 pub struct Server {
     /// ULID.
     pub id: String,
@@ -71,6 +71,8 @@ pub struct Server {
     pub mgmt_secret_enc: Option<String>,
     /// The modpack it's installed from (JSON), if any.
     pub modpack_json: Option<String>,
+    /// The node it runs on ([`crate::LOCAL_NODE`] for this machine).
+    pub node_id: String,
 }
 
 /// Fields needed to create a server.
@@ -97,7 +99,7 @@ pub struct NewServer<'a> {
 }
 
 /// Everything about a server's configuration that can change after creation.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct ServerSettings {
     /// Display name.
     pub name: String,
@@ -172,12 +174,98 @@ impl Store {
                       created_at, updated_at, rcon_port, container_id, eula_accepted_at, card_theme,
                       restart_on_crash AS "restart_on_crash: bool",
                       use_aikar_flags AS "use_aikar_flags: bool", motd, max_players, last_started_at,
-                      mgmt_port, mgmt_secret_enc, modpack_json
+                      mgmt_port, mgmt_secret_enc, modpack_json, node_id
                FROM servers ORDER BY name COLLATE NOCASE, id"#,
         )
         .fetch_all(self.pool())
         .await?;
         Ok(rows)
+    }
+
+    /// The servers on this machine (not those mirrored from agents).
+    pub async fn list_local_servers(&self) -> Result<Vec<Server>> {
+        Ok(self
+            .list_servers()
+            .await?
+            .into_iter()
+            .filter(|s| s.node_id == crate::LOCAL_NODE)
+            .collect())
+    }
+
+    /// How many servers are on `node_id`.
+    pub async fn count_servers_on(&self, node_id: &str) -> Result<i64> {
+        Ok(sqlx::query_scalar!(
+            r#"SELECT COUNT(*) AS "n!: i64" FROM servers WHERE node_id = ?1"#,
+            node_id
+        )
+        .fetch_one(self.pool())
+        .await?)
+    }
+
+    /// Records (or refreshes) a server on another node, as its agent reported
+    /// it. Its secrets and management port stay with the agent.
+    pub async fn upsert_server_mirror(&self, server: &Server, node_id: &str) -> Result<()> {
+        sqlx::query!(
+            r#"INSERT INTO servers (id, name, slug, status, mc_version, loader, loader_version, image,
+                                    java_version, memory_mb, cpu_limit, internal_port, public_port,
+                                    hostname, auto_start, auto_stop_idle_minutes, sleep_when_empty,
+                                    env_json, created_at, updated_at, rcon_port, container_id,
+                                    eula_accepted_at, card_theme, restart_on_crash, use_aikar_flags,
+                                    motd, max_players, last_started_at, modpack_json, node_id)
+               VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17,
+                       ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30, ?31)
+               ON CONFLICT (id) DO UPDATE SET
+                   name = excluded.name, slug = excluded.slug, status = excluded.status,
+                   mc_version = excluded.mc_version, loader = excluded.loader,
+                   loader_version = excluded.loader_version, image = excluded.image,
+                   java_version = excluded.java_version, memory_mb = excluded.memory_mb,
+                   cpu_limit = excluded.cpu_limit, internal_port = excluded.internal_port,
+                   public_port = excluded.public_port, hostname = excluded.hostname,
+                   auto_start = excluded.auto_start,
+                   auto_stop_idle_minutes = excluded.auto_stop_idle_minutes,
+                   sleep_when_empty = excluded.sleep_when_empty, env_json = excluded.env_json,
+                   updated_at = excluded.updated_at, rcon_port = excluded.rcon_port,
+                   container_id = excluded.container_id,
+                   eula_accepted_at = excluded.eula_accepted_at, card_theme = excluded.card_theme,
+                   restart_on_crash = excluded.restart_on_crash,
+                   use_aikar_flags = excluded.use_aikar_flags, motd = excluded.motd,
+                   max_players = excluded.max_players, last_started_at = excluded.last_started_at,
+                   modpack_json = excluded.modpack_json, node_id = excluded.node_id"#,
+            server.id,
+            server.name,
+            server.slug,
+            server.status,
+            server.mc_version,
+            server.loader,
+            server.loader_version,
+            server.image,
+            server.java_version,
+            server.memory_mb,
+            server.cpu_limit,
+            server.internal_port,
+            server.public_port,
+            server.hostname,
+            server.auto_start,
+            server.auto_stop_idle_minutes,
+            server.sleep_when_empty,
+            server.env_json,
+            server.created_at,
+            server.updated_at,
+            server.rcon_port,
+            server.container_id,
+            server.eula_accepted_at,
+            server.card_theme,
+            server.restart_on_crash,
+            server.use_aikar_flags,
+            server.motd,
+            server.max_players,
+            server.last_started_at,
+            server.modpack_json,
+            node_id,
+        )
+        .execute(self.pool())
+        .await?;
+        Ok(())
     }
 
     /// One server by ID.
@@ -191,7 +279,7 @@ impl Store {
                       created_at, updated_at, rcon_port, container_id, eula_accepted_at, card_theme,
                       restart_on_crash AS "restart_on_crash: bool",
                       use_aikar_flags AS "use_aikar_flags: bool", motd, max_players, last_started_at,
-                      mgmt_port, mgmt_secret_enc, modpack_json
+                      mgmt_port, mgmt_secret_enc, modpack_json, node_id
                FROM servers WHERE id = ?1"#,
             id,
         )
@@ -441,6 +529,40 @@ mod tests {
             card_theme: "nether".into(),
             modpack_json: None,
         }
+    }
+
+    #[tokio::test]
+    async fn mirrors_of_other_nodes_stay_apart_from_this_machine() {
+        let store = test_store().await;
+        let local = store
+            .insert_server(test_server("local", 25600))
+            .await
+            .unwrap();
+        let mut remote = local.clone();
+        remote.id = "remote-1".into();
+        remote.name = "Remote".into();
+        remote.slug = "remote".into();
+        remote.internal_port = 25700;
+        remote.rcon_port = Some(25701);
+        remote.rcon_password_enc = Some("sealed elsewhere".into());
+        store.upsert_server_mirror(&remote, "node-2").await.unwrap();
+
+        let locals = store.list_local_servers().await.unwrap();
+        assert_eq!(locals.len(), 1);
+        assert_eq!(locals[0].id, local.id);
+        let mirrored = store.find_server("remote-1").await.unwrap().unwrap();
+        assert_eq!(mirrored.node_id, "node-2");
+        // The agent keeps the secrets.
+        assert_eq!(mirrored.rcon_password_enc, None);
+        assert_eq!(store.count_servers_on("node-2").await.unwrap(), 1);
+
+        remote.status = "running".into();
+        store.upsert_server_mirror(&remote, "node-2").await.unwrap();
+        let refreshed = store.find_server("remote-1").await.unwrap().unwrap();
+        assert_eq!(refreshed.status, "running");
+        assert_eq!(store.list_servers().await.unwrap().len(), 2);
+        // Ports stay unique across machines.
+        assert!(store.used_ports().await.unwrap().contains(&25701));
     }
 
     #[tokio::test]

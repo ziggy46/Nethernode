@@ -96,6 +96,9 @@ impl ProxyRuntime {
             .list_servers()
             .await?
             .into_iter()
+            // TODO(multi-node step 4): reach servers on other machines
+            // through their agent; until then the proxy can't route to them.
+            .filter(|s| s.node_id == nn_store::LOCAL_NODE)
             .filter_map(|s| {
                 let port = u16::try_from(s.internal_port).ok()?;
                 Some(BackendSpec {

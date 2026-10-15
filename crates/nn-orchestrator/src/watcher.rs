@@ -73,7 +73,7 @@ pub async fn reconcile(orch: &Arc<Orchestrator>) -> crate::Result<()> {
         );
     }
 
-    for server in orch.store.list_servers().await? {
+    for server in orch.store.list_local_servers().await? {
         let rt = orch.runtime(&server.id);
         match by_server.remove(&server.id) {
             Some(found) if found.running => {
@@ -127,7 +127,7 @@ pub async fn reconcile(orch: &Arc<Orchestrator>) -> crate::Result<()> {
 }
 
 async fn auto_start(orch: &Arc<Orchestrator>) {
-    let Ok(servers) = orch.store.list_servers().await else {
+    let Ok(servers) = orch.store.list_local_servers().await else {
         return;
     };
     for server in servers
