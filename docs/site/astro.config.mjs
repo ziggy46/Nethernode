@@ -22,7 +22,10 @@ export default defineConfig({
             { slug: "guides/notifications" },
           ],
         },
-        { label: "Reference", items: [{ slug: "reference/configuration" }, { slug: "reference/api" }] },
+        {
+          label: "Reference",
+          items: [{ slug: "reference/configuration" }, { slug: "reference/api" }, { slug: "reference/install-count" }],
+        },
         { label: "Security", items: [{ slug: "security/threat-model" }] },
       ],
     }),

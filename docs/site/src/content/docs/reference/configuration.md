@@ -36,6 +36,9 @@ chunk_limit_mb = 16
 max_file_gb = 50
 quota_gb = 100
 expiry_hours = 24
+
+[install_count]
+enabled = false
 ```
 
 ## `[http]`
@@ -77,6 +80,13 @@ expiry_hours = 24
 | `max_file_gb` | `50` | Largest single upload |
 | `quota_gb` | `100` | Most unfinished-upload data per person at once |
 | `expiry_hours` | `24` | Unfinished uploads with no progress for this long are discarded |
+
+## `[install_count]`
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `enabled` | `false` | Add this install to the public count of active installs. Owners can also turn it on in Settings; when the configuration turns it on, Settings can't turn it off. See [what's sent](/reference/install-count/). |
+| `url` | the NetherNode counter | Where the daily report goes |
 
 ## Logging
 

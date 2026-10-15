@@ -15,6 +15,9 @@
 #   NETHERNODE_PROXY=0.0.0.0:25565    where players connect
 #   NETHERNODE_PORTS_START=30000      host ports for servers (loopback only)
 #   NETHERNODE_PORTS_END=30999
+#   NETHERNODE_COUNT_INSTALL=false    true adds this install to the public count
+#                                     of active installs (see the docs: a random
+#                                     ID and the version, once a day)
 
 services:
   nethernode:
@@ -37,6 +40,7 @@ services:
       NETHERNODE_PROXY__DEFAULT_LISTENER: ${NETHERNODE_PROXY:-0.0.0.0:25565}
       NETHERNODE_DOCKER__PORT_RANGE_START: ${NETHERNODE_PORTS_START:-30000}
       NETHERNODE_DOCKER__PORT_RANGE_END: ${NETHERNODE_PORTS_END:-30999}
+      NETHERNODE_INSTALL_COUNT__ENABLED: ${NETHERNODE_COUNT_INSTALL:-false}
       # Behind a reverse proxy or tunnel that sets X-Forwarded-For/-Proto:
       # NETHERNODE_HTTP__TRUST_PROXY_HEADERS: "true"
 

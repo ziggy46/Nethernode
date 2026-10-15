@@ -40,6 +40,7 @@ Put overrides in a `.env` file next to `docker-compose.yml`:
 | `NETHERNODE_BIND` | `0.0.0.0:8080` | The panel's address |
 | `NETHERNODE_PROXY` | `0.0.0.0:25565` | Where players connect (first run only; then edit listeners in the panel) |
 | `NETHERNODE_PORTS_START` / `_END` | `30000` / `30999` | Host ports for servers, on loopback only |
+| `NETHERNODE_COUNT_INSTALL` | `false` | `true` adds this install to the [public count of active installs](/reference/install-count/) |
 
 Every [configuration setting](/reference/configuration/) can also be set
 with an environment variable in the compose file.
