@@ -4,7 +4,7 @@ import type { Server } from "@/gen/nethernode/v1/servers_pb";
 
 const PlayersView = lazy(() => import("./players-view").then((m) => ({ default: m.PlayersView })));
 
-/** The Players section of the server workspace. */
+/** The Players section of the server page. */
 export function PlayersPanel({ server }: { server: Server }) {
   return (
     <Suspense

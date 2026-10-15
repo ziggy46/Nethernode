@@ -14,7 +14,7 @@ import { SchedulesPanel } from "./schedules";
 import { schedulesQuery } from "./schedules-api";
 import { useBackUpNow } from "./use-back-up";
 
-/** The Backups section of a server's workspace. */
+/** The Backups section of a server's page. */
 export default function BackupsTab({ server }: { server: Server }) {
   const backups = useQuery(backupsQuery(server.id));
   const schedules = useQuery(schedulesQuery(server.id));

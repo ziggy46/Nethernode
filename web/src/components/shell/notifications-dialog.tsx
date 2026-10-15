@@ -14,7 +14,7 @@ export default function NotificationsDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Recent activity</DialogTitle>
-          <DialogDescription>Your workspace, at a glance.</DialogDescription>
+          <DialogDescription>What has been happening on your servers.</DialogDescription>
         </DialogHeader>
         <ActivityFeed limit={12} />
       </DialogContent>

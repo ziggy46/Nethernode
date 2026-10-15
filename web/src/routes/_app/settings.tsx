@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Box, LogOut, Settings, UserRound } from "lucide-react";
+import { Box, LogOut, UserRound } from "lucide-react";
 import type * as React from "react";
 import { lazy, Suspense } from "react";
 
@@ -38,8 +38,8 @@ function SettingsPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Workspace settings"
-        title="Make it your workspace."
+        eyebrow="Settings"
+        title="Make it yours."
         description="Simple defaults, fewer things to worry about."
       />
       <div className="flex max-w-[720px] flex-col gap-[18px]">
@@ -95,15 +95,6 @@ function SettingsPage() {
             <InstallCountPanel />
           </Suspense>
         )}
-
-        <Panel>
-          <PanelHeader title="General preferences" icon={<Settings />} />
-          <Row title="Appearance" description="Obsidian surfaces with lava-orange accents." last>
-            <span className="rounded-xs bg-surface-elevated px-1.5 py-px text-meta text-text-secondary">
-              Nether dark
-            </span>
-          </Row>
-        </Panel>
       </div>
       <Footer version={health.data?.version} />
     </>

@@ -10,7 +10,7 @@ import { useDockerAvailable } from "../servers/docker-notice";
 
 const ConsoleView = lazy(() => import("./console-view"));
 
-/** The console section of the server workspace. */
+/** The console section of the server page. */
 export function ConsolePanel({ server }: { server: Server }) {
   const canModerate = useCanModerate();
   const docker = useDockerAvailable();

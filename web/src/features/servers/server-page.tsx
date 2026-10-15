@@ -87,7 +87,7 @@ export function ServerPage({ id }: { id: string }) {
       </Link>
       <div className="mb-[25px] flex items-center justify-between gap-5 below-md:items-start">
         <div className="min-w-0">
-          <p className="mb-1.5 font-[650] text-eyebrow text-primary uppercase">Server workspace</p>
+          <p className="mb-1.5 font-[650] text-eyebrow text-primary uppercase">Server</p>
           <h1 className="mb-[7px] truncate font-[650] text-page below-md:text-[25px]">{s.name}</h1>
           <p className="text-label text-text-muted">
             {s.modpack

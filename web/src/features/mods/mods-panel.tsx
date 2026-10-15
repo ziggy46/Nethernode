@@ -14,7 +14,7 @@ export function hasMods(server: Server): boolean {
   return MODDED.includes(server.loader);
 }
 
-/** The Mods section of the server workspace. Admins only. */
+/** The Mods section of the server page. Admins only. */
 export function ModsPanel({ server }: { server: Server }) {
   const canManage = useCanManage();
   if (!canManage) {

@@ -4,7 +4,7 @@ import type { Server } from "@/gen/nethernode/v1/servers_pb";
 
 const BackupsTab = lazy(() => import("./backups-tab"));
 
-/** The Backups section of the server workspace, loaded when opened. */
+/** The Backups section of the server page, loaded when opened. */
 export function BackupsPanel({ server }: { server: Server }) {
   return (
     <Suspense

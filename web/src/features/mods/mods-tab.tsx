@@ -37,7 +37,7 @@ import { enqueue } from "../uploads/store";
 
 const modsKey = (serverId: string) => ["mods", serverId] as const;
 
-/** The Mods section of a modded server's workspace. */
+/** The Mods section of a modded server's page. */
 export default function ModsTab({ server }: { server: Server }) {
   const client = useQueryClient();
   const list = useQuery({

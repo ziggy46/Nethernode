@@ -186,7 +186,7 @@ export function OverviewPage() {
             <SectionHeading
               title="Your servers"
               count={list.length}
-              caption="One workspace. Endless worlds."
+              caption="All your worlds in one place."
             />
           </div>
           {servers.isPending ? (
@@ -223,7 +223,7 @@ export function OverviewPage() {
         </section>
 
         <aside
-          aria-label="Workspace details"
+          aria-label="Host and activity"
           className="flex flex-col gap-[18px] below-lg:grid below-lg:grid-cols-2 below-lg:gap-[15px] below-sm:grid-cols-1"
         >
           <HostPanel totals={totals} />

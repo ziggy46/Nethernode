@@ -7,7 +7,7 @@ import { useCanManage } from "@/lib/session";
 
 const FilesTab = lazy(() => import("./files-tab"));
 
-/** The Files section of the server workspace. Admins only. */
+/** The Files section of the server page. Admins only. */
 export function FilesPanel({ server }: { server: Server }) {
   const canManage = useCanManage();
   if (!canManage) {

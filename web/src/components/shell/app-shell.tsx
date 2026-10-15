@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRouterState } from "@tanstack/react-router";
-import { Bell, ChevronRight, Menu, Search, X } from "lucide-react";
+import { Bell, Menu, Search, X } from "lucide-react";
 import type * as React from "react";
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 
@@ -117,8 +117,6 @@ function TopBar({
         {navOpen ? <X /> : <Menu />}
       </Button>
       <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2.5 text-label text-text-muted">
-        <span className="below-sm:hidden">Workspace</span>
-        <ChevronRight className="size-3 below-sm:hidden" aria-hidden />
         <span aria-current="page" className="truncate font-medium text-text-secondary">
           {page}
         </span>

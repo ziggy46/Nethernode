@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Box, CircleAlert, CircleCheck, Settings } from "lucide-react";
+import { CircleAlert, CircleCheck, Settings } from "lucide-react";
 import { Logo, Wordmark } from "@/components/brand";
 import { serversQuery } from "@/features/servers/queries";
 import { healthQuery } from "@/lib/health";
@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 import { AccountMenu } from "./account-menu";
 import { Avatar } from "./avatar";
-import { canSee, type NavItem, SYSTEM_NAV, WORKSPACE_NAV } from "./nav";
+import { canSee, MAIN_NAV, type NavItem, SYSTEM_NAV } from "./nav";
 
 export function Sidebar({ open, onNavigate }: { open: boolean; onNavigate: () => void }) {
   const user = useCurrentUser();
@@ -39,17 +39,7 @@ export function Sidebar({ open, onNavigate }: { open: boolean; onNavigate: () =>
         </span>
       </Link>
 
-      <div className="mb-[27px] flex items-center gap-2.5 rounded-[9px] border border-divider bg-button-quiet p-[11px]">
-        <span className="grid size-8 shrink-0 place-items-center rounded-md bg-nav-active text-nav-active-foreground">
-          <Box className="size-[18px]" aria-hidden />
-        </span>
-        <span className="min-w-0">
-          <span className="block truncate font-semibold text-label">My workspace</span>
-          <span className="block truncate text-meta text-text-muted">Self-hosted panel</span>
-        </span>
-      </div>
-
-      <NavSection label="Workspace" items={WORKSPACE_NAV} onNavigate={onNavigate} />
+      <NavSection label="Manage" items={MAIN_NAV} onNavigate={onNavigate} />
       <NavSection label="System" items={SYSTEM_NAV} onNavigate={onNavigate} />
 
       <div className="mt-auto">
