@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { CircleCheck, ExternalLink, Globe, KeyRound, Network, TriangleAlert } from "lucide-react";
+import { CircleCheck, ExternalLink, Globe, KeyRound, Network, Plug, TriangleAlert } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { Checkbox } from "@/components/ui/checkbox";
@@ -454,7 +454,13 @@ export function NetworkStep({
     return () => clearTimeout(timer);
   }, [draft.network, host]);
 
-  const option = (value: Draft["network"], icon: React.ReactNode, title: string, body: React.ReactNode) => (
+  const option = (
+    value: Draft["network"],
+    icon: React.ReactNode,
+    title: string,
+    joinWith: React.ReactNode,
+    body: React.ReactNode,
+  ) => (
     <label
       className={cn(
         "flex cursor-pointer items-start gap-3 rounded-md border px-3.5 py-3",
@@ -475,33 +481,39 @@ export function NetworkStep({
       </span>
       <span className="min-w-0">
         <span className="block font-medium text-label">{title}</span>
-        <span className="block text-meta text-text-muted">{body}</span>
+        <span className="mt-0.5 block text-meta text-text-secondary">Players join with {joinWith}</span>
+        <span className="mt-0.5 block text-meta text-text-muted">{body}</span>
       </span>
     </label>
   );
+  const code = (text: string) => <span className="font-mono text-text-primary">{text}</span>;
 
   return (
     <fieldset className="flex flex-col gap-2.5">
-      <legend className="sr-only">How players connect</legend>
+      <legend className="mb-1 text-label text-text-secondary">
+        How will players reach this server? Every option goes through NetherNode's proxy, so the server itself
+        is never exposed directly.
+      </legend>
       {option(
         "default",
         <Network />,
-        "Through the proxy, by name",
+        "A name you set up later",
         wildcards.length > 0 ? (
-          <>
-            Players join at{" "}
-            <span className="font-mono">{wildcards.map((w) => `${slug}.${w}`).join(" or ")}</span>.
-          </>
+          <>{code(wildcards.map((w) => `${slug}.${w}`).join(" or "))}</>
         ) : (
-          "Add a hostname later in Proxy & routes, or pick one below."
+          "an address you add later"
         ),
+        wildcards.length > 0
+          ? "Your wildcard route already covers it, using the server's short name. Nothing else to set up."
+          : "Nothing is set up now. Until you add a hostname or port on Proxy & routes, players can't join it.",
       )}
       {canManageProxy &&
         option(
           "hostname",
           <Globe />,
           "Its own hostname",
-          "For example play.example.com, pointed at this machine in your DNS.",
+          code(draft.hostname.trim() || "play.example.com"),
+          "NetherNode adds a route so that name leads here, on the usual port (25565). You need a DNS record for the name pointing at this machine, or your router if you're at home.",
         )}
       {draft.network === "hostname" && (
         <div className="ml-7">
@@ -529,9 +541,10 @@ export function NetworkStep({
       {canManageProxy &&
         option(
           "port",
-          <Network />,
+          <Plug />,
           "Its own port",
-          "Players connect to this machine's address and a port just for this server.",
+          code(`<this machine's address>:${draft.port || "25566"}`),
+          "NetherNode opens that port and sends everyone who connects to it here, whatever address they typed. Good without a domain; forward the port on your router so friends outside your network can join.",
         )}
       {draft.network === "port" && (
         <div className="ml-7">
@@ -544,9 +557,7 @@ export function NetworkStep({
             value={draft.port}
             onChange={(e) => update({ port: e.target.value.replace(/\D/g, "").slice(0, 5) })}
           />
-          <Hint>
-            NetherNode's proxy listens on it and sends everyone to this server. Open it in your firewall.
-          </Hint>
+          <Hint>Any free port from 1024 to 65535 other than the proxy's own (usually 25565).</Hint>
         </div>
       )}
     </fieldset>
