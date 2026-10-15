@@ -11,7 +11,7 @@ import { healthQuery } from "@/lib/health";
 import { useDocumentTitle } from "@/lib/use-document-title";
 
 export function HostPage() {
-  useDocumentTitle("Host node");
+  useDocumentTitle("This machine");
   const host = useQuery(hostQuery);
   const health = useQuery(healthQuery);
   const servers = useQuery(serversQuery);
@@ -32,7 +32,7 @@ export function HostPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Host node"
+        eyebrow="This machine"
         title="A healthy home for your worlds."
         description="Monitor the machine behind your Minecraft servers."
       />

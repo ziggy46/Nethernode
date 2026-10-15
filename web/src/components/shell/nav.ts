@@ -22,7 +22,7 @@ export interface NavItem {
     | "/proxy"
     | "/modpacks"
     | "/backups"
-    | "/host"
+    | "/nodes"
     | "/audit"
     | "/users"
     | "/settings";
@@ -42,7 +42,7 @@ export const MAIN_NAV: NavItem[] = [
 ];
 
 export const SYSTEM_NAV: NavItem[] = [
-  { to: "/host", label: "Host node", icon: Cpu },
+  { to: "/nodes", label: "Nodes", icon: Cpu },
   { to: "/audit", label: "Audit log", icon: ClipboardList, minRole: Role.ADMIN },
   { to: "/users", label: "Users", icon: UserCog, minRole: Role.OWNER },
   { to: "/settings", label: "Settings", icon: Settings },
@@ -58,5 +58,7 @@ export function canSee(item: NavItem, role: Role): boolean {
 /** The nav item for a path, matching nested paths to their section. */
 export function navItemFor(pathname: string): NavItem | undefined {
   if (pathname === "/") return MAIN_NAV[0];
+  // This machine's details belong to Nodes.
+  if (pathname.startsWith("/host")) return SYSTEM_NAV[0];
   return ALL_NAV.find((item) => item.to !== "/" && pathname.startsWith(item.to));
 }
