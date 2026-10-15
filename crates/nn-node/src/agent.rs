@@ -236,13 +236,18 @@ pub async fn connect(
     panel_key: &[u8; 32],
     hello: &Hello,
 ) -> Result<(String, String, Session), LinkError> {
-    let frames = dial(panel_url).await?;
+    let timed_out =
+        |what: &str| io::Error::new(io::ErrorKind::TimedOut, format!("{what} timed out"));
+    // A dead network would otherwise wait out the system's TCP timeout.
+    let frames = tokio::time::timeout(Duration::from_secs(20), dial(panel_url))
+        .await
+        .map_err(|_| timed_out("connecting to the panel"))??;
     let (welcome, session, _inbound) = tokio::time::timeout(
         Duration::from_secs(20),
         nn_link::connect(frames, key, panel_key, hello),
     )
     .await
-    .map_err(|_| io::Error::new(io::ErrorKind::TimedOut, "the handshake timed out"))??;
+    .map_err(|_| timed_out("the handshake"))??;
     match welcome {
         Welcome::Accepted { node_id, name } => Ok((node_id, name, session)),
         Welcome::Rejected { reason } => Err(LinkError::Rejected(reason)),

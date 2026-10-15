@@ -118,7 +118,6 @@ impl Client {
     }
 }
 
-
 fn agent(dir: &std::path::Path, url: Option<&str>, code: Option<&str>) -> AgentArgs {
     AgentArgs {
         dir: dir.to_owned(),
@@ -224,11 +223,21 @@ async fn an_agent_joins_reconnects_and_is_removed() {
     // Gone, then back without a code.
     running.abort();
     wait_for(&mut admin, &id, |n| n["status"] == "NODE_STATUS_OFFLINE").await;
+    // Docker's restart policy replays the join flags: the saved state
+    // wins, and the spent code isn't tried again.
     let again = tokio::spawn(nn_node::agent::run(
-        agent(dir.path(), None, None),
+        agent(dir.path(), Some(&url), Some(&token)),
         Nodes::default().local().clone(),
     ));
     wait_for(&mut admin, &id, |n| n["status"] == "NODE_STATUS_ONLINE").await;
+
+    // Pointed at another panel, a joined agent refuses rather than forgets.
+    let result = nn_node::agent::run(
+        agent(dir.path(), Some("http://other.example"), None),
+        Nodes::default().local().clone(),
+    )
+    .await;
+    assert!(matches!(result, Err(AgentError::Usage(_))), "{result:?}");
 
     let renamed = admin
         .ok(
