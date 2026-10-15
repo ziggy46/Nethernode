@@ -15,23 +15,6 @@ Anyone can send made-up IDs, so the count can be inflated; it's an
 indication, not a measurement. If that ever matters, a Cloudflare rate
 limiting rule on `/ping` is the fix.
 
-## Deploy
-
-From this folder, logged in to the Cloudflare account that owns the Pages
-project:
-
-```sh
-pnpm install
-export WRANGLER_SEND_METRICS=false
-pnpm exec wrangler login
-pnpm exec wrangler d1 create nethernode-installs
-# copy the printed database_id into wrangler.toml
-pnpm exec wrangler d1 migrations apply nethernode-installs --remote
-pnpm run deploy
-```
-
-Later deploys need only the last command.
-
 ## Develop
 
 ```sh
