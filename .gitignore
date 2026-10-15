@@ -39,3 +39,7 @@ node_modules/
 /crates/*/fuzz/artifacts/
 /crates/*/fuzz/coverage/
 /crates/*/.tmp*/
+
+# Install counter (Cloudflare Worker)
+/counter/node_modules/
+/counter/.wrangler/

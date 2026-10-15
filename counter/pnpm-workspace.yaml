@@ -1,0 +1,4 @@
+# Wrangler's local runtime and bundler fetch their platform binaries.
+allowBuilds:
+  esbuild: true
+  workerd: true
