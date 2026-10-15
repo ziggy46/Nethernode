@@ -45,6 +45,12 @@ impl ScheduleRpc {
     }
 }
 
+/// "At 04:00" (without the describer's closing full stop, so it reads
+/// well inside a sentence or a list).
+fn describe(cron: &croner::Cron) -> String {
+    cron.describe().trim_end_matches('.').to_owned()
+}
+
 fn action_name(a: Option<pb::ScheduleAction>) -> Option<&'static str> {
     use pb::ScheduleAction as A;
     Some(match a? {
@@ -75,7 +81,7 @@ fn proto_schedule(s: Schedule, names: &HashMap<String, String>) -> pb::Schedule 
     let payload: Payload = serde_json::from_str(&s.payload_json).unwrap_or_default();
     pb::Schedule {
         description: parse_cron(&s.cron)
-            .map(|c| c.describe())
+            .map(|c| describe(&c))
             .unwrap_or_default(),
         server_name: names.get(&s.server_id).cloned().unwrap_or_default(),
         action: proto_action(&s.action).into(),
@@ -299,7 +305,7 @@ impl pb::ScheduleService for ScheduleRpc {
         Response::ok(match parsed {
             Ok((cron, tz)) => pb::PreviewScheduleResponse {
                 next_runs_ms: next_runs(&cron, &tz, nn_store::now_ms(), 5),
-                description: cron.describe(),
+                description: describe(&cron),
                 ..Default::default()
             },
             Err(error) => pb::PreviewScheduleResponse {
