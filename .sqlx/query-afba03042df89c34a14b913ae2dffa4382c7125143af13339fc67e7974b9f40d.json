@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO node_join_codes (id, node_id, secret_hash, expires_at)\n             VALUES (?1, ?2, ?3, ?4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "afba03042df89c34a14b913ae2dffa4382c7125143af13339fc67e7974b9f40d"
+}

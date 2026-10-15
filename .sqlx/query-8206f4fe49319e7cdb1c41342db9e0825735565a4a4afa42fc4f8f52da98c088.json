@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE nodes SET public_key = ?2, last_seen_at = ?3\n             WHERE id = ?1 AND public_key IS NULL AND id <> 'local'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "8206f4fe49319e7cdb1c41342db9e0825735565a4a4afa42fc4f8f52da98c088"
+}

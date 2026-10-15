@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM node_join_codes\n             WHERE id = ?1 AND secret_hash = ?2 AND expires_at > ?3\n             RETURNING node_id",
+  "describe": {
+    "columns": [
+      {
+        "name": "node_id",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "node_join_codes",
+            "name": "node_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "5f5f4258edc691d79c141d3f5b030bf8d524865a178078117c0d5910bdc16abb"
+}

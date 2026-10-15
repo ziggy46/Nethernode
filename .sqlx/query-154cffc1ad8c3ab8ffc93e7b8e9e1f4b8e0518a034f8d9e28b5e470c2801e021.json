@@ -1,0 +1,21 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT COUNT(*) FROM node_join_codes WHERE node_id = ?1 AND expires_at > ?2",
+  "describe": {
+    "columns": [
+      {
+        "name": "COUNT(*)",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "154cffc1ad8c3ab8ffc93e7b8e9e1f4b8e0518a034f8d9e28b5e470c2801e021"
+}

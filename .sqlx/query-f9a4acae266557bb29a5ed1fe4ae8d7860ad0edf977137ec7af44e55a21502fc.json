@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM node_join_codes WHERE expires_at <= ?1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "f9a4acae266557bb29a5ed1fe4ae8d7860ad0edf977137ec7af44e55a21502fc"
+}
