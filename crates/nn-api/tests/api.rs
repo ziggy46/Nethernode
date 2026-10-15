@@ -38,7 +38,7 @@ async fn app() -> Router {
         content: Default::default(),
         notifier: Default::default(),
         install_count: Default::default(),
-        servers: Default::default(),
+        nodes: Default::default(),
     })
 }
 

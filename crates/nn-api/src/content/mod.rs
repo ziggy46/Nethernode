@@ -68,6 +68,11 @@ impl Content {
         self.cache_dir.as_ref().map(|d| d.join("icons"))
     }
 
+    /// Where player heads are cached (`<data>/cache/heads`).
+    pub(crate) fn heads_dir(&self) -> Option<PathBuf> {
+        self.cache_dir.as_ref().map(|d| d.join("heads"))
+    }
+
     /// The data key, for sealing other secrets.
     pub(crate) fn secrets(&self) -> Option<&nn_auth::SecretBox> {
         self.secrets.as_deref()

@@ -21,15 +21,7 @@ const MISSING_FRESH: Duration = Duration::from_secs(6 * 3600);
 const SIZE: u32 = 64;
 
 fn cache_dir(state: &AppState) -> Option<PathBuf> {
-    Some(
-        state
-            .servers
-            .servers_dir
-            .as_ref()?
-            .parent()?
-            .join("cache")
-            .join("heads"),
-    )
+    state.content.heads_dir()
 }
 
 fn age(path: &std::path::Path) -> Option<Duration> {

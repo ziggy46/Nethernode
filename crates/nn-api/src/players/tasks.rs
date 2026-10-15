@@ -16,11 +16,12 @@ const EXPIRY_INTERVAL: Duration = Duration::from_secs(30);
 
 /// Starts the background tasks.
 pub fn spawn(state: AppState) {
-    if let Some(orch) = &state.servers.orchestrator {
-        orch.set_before_start(Arc::new(GlobalBans {
+    state
+        .nodes
+        .local_node()
+        .set_before_start(Arc::new(GlobalBans {
             state: state.clone(),
         }));
-    }
 
     let expiry = state.clone();
     tokio::spawn(async move {

@@ -47,7 +47,7 @@ async fn app() -> (Router, String) {
         content,
         notifier: Default::default(),
         install_count: Default::default(),
-        servers: Default::default(),
+        nodes: Default::default(),
     });
     let owner = auth
         .setup("owner", PASSWORD, Default::default())

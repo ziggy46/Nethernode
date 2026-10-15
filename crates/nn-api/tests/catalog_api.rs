@@ -7,9 +7,10 @@ use axum::Router;
 use axum::body::Body;
 use http::{Request, StatusCode, header};
 use http_body_util::BodyExt;
-use nn_api::{ApiConfig, AppState, ProxyRuntime, ServerManager, StoreProxyHooks};
+use nn_api::{ApiConfig, AppState, ProxyRuntime, StoreProxyHooks};
 use nn_auth::{Auth, AuthConfig, password};
 use nn_events::EventBus;
+use nn_node::Nodes;
 use nn_store::{NewUser, Store};
 use serde_json::{Value, json};
 use tower::ServiceExt;
@@ -40,7 +41,7 @@ async fn harness() -> (Router, String, String) {
         content: Default::default(),
         notifier: Default::default(),
         install_count: Default::default(),
-        servers: ServerManager::default(),
+        nodes: Nodes::default(),
     });
     let owner = auth
         .setup("owner", PASSWORD, Default::default())

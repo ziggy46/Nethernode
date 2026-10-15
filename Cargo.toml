@@ -18,6 +18,7 @@ nn-catalog = { path = "crates/nn-catalog" }
 nn-events = { path = "crates/nn-events" }
 nn-files = { path = "crates/nn-files" }
 nn-mcproto = { path = "crates/nn-mcproto" }
+nn-node = { path = "crates/nn-node" }
 nn-orchestrator = { path = "crates/nn-orchestrator" }
 nn-players = { path = "crates/nn-players" }
 nn-proxy = { path = "crates/nn-proxy" }

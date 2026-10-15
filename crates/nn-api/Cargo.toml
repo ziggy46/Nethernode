@@ -25,6 +25,7 @@ hex.workspace = true
 nn-proxy.workspace = true
 nn-orchestrator.workspace = true
 nn-mcproto.workspace = true
+nn-node.workspace = true
 nn-files.workspace = true
 nn-players.workspace = true
 axum.workspace = true

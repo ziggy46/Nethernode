@@ -114,8 +114,8 @@ pub struct AppState {
     /// Flips to `true` when the server begins shutting down, so long-lived
     /// responses (the event stream) end and graceful shutdown can finish.
     pub shutdown: tokio::sync::watch::Receiver<bool>,
-    /// Docker orchestration, or why it's unavailable.
-    pub servers: ServerManager,
+    /// The machines that run servers, and which one each server is on.
+    pub nodes: nn_node::Nodes,
     /// Player management.
     pub players: Arc<players::PlayerManager>,
     /// Resumable uploads.
@@ -126,18 +126,6 @@ pub struct AppState {
     pub notifier: Arc<notify::Notifier>,
     /// The opt-in active installs count.
     pub install_count: Arc<install_count::InstallCount>,
-}
-
-/// Server lifecycle management, which needs Docker.
-#[derive(Clone, Default)]
-pub struct ServerManager {
-    /// The orchestrator, when Docker is reachable.
-    pub orchestrator: Option<Arc<nn_orchestrator::Orchestrator>>,
-    /// Why Docker isn't available, for the UI.
-    pub unavailable_reason: Option<Arc<str>>,
-    /// Absolute folder holding each server's files (`<data>/servers`).
-    /// Known even when Docker isn't, so files stay reachable.
-    pub servers_dir: Option<std::path::PathBuf>,
 }
 
 /// Builds the full application router.

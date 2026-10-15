@@ -12,9 +12,10 @@ use base64::engine::general_purpose::STANDARD as B64;
 use http::{Request, Response, StatusCode, header};
 use http_body_util::BodyExt;
 use nn_api::uploads::{UploadSettings, Uploads};
-use nn_api::{ApiConfig, AppState, ProxyRuntime, ServerManager, StoreProxyHooks};
+use nn_api::{ApiConfig, AppState, ProxyRuntime, StoreProxyHooks};
 use nn_auth::{Auth, AuthConfig, password};
 use nn_events::{Event, EventBus};
+use nn_node::{LocalNode, Nodes};
 use nn_store::{NewServer, NewUser, Store};
 use sha2::{Digest, Sha256};
 use tower::ServiceExt;
@@ -73,10 +74,10 @@ async fn harness_with(settings: UploadSettings) -> Harness {
         content: Default::default(),
         notifier: Default::default(),
         install_count: Default::default(),
-        servers: ServerManager {
-            servers_dir: Some(servers_dir.clone()),
-            ..Default::default()
-        },
+        nodes: Nodes::new(LocalNode::without_docker(
+            "not connected",
+            Some(servers_dir.clone()),
+        )),
     };
     let app = nn_api::router(state.clone());
     let owner = auth

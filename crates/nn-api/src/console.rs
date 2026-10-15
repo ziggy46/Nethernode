@@ -25,7 +25,7 @@ use axum::response::{IntoResponse, Response};
 use futures_util::{SinkExt, StreamExt};
 use http::{HeaderMap, StatusCode, header};
 use nn_auth::{AuthUser, Permission};
-use nn_orchestrator::Orchestrator;
+use nn_node::{LogSubscription, Node};
 use serde_json::{Value, json};
 use tokio::sync::broadcast::error::RecvError;
 use tokio::sync::mpsc;
@@ -33,7 +33,7 @@ use tokio::sync::mpsc;
 use crate::AppState;
 use crate::middleware::CurrentUser;
 use crate::rpc::audit;
-use crate::rpc::servers::orchestrator_error;
+use crate::rpc::servers::node_error;
 
 const FLUSH_EVERY: Duration = Duration::from_millis(50);
 const PING_EVERY: Duration = Duration::from_secs(30);
@@ -69,19 +69,25 @@ pub(crate) async fn console(
         )
             .into_response();
     }
-    let Some(orch) = state.servers.orchestrator.clone() else {
-        return (StatusCode::SERVICE_UNAVAILABLE, "Docker isn't available").into_response();
-    };
-    match state.auth.store().find_server(&server_id).await {
-        Ok(Some(_)) => {}
+    let server = match state.auth.store().find_server(&server_id).await {
+        Ok(Some(server)) => server,
         Ok(None) => return (StatusCode::NOT_FOUND, "server not found").into_response(),
         Err(e) => {
             tracing::error!(error = %e, "server lookup failed");
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
-    }
+    };
+    let node = state.nodes.for_server(&server).clone();
+    let logs = match node.subscribe_logs(&server_id) {
+        Ok(logs) => logs,
+        Err(_) => {
+            return (StatusCode::SERVICE_UNAVAILABLE, "Docker isn't available").into_response();
+        }
+    };
     match ws {
-        Ok(ws) => ws.on_upgrade(move |socket| run(socket, state, orch, server_id, authed.user)),
+        Ok(ws) => {
+            ws.on_upgrade(move |socket| run(socket, state, node, logs, server_id, authed.user))
+        }
         Err(rejection) => rejection.into_response(),
     }
 }
@@ -89,12 +95,16 @@ pub(crate) async fn console(
 async fn run(
     socket: WebSocket,
     state: AppState,
-    orch: Arc<Orchestrator>,
+    node: Node,
+    logs: LogSubscription,
     server_id: String,
     user: AuthUser,
 ) {
     let (mut sink, mut incoming) = socket.split();
-    let (backlog, mut logs) = orch.subscribe_logs(&server_id);
+    let LogSubscription {
+        backlog,
+        lines: mut logs,
+    } = logs;
     if sink
         .send(text(&json!({ "type": "backlog", "lines": backlog })))
         .await
@@ -155,7 +165,7 @@ async fn run(
                         })),
                         Some(command) => {
                             tokens -= 1.0;
-                            spawn_command(&state, &orch, &server_id, &user, command, reply_tx.clone());
+                            spawn_command(&state, &node, &server_id, &user, command, reply_tx.clone());
                             None
                         }
                     }
@@ -181,15 +191,15 @@ async fn run(
 
 fn spawn_command(
     state: &AppState,
-    orch: &Arc<Orchestrator>,
+    node: &Node,
     server_id: &str,
     user: &AuthUser,
     command: String,
     replies: mpsc::Sender<Value>,
 ) {
-    let (state, orch, server_id, user) = (
+    let (state, node, server_id, user) = (
         state.clone(),
-        orch.clone(),
+        node.clone(),
         server_id.to_owned(),
         user.clone(),
     );
@@ -202,10 +212,10 @@ fn spawn_command(
             json!({ "command": command }),
         )
         .await;
-        let frame = match orch.command(&server_id, &command).await {
+        let frame = match node.command(&server_id, &command).await {
             Ok(output) => json!({ "type": "reply", "command": command, "output": output }),
             Err(e) => {
-                let message = orchestrator_error(e)
+                let message = node_error(e)
                     .message
                     .unwrap_or_else(|| "the command failed".into());
                 json!({ "type": "error", "command": command, "message": message })

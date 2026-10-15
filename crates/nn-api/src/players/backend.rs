@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use connectrpc::ConnectError;
 use nn_files::{EDITOR_LIMIT, Expect, FileError, Properties, RelPath, ServerFiles};
-use nn_orchestrator::Orchestrator;
+use nn_node::Node;
 use nn_players::commands::{self, Destination, GameMode, Outcome};
 use nn_players::lists::{self, BanEntry, ListEntry, OpEntry};
 use nn_players::mgmt::{MgmtClient, MgmtError, Operator, UserBan};
@@ -23,7 +23,7 @@ use serde::de::DeserializeOwned;
 use crate::AppState;
 use crate::files::{blocking, file_error};
 use crate::proto::nethernode::v1 as pb;
-use crate::rpc::servers::orchestrator_error;
+use crate::rpc::servers::node_error;
 use crate::rpc::store_error;
 
 /// Source recorded on bans NetherNode places.
@@ -43,7 +43,7 @@ pub(crate) struct Ctx<'a> {
     pub server: Server,
     pub via: Via,
     pub online_mode: bool,
-    orch: Option<Arc<Orchestrator>>,
+    node: Node,
 }
 
 /// Minecraft's lists for one server, from whichever source applies.
@@ -80,21 +80,22 @@ impl<'a> Ctx<'a> {
             .await
             .map_err(store_error)?
             .ok_or_else(|| ConnectError::not_found("server not found"))?;
-        let orch = state.servers.orchestrator.clone();
-        let via = match (server.status.as_str(), &orch) {
-            (_, None) => Via::Unavailable(
+        let node = state.nodes.for_server(&server).clone();
+        let available = node.unavailable().is_none();
+        let via = match (server.status.as_str(), available) {
+            (_, false) => Via::Unavailable(
                 "Docker isn't available, so NetherNode can't tell whether the server is running."
                     .into(),
             ),
-            ("running", Some(orch)) => match state.players.mgmt(orch, &server).await {
+            ("running", true) => match state.players.mgmt(&node, &server).await {
                 Some(client) => Via::Mgmt(client),
                 None => Via::Rcon,
             },
-            ("stopped" | "sleeping" | "crashed", Some(orch)) => {
-                if orch
+            ("stopped" | "sleeping" | "crashed", true) => {
+                if node
                     .container_running(&server.id)
                     .await
-                    .map_err(orchestrator_error)?
+                    .map_err(node_error)?
                 {
                     Via::Unavailable(
                         "The server is still shutting down. Try again in a moment.".into(),
@@ -114,7 +115,7 @@ impl<'a> Ctx<'a> {
             server,
             via,
             online_mode: true,
-            orch,
+            node,
         };
         ctx.online_mode = ctx.read_online_mode().await;
         Ok(ctx)
@@ -123,12 +124,13 @@ impl<'a> Ctx<'a> {
     /// Opens a stopped server for file edits regardless of how it would
     /// normally be reached (before-start hooks, where it isn't running yet).
     pub async fn open_stopped(state: &'a AppState, server: Server) -> Ctx<'a> {
+        let node = state.nodes.for_server(&server).clone();
         let mut ctx = Ctx {
             state,
             server,
             via: Via::Files,
             online_mode: true,
-            orch: state.servers.orchestrator.clone(),
+            node,
         };
         ctx.online_mode = ctx.read_online_mode().await;
         ctx
@@ -281,11 +283,14 @@ impl<'a> Ctx<'a> {
         command: Result<String, commands::CommandError>,
     ) -> Result<Outcome, ConnectError> {
         let command = command.map_err(|e| ConnectError::invalid_argument(e.to_string()))?;
-        let orch = self.orch.as_ref().ok_or_else(|| self.unavailable())?;
-        let reply = orch
+        if self.node.unavailable().is_some() {
+            return Err(self.unavailable());
+        }
+        let reply = self
+            .node
             .command(&self.server.id, &command)
             .await
-            .map_err(orchestrator_error)?;
+            .map_err(node_error)?;
         match Outcome::from_reply(&reply) {
             Outcome::Failed(text) => Err(ConnectError::failed_precondition(text)),
             outcome => Ok(outcome),

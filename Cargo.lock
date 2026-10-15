@@ -2253,6 +2253,7 @@ dependencies = [
  "nn-auth",
  "nn-catalog",
  "nn-events",
+ "nn-node",
  "nn-orchestrator",
  "nn-proxy",
  "nn-store",
@@ -2289,6 +2290,7 @@ dependencies = [
  "nn-events",
  "nn-files",
  "nn-mcproto",
+ "nn-node",
  "nn-orchestrator",
  "nn-players",
  "nn-proxy",
@@ -2395,6 +2397,20 @@ dependencies = [
  "thiserror",
  "tokio",
  "uuid",
+]
+
+[[package]]
+name = "nn-node"
+version = "0.1.0"
+dependencies = [
+ "nn-files",
+ "nn-orchestrator",
+ "nn-players",
+ "nn-store",
+ "nn-uploads",
+ "thiserror",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

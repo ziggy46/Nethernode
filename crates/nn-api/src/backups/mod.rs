@@ -50,9 +50,9 @@ impl Kind {
 pub(crate) fn backups_dir(state: &AppState) -> Option<PathBuf> {
     Some(
         state
-            .servers
-            .servers_dir
-            .as_ref()?
+            .nodes
+            .local_node()
+            .servers_dir()?
             .parent()?
             .join("backups"),
     )
@@ -214,7 +214,7 @@ async fn run_locked<T>(
     server: &Server,
     work: impl AsyncFnOnce(Server) -> Result<T, String>,
 ) -> Result<T, String> {
-    match &state.servers.orchestrator {
+    match &state.nodes.local_node().orchestrator_for_backups() {
         Some(orch) => orch
             .locked(&server.id, work)
             .await
@@ -232,7 +232,7 @@ async fn make(
     job_id: &str,
 ) -> Result<String, String> {
     let running = server.status == "running";
-    let orch = state.servers.orchestrator.clone();
+    let orch = state.nodes.local_node().orchestrator_for_backups();
     if running && let Some(orch) = &orch {
         orch.command(&server.id, "save-off")
             .await
@@ -339,7 +339,7 @@ pub(crate) async fn start_restore(
         return Err(ConnectError::not_found("the backup's file is missing"));
     }
     // Without Docker no server can be running, so there's nothing to stop.
-    let orch = state.servers.orchestrator.clone();
+    let orch = state.nodes.local_node().orchestrator_for_backups();
     if start_after && orch.is_none() {
         return Err(ConnectError::unavailable(
             "Docker isn't available, so the server can't be started afterwards",
@@ -398,9 +398,10 @@ async fn swap_in(
     job_id: &str,
 ) -> Result<String, String> {
     let servers_dir = state
-        .servers
-        .servers_dir
-        .clone()
+        .nodes
+        .local_node()
+        .servers_dir()
+        .map(Path::to_path_buf)
         .ok_or("the data folder isn't available")?;
     let (_, files) = crate::files::open(state, &server.id)
         .await

@@ -248,9 +248,7 @@ impl pb::CatalogService for CatalogRpc {
             .content
             .save_curseforge_key(self.state.auth.store(), key.as_deref())
             .await?;
-        if let Some(orch) = &self.state.servers.orchestrator {
-            orch.set_curseforge_key(key.clone());
-        }
+        self.state.nodes.set_curseforge_key(key.clone());
         // Never the key itself.
         audit(
             &self.state,

@@ -1,13 +1,13 @@
 //! `nethernode.v1.ServerService`.
 
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use connectrpc::{ConnectError, RequestContext, Response, ServiceRequest, ServiceResult};
 use nn_auth::Permission;
 use nn_events::Event;
 use nn_files::{Expect, FileError, RelPath};
-use nn_orchestrator::{CreateServer, Orchestrator, OrchestratorError};
+use nn_node::{Node, NodeError};
+use nn_orchestrator::{CreateServer, OrchestratorError};
 use nn_store::{Server, ServerSettings};
 use serde_json::json;
 
@@ -25,14 +25,14 @@ impl ServerRpc {
         Self { state }
     }
 
-    /// The orchestrator, or a clear error when Docker isn't reachable.
-    fn orchestrator(&self) -> Result<Arc<Orchestrator>, ConnectError> {
-        self.state.servers.orchestrator.clone().ok_or_else(|| {
-            let reason = self.state.servers.unavailable_reason.as_deref().unwrap_or("not connected");
-            ConnectError::failed_precondition(format!(
-                "Docker isn't available ({reason}). Server management is disabled until NetherNode can reach Docker."
-            ))
-        })
+    /// The node `server` runs on, or a clear error when it can't manage
+    /// servers right now.
+    fn node(&self, server: &Server) -> Result<Node, ConnectError> {
+        let node = self.state.nodes.for_server(server);
+        match node.unavailable() {
+            Some(e) => Err(node_error(e)),
+            None => Ok(node.clone()),
+        }
     }
 
     async fn load(&self, id: &str) -> Result<Server, ConnectError> {
@@ -69,12 +69,9 @@ impl ServerRpc {
     }
 
     async fn to_proto(&self, server: Server, hostnames: &Hostnames) -> pb::Server {
-        let orch = self.state.servers.orchestrator.as_ref();
-        let players = orch.and_then(|o| o.players(&server.id));
-        let restart_required = match orch {
-            Some(o) => o.restart_required(&server).await,
-            None => false,
-        };
+        let node = self.state.nodes.for_server(&server);
+        let players = node.players(&server.id);
+        let restart_required = node.restart_required(&server).await;
         pb::Server {
             status: proto_status(&server.status).into(),
             settings: proto_settings(&server.settings()).into(),
@@ -98,17 +95,14 @@ impl ServerRpc {
 
     /// Runs a lifecycle operation in the background, reporting failures as
     /// `server_operation_failed` events.
-    fn spawn_operation<F, Fut>(&self, id: String, operation: &'static str, run: F)
+    fn spawn_operation<F, Fut>(&self, node: Node, id: String, operation: &'static str, run: F)
     where
-        F: FnOnce(Arc<Orchestrator>, String) -> Fut + Send + 'static,
-        Fut: std::future::Future<Output = Result<(), OrchestratorError>> + Send + 'static,
+        F: FnOnce(Node, String) -> Fut + Send + 'static,
+        Fut: std::future::Future<Output = Result<(), NodeError>> + Send + 'static,
     {
-        let Some(orch) = self.state.servers.orchestrator.clone() else {
-            return;
-        };
         let events = self.state.events.clone();
         tokio::spawn(async move {
-            if let Err(error) = run(orch, id.clone()).await {
+            if let Err(error) = run(node, id.clone()).await {
                 tracing::warn!(server = %id, operation, %error, "server operation failed");
                 events.publish(Event::ServerOperationFailed {
                     server_id: id,
@@ -234,6 +228,14 @@ fn properties_response(
         properties: out,
         version,
         ..Default::default()
+    }
+}
+
+/// Maps node errors to Connect codes with user-facing messages.
+pub(crate) fn node_error(err: NodeError) -> ConnectError {
+    match err {
+        NodeError::Unavailable(_) => ConnectError::failed_precondition(err.to_string()),
+        NodeError::Orchestrator(e) => orchestrator_error(e),
     }
 }
 
@@ -399,7 +401,11 @@ impl pb::ServerService for ServerRpc {
         request: ServiceRequest<'_, pb::CreateServerRequest>,
     ) -> ServiceResult<pb::CreateServerResponse> {
         let user = require(&ctx, Permission::ManageServers)?.clone();
-        let orch = self.orchestrator()?;
+        // New servers go on this machine until there's a choice of nodes.
+        let node = self.state.nodes.local().clone();
+        if let Some(e) = node.unavailable() {
+            return Err(node_error(e));
+        }
         let loader = request.loader.trim().to_ascii_lowercase();
         let mut mc_version = request.mc_version.trim().to_owned();
         let modpack = match loader.as_str() {
@@ -435,7 +441,7 @@ impl pb::ServerService for ServerRpc {
             sleep_when_empty: request.sleep_when_empty,
             start_after_create: request.start_after_create,
         };
-        let server = orch.create(input).await.map_err(orchestrator_error)?;
+        let server = node.create(input).await.map_err(node_error)?;
         let pack = server
             .modpack_json
             .as_deref()
@@ -463,17 +469,18 @@ impl pb::ServerService for ServerRpc {
         request: ServiceRequest<'_, pb::UpdateServerRequest>,
     ) -> ServiceResult<pb::UpdateServerResponse> {
         let user = require(&ctx, Permission::ManageServers)?.clone();
-        let orch = self.orchestrator()?;
+        let current = self.load(request.id).await?;
+        let node = self.node(&current)?;
         let mut settings = request
             .settings
             .as_option()
             .map(settings_from_proto)
             .ok_or_else(|| ConnectError::invalid_argument("settings are required"))?;
-        settings.modpack_json = self.load(request.id).await?.modpack_json;
-        let (server, _) = orch
+        settings.modpack_json = current.modpack_json;
+        let (server, _) = node
             .update(request.id, settings)
             .await
-            .map_err(orchestrator_error)?;
+            .map_err(node_error)?;
         audit(
             &self.state,
             &user,
@@ -495,11 +502,11 @@ impl pb::ServerService for ServerRpc {
         request: ServiceRequest<'_, pb::DeleteServerRequest>,
     ) -> ServiceResult<pb::DeleteServerResponse> {
         let user = require(&ctx, Permission::ManageServers)?.clone();
-        let orch = self.orchestrator()?;
         let server = self.load(request.id).await?;
-        orch.delete(&server.id, request.delete_data)
+        self.node(&server)?
+            .delete(&server.id, request.delete_data)
             .await
-            .map_err(orchestrator_error)?;
+            .map_err(node_error)?;
         self.state.proxy.reload().await.map_err(store_error)?;
         let details = json!({ "name": server.name, "deleted_data": request.delete_data });
         audit(
@@ -519,8 +526,8 @@ impl pb::ServerService for ServerRpc {
         request: ServiceRequest<'_, pb::StartServerRequest>,
     ) -> ServiceResult<pb::StartServerResponse> {
         let user = require(&ctx, Permission::ManageServers)?.clone();
-        self.orchestrator()?;
         let server = self.load(request.id).await?;
+        let node = self.node(&server)?;
         match server.status.as_str() {
             "installing" => {
                 return Err(ConnectError::failed_precondition(
@@ -539,8 +546,8 @@ impl pb::ServerService for ServerRpc {
                 "Accept the Minecraft EULA before starting this server.",
             ));
         }
-        self.spawn_operation(server.id.clone(), "start", |o, id| async move {
-            o.start(&id).await
+        self.spawn_operation(node, server.id.clone(), "start", |n, id| async move {
+            n.start(&id).await
         });
         audit(
             &self.state,
@@ -559,10 +566,10 @@ impl pb::ServerService for ServerRpc {
         request: ServiceRequest<'_, pb::StopServerRequest>,
     ) -> ServiceResult<pb::StopServerResponse> {
         let user = require(&ctx, Permission::ManageServers)?.clone();
-        self.orchestrator()?;
         let server = self.load(request.id).await?;
-        self.spawn_operation(server.id.clone(), "stop", |o, id| async move {
-            o.stop(&id, false).await
+        let node = self.node(&server)?;
+        self.spawn_operation(node, server.id.clone(), "stop", |n, id| async move {
+            n.stop(&id, false).await
         });
         audit(
             &self.state,
@@ -581,10 +588,10 @@ impl pb::ServerService for ServerRpc {
         request: ServiceRequest<'_, pb::RestartServerRequest>,
     ) -> ServiceResult<pb::RestartServerResponse> {
         let user = require(&ctx, Permission::ManageServers)?.clone();
-        self.orchestrator()?;
         let server = self.load(request.id).await?;
-        self.spawn_operation(server.id.clone(), "restart", |o, id| async move {
-            o.restart(&id).await
+        let node = self.node(&server)?;
+        self.spawn_operation(node, server.id.clone(), "restart", |n, id| async move {
+            n.restart(&id).await
         });
         audit(
             &self.state,
@@ -603,10 +610,10 @@ impl pb::ServerService for ServerRpc {
         request: ServiceRequest<'_, pb::KillServerRequest>,
     ) -> ServiceResult<pb::KillServerResponse> {
         let user = require(&ctx, Permission::ManageServers)?.clone();
-        self.orchestrator()?;
         let server = self.load(request.id).await?;
-        self.spawn_operation(server.id.clone(), "kill", |o, id| async move {
-            o.kill(&id).await
+        let node = self.node(&server)?;
+        self.spawn_operation(node, server.id.clone(), "kill", |n, id| async move {
+            n.kill(&id).await
         });
         audit(
             &self.state,
@@ -627,11 +634,9 @@ impl pb::ServerService for ServerRpc {
         require(&ctx, Permission::View)?;
         let samples = self
             .state
-            .servers
-            .orchestrator
-            .as_ref()
-            .map(|o| o.stats_history(request.id))
-            .unwrap_or_default()
+            .nodes
+            .for_server_id(request.id)
+            .stats_history(request.id)
             .into_iter()
             .map(|s| pb::StatSample {
                 at_ms: s.at_ms,
@@ -655,39 +660,27 @@ impl pb::ServerService for ServerRpc {
         _request: ServiceRequest<'_, pb::GetHostInfoRequest>,
     ) -> ServiceResult<pb::GetHostInfoResponse> {
         require(&ctx, Permission::View)?;
-        let disk = self
-            .state
-            .servers
-            .servers_dir
-            .as_deref()
-            .and_then(|d| nn_uploads::disk_space(d.parent().unwrap_or(d)));
-        let mut response = match &self.state.servers.orchestrator {
-            None => pb::GetHostInfoResponse {
-                docker_available: false,
-                error: self
-                    .state
-                    .servers
-                    .unavailable_reason
-                    .as_deref()
-                    .unwrap_or("not connected")
-                    .to_owned(),
+        let node = self.state.nodes.local();
+        let disk = node.disk_space();
+        let mut response = match node.host_info().await {
+            Ok(info) => pb::GetHostInfoResponse {
+                docker_available: true,
+                hostname: info.hostname,
+                operating_system: info.operating_system,
+                docker_version: info.docker_version,
+                cpus: info.cpus,
+                memory_bytes: info.memory_bytes,
                 ..Default::default()
             },
-            Some(orch) => match orch.host_info().await {
-                Ok(info) => pb::GetHostInfoResponse {
-                    docker_available: true,
-                    hostname: info.hostname,
-                    operating_system: info.operating_system,
-                    docker_version: info.docker_version,
-                    cpus: info.cpus,
-                    memory_bytes: info.memory_bytes,
-                    ..Default::default()
-                },
-                Err(e) => pb::GetHostInfoResponse {
-                    docker_available: false,
-                    error: e.to_string(),
-                    ..Default::default()
-                },
+            Err(NodeError::Unavailable(reason)) => pb::GetHostInfoResponse {
+                docker_available: false,
+                error: reason.to_string(),
+                ..Default::default()
+            },
+            Err(e) => pb::GetHostInfoResponse {
+                docker_available: false,
+                error: e.to_string(),
+                ..Default::default()
             },
         };
         if let Some((total, free)) = disk {

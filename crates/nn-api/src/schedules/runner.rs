@@ -146,7 +146,7 @@ pub(crate) async fn run(
         .await
         .map_err(|e| e.to_string())?
         .ok_or("the server no longer exists")?;
-    let orch = state.servers.orchestrator.clone();
+    let node = state.nodes.for_server(&server).clone();
     let running = server.status == "running";
     match schedule.action.as_str() {
         "backup" => {
@@ -171,26 +171,28 @@ pub(crate) async fn run(
             })
         }
         "restart" | "stop" | "start" | "command" | "broadcast" => {
-            let orch = orch.ok_or("Docker isn't available")?;
+            if node.unavailable().is_some() {
+                return Err("Docker isn't available".into());
+            }
             match schedule.action.as_str() {
                 "restart" if running => {
                     let _ = broadcast(state, &server.id, "The server is restarting now.").await;
-                    orch.restart(&server.id).await.map_err(|e| e.to_string())?;
+                    node.restart(&server.id).await.map_err(|e| e.to_string())?;
                     Ok("Restarted.".into())
                 }
                 "stop" if running => {
                     let _ = broadcast(state, &server.id, "The server is stopping now.").await;
-                    orch.stop(&server.id, false)
+                    node.stop(&server.id, false)
                         .await
                         .map_err(|e| e.to_string())?;
                     Ok("Stopped.".into())
                 }
                 "start" if !running => {
-                    orch.start(&server.id).await.map_err(|e| e.to_string())?;
+                    node.start(&server.id).await.map_err(|e| e.to_string())?;
                     Ok("Started.".into())
                 }
                 "command" if running => {
-                    let reply = orch
+                    let reply = node
                         .command(&server.id, &payload.text)
                         .await
                         .map_err(|e| e.to_string())?;
@@ -215,19 +217,18 @@ pub(crate) async fn run(
 
 /// Shows a message to everyone on a running server.
 pub(crate) async fn broadcast(state: &AppState, server_id: &str, text: &str) -> Result<(), String> {
-    let orch = state
-        .servers
-        .orchestrator
-        .as_ref()
-        .ok_or("Docker isn't available")?;
+    let node = state.nodes.for_server_id(server_id);
+    if node.unavailable().is_some() {
+        return Err("Docker isn't available".into());
+    }
     let component = json!(["", { "text": "[Server] ", "color": "gold" }, { "text": text }]);
-    let reply = orch
+    let reply = node
         .command(server_id, &format!("tellraw @a {component}"))
         .await
         .map_err(|e| e.to_string())?;
     // Very old servers don't know tellraw.
     if reply.to_ascii_lowercase().contains("unknown") {
-        orch.command(server_id, &format!("say {text}"))
+        node.command(server_id, &format!("say {text}"))
             .await
             .map_err(|e| e.to_string())?;
     }

@@ -9,9 +9,10 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use nn_api::{ApiConfig, AppState, ProxyRuntime, ServerManager, StoreProxyHooks};
+use nn_api::{ApiConfig, AppState, ProxyRuntime, StoreProxyHooks};
 use nn_auth::{Auth, AuthConfig, SecretBox};
 use nn_events::EventBus;
+use nn_node::{LocalNode, Nodes};
 use nn_orchestrator::{Orchestrator, OrchestratorConfig};
 use nn_proxy::{Limits, ListenerState, Proxy};
 use nn_store::Store;
@@ -111,10 +112,8 @@ async fn serve(config: Config) -> Result<()> {
     let events = EventBus::default();
     let hooks = StoreProxyHooks::new(store.clone());
     let proxy = start_proxy(&config, &store, &events, hooks.clone()).await?;
-    let servers = start_orchestrator(&config, &store, &events, secrets.clone()).await;
-    if let Some(orchestrator) = &servers.orchestrator {
-        hooks.set_orchestrator(orchestrator.clone());
-    }
+    let nodes = Nodes::new(start_orchestrator(&config, &store, &events, secrets.clone()).await);
+    hooks.set_nodes(nodes.clone());
     spawn_proxy_reloader(proxy.clone(), &events);
 
     let upload_settings = config.uploads.settings().map_err(|e| anyhow::anyhow!(e))?;
@@ -132,9 +131,7 @@ async fn serve(config: Config) -> Result<()> {
         Some(config.data.dir.join("cache")),
     ));
     let curseforge_key = content.load_curseforge_key(&store).await;
-    if let Some(orchestrator) = &servers.orchestrator {
-        orchestrator.set_curseforge_key(curseforge_key);
-    }
+    nodes.set_curseforge_key(curseforge_key);
 
     let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
     let notifier = Arc::new(nn_api::notify::Notifier::default());
@@ -153,7 +150,7 @@ async fn serve(config: Config) -> Result<()> {
         }),
         metrics: Some(metrics),
         shutdown: shutdown_rx.clone(),
-        servers,
+        nodes,
         players: Arc::new(nn_api::players::PlayerManager::new(hooks.bans())),
         uploads: Arc::new(uploads),
         content: content.clone(),
@@ -247,14 +244,15 @@ async fn start_proxy(
     Ok(runtime)
 }
 
-/// Connects to Docker and starts the orchestrator. If Docker can't be
-/// reached, the panel still runs; server management reports why it's off.
+/// Connects to Docker and starts the orchestrator, as this machine's node.
+/// If Docker can't be reached, the panel still runs; server management
+/// reports why it's off.
 async fn start_orchestrator(
     config: &Config,
     store: &Store,
     events: &EventBus,
     secrets: Option<Arc<SecretBox>>,
-) -> ServerManager {
+) -> LocalNode {
     // Bind mounts need an absolute path.
     let servers_dir = match fs::canonicalize(&config.data.dir) {
         Ok(dir) => Some(dir.join("servers")),
@@ -265,11 +263,7 @@ async fn start_orchestrator(
     };
     let unavailable = |reason: String| {
         tracing::warn!(socket = %config.docker.socket, %reason, "Docker isn't available; server management is disabled");
-        ServerManager {
-            orchestrator: None,
-            unavailable_reason: Some(Arc::from(reason)),
-            servers_dir: servers_dir.clone(),
-        }
+        LocalNode::without_docker(reason, servers_dir.clone())
     };
     let Some(secrets) = secrets else {
         return unavailable("the data key couldn't be loaded".into());
@@ -277,6 +271,7 @@ async fn start_orchestrator(
     let Some(dir) = servers_dir.clone() else {
         return unavailable("the data directory isn't available".into());
     };
+    let dir_for_node = dir.clone();
     let mut orch_config = OrchestratorConfig::new(dir);
     orch_config.port_range = config.docker.port_range_start..=config.docker.port_range_end;
     orch_config.memory_overhead_percent = config.docker.memory_overhead_percent;
@@ -299,11 +294,7 @@ async fn start_orchestrator(
         Ok(orchestrator) => {
             nn_orchestrator::spawn_background(&orchestrator);
             tracing::info!(socket = %config.docker.socket, "connected to Docker");
-            ServerManager {
-                orchestrator: Some(orchestrator),
-                unavailable_reason: None,
-                servers_dir,
-            }
+            LocalNode::new(orchestrator, dir_for_node)
         }
         Err(e) => unavailable(e.to_string()),
     }

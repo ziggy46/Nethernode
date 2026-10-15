@@ -10,9 +10,10 @@ use axum::Router;
 use axum::body::Body;
 use http::{Request, StatusCode, header};
 use http_body_util::BodyExt;
-use nn_api::{ApiConfig, AppState, ProxyRuntime, ServerManager, StoreProxyHooks};
+use nn_api::{ApiConfig, AppState, ProxyRuntime, StoreProxyHooks};
 use nn_auth::{Auth, AuthConfig};
 use nn_events::{Event, EventBus};
+use nn_node::{LocalNode, Nodes};
 use nn_store::{NewServer, Store};
 use serde_json::{Value, json};
 use tower::ServiceExt;
@@ -55,10 +56,10 @@ async fn harness() -> Harness {
         content: Default::default(),
         notifier: Default::default(),
         install_count: Default::default(),
-        servers: ServerManager {
-            servers_dir: Some(servers_dir.clone()),
-            ..Default::default()
-        },
+        nodes: Nodes::new(LocalNode::without_docker(
+            "not connected",
+            Some(servers_dir.clone()),
+        )),
     });
     let owner = auth
         .setup("owner", "correct horse battery", Default::default())

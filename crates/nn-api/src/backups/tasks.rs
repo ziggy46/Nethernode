@@ -26,7 +26,12 @@ pub async fn recover(state: &AppState) {
             }
         }
     }
-    let Some(servers_dir) = state.servers.servers_dir.clone() else {
+    let Some(servers_dir) = state
+        .nodes
+        .local_node()
+        .servers_dir()
+        .map(std::path::Path::to_path_buf)
+    else {
         return;
     };
     let _ = tokio::task::spawn_blocking(move || {

@@ -150,7 +150,7 @@ impl PlayerManager {
     /// The server's management protocol connection, if it has one this run.
     pub(crate) async fn mgmt(
         &self,
-        orch: &nn_orchestrator::Orchestrator,
+        node: &nn_node::Node,
         server: &Server,
     ) -> Option<Arc<MgmtClient>> {
         let run = server.last_started_at.unwrap_or(0);
@@ -162,8 +162,7 @@ impl PlayerManager {
             Some(MgmtSlot::Unsupported { run: r }) if *r == run => return None,
             _ => {}
         }
-        let (addr, secret) = orch.management(&server.id).await.ok().flatten()?;
-        match MgmtClient::connect(addr, &secret, Duration::from_secs(3)).await {
+        match node.management(&server.id, Duration::from_secs(3)).await? {
             Ok(client) => {
                 let client = Arc::new(client);
                 slots.insert(

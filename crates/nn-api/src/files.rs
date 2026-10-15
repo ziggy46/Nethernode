@@ -23,7 +23,12 @@ pub(crate) async fn open(
         .await
         .map_err(store_error)?
         .ok_or_else(|| ConnectError::not_found("server not found"))?;
-    let Some(servers_dir) = state.servers.servers_dir.clone() else {
+    let Some(servers_dir) = state
+        .nodes
+        .local_node()
+        .servers_dir()
+        .map(std::path::Path::to_path_buf)
+    else {
         return Err(ConnectError::unavailable(
             "the data directory isn't available, so server files can't be reached",
         ));
