@@ -39,6 +39,7 @@ test("every page loads without breaking the content security policy", async ({ p
     "/proxy",
     "/modpacks",
     "/backups",
+    "/nodes",
     "/host",
     "/audit",
     "/users",
