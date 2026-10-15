@@ -60,14 +60,14 @@ export function CreateServerDialog({
     staleTime: 60_000,
     enabled: open,
   });
+  const [draft, setDraft] = useState(() => newDraft(preset));
+  const [step, setStep] = useState(0);
+  const update = useCallback((patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch })), []);
   // Machines that have joined (one waiting to join can't run anything yet).
   const machines = (useQuery({ ...nodesQuery, enabled: open }).data?.nodes ?? []).filter(
     (n) => n.status !== NodeStatus.WAITING,
   );
   const machine = machines.find((n) => n.id === draft.nodeId);
-  const [draft, setDraft] = useState(() => newDraft(preset));
-  const [step, setStep] = useState(0);
-  const update = useCallback((patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch })), []);
   // Admins can also manage the proxy (routes and listeners).
   const canManageProxy = useCanManage();
 
