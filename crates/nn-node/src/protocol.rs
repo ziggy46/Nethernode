@@ -148,6 +148,13 @@ pub enum Request {
         /// Archive name.
         name: String,
     },
+    /// Connect to a server's management protocol port. The reply is its
+    /// secret (none if it has no management port), then the stream carries
+    /// bytes both ways.
+    Management {
+        /// Server ID.
+        id: String,
+    },
     /// Receive an archive from another machine, for a server moving here.
     /// Its bytes follow the request.
     ReceiveBackup {

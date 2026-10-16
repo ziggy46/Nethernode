@@ -414,11 +414,17 @@ impl Node {
         id: &str,
         timeout: Duration,
     ) -> Option<std::result::Result<MgmtClient, MgmtError>> {
-        let orchestrator = self
-            .as_local("The management protocol isn't used for servers on other machines yet.")
-            .ok()?
-            .orchestrator()
-            .ok()?;
+        let local = match self {
+            Self::Remote(remote) => {
+                // Through the agent, which dials the port on its machine.
+                let opened = tokio::time::timeout(timeout, remote.management(id)).await;
+                let (stream, secret) = opened.ok()?.ok()??;
+                let stream: Box<dyn nn_players::MgmtStream> = Box::new(stream);
+                return Some(MgmtClient::connect_over(stream, "127.0.0.1", &secret, timeout).await);
+            }
+            Self::Local(local) => local,
+        };
+        let orchestrator = local.orchestrator().ok()?;
         let (addr, secret) = orchestrator.management(id).await.ok().flatten()?;
         Some(MgmtClient::connect(addr, &secret, timeout).await)
     }

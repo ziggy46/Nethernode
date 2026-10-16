@@ -18,11 +18,12 @@ use futures_util::stream::SplitSink;
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 use tokio::sync::{Mutex, broadcast, oneshot};
+use tokio_tungstenite::WebSocketStream;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
-use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 
 use crate::profile::Profile;
 
@@ -132,7 +133,13 @@ pub struct Notification {
     pub params: Value,
 }
 
-type Sink = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
+/// A connection the protocol runs over: TCP to the server's port, or a
+/// tunnel to a server on another machine.
+pub trait MgmtStream: AsyncRead + AsyncWrite + Send + Unpin + 'static {}
+
+impl<T: AsyncRead + AsyncWrite + Send + Unpin + 'static> MgmtStream for T {}
+
+type Sink = SplitSink<WebSocketStream<Box<dyn MgmtStream>>, Message>;
 type Pending = Arc<std::sync::Mutex<HashMap<u64, oneshot::Sender<Result<Value>>>>>;
 
 /// An authenticated management protocol connection.
@@ -156,24 +163,39 @@ impl MgmtClient {
     /// Connects to `addr` with `secret`. `timeout` bounds the connect and
     /// every call.
     pub async fn connect(addr: SocketAddr, secret: &str, timeout: Duration) -> Result<Self> {
-        let mut request = format!("ws://{addr}")
+        let tcp = tokio::time::timeout(timeout, TcpStream::connect(addr))
+            .await
+            .map_err(|_| MgmtError::Timeout)?
+            .map_err(|e| MgmtError::Connect(e.to_string()))?;
+        Self::connect_over(Box::new(tcp), &addr.to_string(), secret, timeout).await
+    }
+
+    /// Like [`Self::connect`], over an already open `stream` to `host`.
+    pub async fn connect_over(
+        stream: Box<dyn MgmtStream>,
+        host: &str,
+        secret: &str,
+        timeout: Duration,
+    ) -> Result<Self> {
+        let mut request = format!("ws://{host}")
             .into_client_request()
             .map_err(|e| MgmtError::Connect(e.to_string()))?;
         let auth = format!("Bearer {secret}")
             .parse()
             .map_err(|_| MgmtError::Connect("the secret isn't a valid header value".into()))?;
         request.headers_mut().insert("authorization", auth);
-        let (stream, _) = tokio::time::timeout(timeout, tokio_tungstenite::connect_async(request))
-            .await
-            .map_err(|_| MgmtError::Timeout)?
-            .map_err(|e| match e {
-                tokio_tungstenite::tungstenite::Error::Http(response)
-                    if response.status() == 401 || response.status() == 403 =>
-                {
-                    MgmtError::Unauthorized
-                }
-                other => MgmtError::Connect(other.to_string()),
-            })?;
+        let (stream, _) =
+            tokio::time::timeout(timeout, tokio_tungstenite::client_async(request, stream))
+                .await
+                .map_err(|_| MgmtError::Timeout)?
+                .map_err(|e| match e {
+                    tokio_tungstenite::tungstenite::Error::Http(response)
+                        if response.status() == 401 || response.status() == 403 =>
+                    {
+                        MgmtError::Unauthorized
+                    }
+                    other => MgmtError::Connect(other.to_string()),
+                })?;
         let (sink, mut source) = stream.split();
         let pending: Pending = Arc::default();
         let closed = Arc::new(AtomicBool::new(false));

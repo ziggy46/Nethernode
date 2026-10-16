@@ -291,6 +291,19 @@ impl RemoteNode {
         Ok((stream, value))
     }
 
+    /// Opens a tunnel to a server's management protocol port. `None` if it
+    /// has none.
+    pub(crate) async fn management(&self, id: &str) -> Result<Option<(LinkStream, String)>> {
+        let mut stream = self.open().await?;
+        let secret = self
+            .exchange(&mut stream, &Request::Management { id: id.to_owned() })
+            .await?;
+        Ok(serde_json::from_value::<Option<String>>(secret)
+            .ok()
+            .flatten()
+            .map(|secret| (stream, secret)))
+    }
+
     /// Streams backup archive `name` from `offset`.
     pub(crate) async fn open_backup(&self, name: &str, offset: u64) -> Result<LinkStream> {
         let mut stream = self.open().await?;

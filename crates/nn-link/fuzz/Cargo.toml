@@ -1,0 +1,35 @@
+[package]
+name = "nn-link-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+bytes = "1.12"
+futures-util = { version = "0.3", features = ["sink"] }
+libfuzzer-sys = "0.4"
+nn-link = { path = ".." }
+serde = "1"
+tokio = { version = "1.53", features = ["full", "test-util"] }
+tokio-util = { version = "0.7", features = ["codec"] }
+
+# Fuzzing builds with nightly + sanitizers; keep it out of the main workspace.
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "handshake"
+path = "fuzz_targets/handshake.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "messages"
+path = "fuzz_targets/messages.rs"
+test = false
+doc = false
+bench = false

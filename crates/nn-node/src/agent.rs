@@ -226,9 +226,16 @@ pub async fn run(args: AgentArgs, node: Node) -> Result<(), AgentError> {
                 tracing::warn!(panel = %url, error = %e, retry_in = ?backoff, "couldn't reach the panel");
             }
         }
-        tokio::time::sleep(backoff).await;
+        tokio::time::sleep(jittered(backoff)).await;
         backoff = (backoff * 2).min(MAX_BACKOFF);
     }
+}
+
+/// Somewhere between half of `backoff` and all of it, so agents that lost
+/// the panel together (it restarted, say) don't all come back at once.
+fn jittered(backoff: Duration) -> Duration {
+    use rand::RngExt;
+    backoff.mul_f64(rand::rng().random_range(0.5..=1.0))
 }
 
 /// `https://Panel.Example.com/` → `https://panel.example.com`.
@@ -395,6 +402,9 @@ async fn handle(mut stream: LinkStream, node: Node) {
     if let Request::Connect { id } = &request {
         return relay(stream, &node, id).await;
     }
+    if let Request::Management { id } = &request {
+        return relay_management(stream, &node, id).await;
+    }
     if let Request::OpenBackup { name, offset } = &request {
         return send_backup(stream, &node, name, *offset).await;
     }
@@ -482,7 +492,8 @@ async fn answer(node: &Node, request: Request) -> Reply {
         | Request::Connect { .. }
         | Request::Folder { .. }
         | Request::OpenBackup { .. }
-        | Request::ReceiveBackup { .. } => {
+        | Request::ReceiveBackup { .. }
+        | Request::Management { .. } => {
             unreachable!("handled by follow_logs, relay, folder, send_backup, and receive_archive")
         }
     }
@@ -508,6 +519,30 @@ async fn relay(mut stream: LinkStream, node: &Node, id: &str) {
         let _ = messages::send(&mut stream, &reply::<()>(Err(missing))).await;
         return;
     };
+    splice(stream, addr, ()).await;
+}
+
+/// Connects the stream to a server's management protocol port, after
+/// sending its secret.
+async fn relay_management(mut stream: LinkStream, node: &Node, id: &str) {
+    let found = match node {
+        Node::Local(local) => match local.orchestrator() {
+            Ok(o) => o.management(id).await.ok().flatten(),
+            Err(_) => None,
+        },
+        Node::Remote(_) => None,
+    };
+    match found {
+        Some((addr, secret)) => splice(stream, addr, Some(secret)).await,
+        None => {
+            let _ = messages::send(&mut stream, &reply(Ok(None::<String>))).await;
+        }
+    }
+}
+
+/// Dials `addr`, answers with `answer`, then passes bytes both ways until
+/// either side closes.
+async fn splice<T: Serialize>(mut stream: LinkStream, addr: std::net::SocketAddr, answer: T) {
     let mut server = match TcpStream::connect(addr).await {
         Ok(server) => server,
         Err(e) => {
@@ -520,7 +555,10 @@ async fn relay(mut stream: LinkStream, node: &Node, id: &str) {
         }
     };
     let _ = server.set_nodelay(true);
-    if messages::send(&mut stream, &reply(Ok(()))).await.is_err() {
+    if messages::send(&mut stream, &reply(Ok(answer)))
+        .await
+        .is_err()
+    {
         return;
     }
     let _ = tokio::io::copy_bidirectional(&mut stream, &mut server).await;
