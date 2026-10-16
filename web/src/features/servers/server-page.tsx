@@ -299,7 +299,9 @@ function Controls({ server }: { server: Server }) {
   const [killOpen, setKillOpen] = useState(false);
   const up = server.status === ServerStatus.RUNNING || server.status === ServerStatus.STARTING;
   const busy = action.isPending || [ServerStatus.INSTALLING, ServerStatus.STOPPING].includes(server.status);
-  const disabled = busy || !docker || !canManage;
+  // A server on another machine is reachable while that machine's agent is.
+  const reachable = server.nodeId === "local" ? docker : !server.nodeOffline;
+  const disabled = busy || !reachable || !canManage;
   const limitBytes = memoryLimitBytes(server.settings?.memoryMb ?? 0, server.loader);
 
   return (

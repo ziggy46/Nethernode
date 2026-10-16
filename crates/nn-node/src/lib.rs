@@ -58,8 +58,9 @@ pub enum NodeError {
     /// The agent tried and failed.
     #[error(transparent)]
     Remote(#[from] protocol::RemoteError),
-    /// Something servers on other machines can't do yet.
-    #[error("{0} isn't available for servers on other machines yet.")]
+    /// Something servers on other machines can't do yet (the message says
+    /// what).
+    #[error("{0}")]
     NotYet(&'static str),
 }
 
@@ -155,11 +156,11 @@ pub enum Node {
 }
 
 impl Node {
-    /// This machine, or an error for features other machines don't have yet.
-    fn as_local(&self, feature: &'static str) -> Result<&LocalNode> {
+    /// This machine, or `not_yet` for what other machines can't do yet.
+    fn as_local(&self, not_yet: &'static str) -> Result<&LocalNode> {
         match self {
             Self::Local(node) => Ok(node),
-            Self::Remote(_) => Err(NodeError::NotYet(feature)),
+            Self::Remote(_) => Err(NodeError::NotYet(not_yet)),
         }
     }
 
@@ -354,7 +355,9 @@ impl Node {
     /// The server's folder. Fails if it doesn't exist yet (servers create it
     /// on their first start).
     pub async fn folder(&self, server: &Server) -> Result<Folder> {
-        self.as_local("Files")?.open_folder(server).await
+        self.as_local("Files of servers on other machines can't be opened from the panel yet.")?
+            .open_folder(server)
+            .await
     }
 
     // ----- console and protocols -----
@@ -393,7 +396,7 @@ impl Node {
         timeout: Duration,
     ) -> Option<std::result::Result<MgmtClient, MgmtError>> {
         let orchestrator = self
-            .as_local("The management protocol")
+            .as_local("The management protocol isn't used for servers on other machines yet.")
             .ok()?
             .orchestrator()
             .ok()?;

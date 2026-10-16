@@ -181,7 +181,8 @@ export function ServerCard({ server, now }: { server: Server; now: number }) {
               <Button
                 size="mini"
                 variant="accent"
-                disabled={action.isPending}
+                disabled={action.isPending || server.nodeOffline}
+                title={server.nodeOffline ? `${server.nodeName} is offline` : undefined}
                 onClick={() => action.mutate("start")}
               >
                 <Play />

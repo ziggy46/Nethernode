@@ -191,6 +191,7 @@ export function CreateServerDialog({
             .join(" · ") || "Newest"
         : `${draft.mcVersion}${draft.loaderVersion ? ` · ${loaderName(draft.software)} ${draft.loaderVersion}` : ""}`,
     ],
+    ...(machines.length > 1 ? ([["Machine", machine?.name ?? "This machine"]] as [string, string][]) : []),
     ["Memory", `${(draft.memoryMb / 1024).toFixed(draft.memoryMb % 1024 ? 1 : 0)} GB`],
     [
       "Address",

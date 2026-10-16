@@ -14,6 +14,9 @@ use nn_store::Server;
 use crate::jobs::Progress;
 use crate::{FileReader, LocalNode, Node};
 
+/// Why a server on another machine has no backups (yet).
+const NOT_YET: &str = "Backups of servers on other machines aren't available yet.";
+
 /// A finished archive: its size on disk, and what's in it.
 #[derive(Debug, Clone, Copy)]
 pub struct Archive {
@@ -211,7 +214,7 @@ impl Node {
     /// the system can't say.
     pub async fn backups_free_space(&self) -> Result<Option<u64>, String> {
         let dir = self
-            .as_local("Backups")
+            .as_local(NOT_YET)
             .map_err(|e| e.to_string())?
             .backups_dir()
             .ok_or("the data folder isn't available, so backups can't be made")?;
@@ -228,7 +231,7 @@ impl Node {
         name: &str,
         job_id: &str,
     ) -> Result<Archive, String> {
-        let local = self.as_local("Backups").map_err(|e| e.to_string())?;
+        let local = self.as_local(NOT_YET).map_err(|e| e.to_string())?;
         local
             .locked(server, async |current| {
                 local.make(&current, name, job_id).await
@@ -245,7 +248,7 @@ impl Node {
         pre_restore: &str,
         job_id: &str,
     ) -> Result<Restored, String> {
-        let local = self.as_local("Backups").map_err(|e| e.to_string())?;
+        let local = self.as_local(NOT_YET).map_err(|e| e.to_string())?;
         let source = local
             .archive_path(source)
             .ok_or("the backup's file is missing")?;
@@ -277,7 +280,7 @@ impl Node {
 
     /// Whether archive `name` is on this node.
     pub async fn has_backup(&self, name: &str) -> bool {
-        let Ok(local) = self.as_local("Backups") else {
+        let Ok(local) = self.as_local(NOT_YET) else {
             return false;
         };
         match local.archive_path(name) {
@@ -288,7 +291,7 @@ impl Node {
 
     /// Archive `name`, to download.
     pub async fn open_backup(&self, name: &str) -> Option<FileReader> {
-        let path = self.as_local("Backups").ok()?.archive_path(name)?;
+        let path = self.as_local(NOT_YET).ok()?.archive_path(name)?;
         tokio::task::spawn_blocking(move || {
             let file = std::fs::File::open(&path)?;
             let size = file.metadata()?.len();
@@ -301,7 +304,7 @@ impl Node {
 
     /// Deletes archive `name`. Gone already counts as deleted.
     pub async fn delete_backup(&self, name: &str) -> Result<(), String> {
-        let local = self.as_local("Backups").map_err(|e| e.to_string())?;
+        let local = self.as_local(NOT_YET).map_err(|e| e.to_string())?;
         let Some(path) = local.archive_path(name) else {
             return Ok(());
         };
@@ -317,7 +320,7 @@ impl Node {
     /// middle of: removes `unfinished` archives and partial files, and
     /// finishes or undoes half-swapped restores.
     pub async fn recover_backups(&self, unfinished: &[String]) {
-        let Ok(local) = self.as_local("Backups") else {
+        let Ok(local) = self.as_local(NOT_YET) else {
             return;
         };
         if let Some(dir) = local.backups_dir() {
