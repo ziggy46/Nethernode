@@ -24,6 +24,14 @@ service NodeService {
   // the agent is connected) and the backups kept there; their files stay
   // on that machine.
   rpc DeleteNode(DeleteNodeRequest) returns (DeleteNodeResponse);
+
+  // Asks a connected node's agent to update itself to the panel's version,
+  // in the background. Progress shows in the node's `updating` and
+  // `update_error`.
+  rpc UpdateNode(UpdateNodeRequest) returns (UpdateNodeResponse);
+
+  // Whether agents older than the panel are updated as they connect.
+  rpc SetAutoUpdate(SetAutoUpdateRequest) returns (SetAutoUpdateResponse);
 }
 
 enum NodeStatus {
@@ -69,6 +77,12 @@ message Node {
   int64 created_at_ms = 10;
   // A join code is waiting to be used.
   bool join_pending = 11;
+  // The agent runs another version than the panel and can be updated.
+  bool update_available = 12;
+  // An update is under way.
+  bool updating = 13;
+  // Why the last update failed.
+  string update_error = 14;
 }
 
 // How to start an agent that joins this panel.
@@ -86,6 +100,10 @@ message ListNodesResponse {
   repeated Node nodes = 1;
   // Why agents can't connect, when they can't (no data key).
   string unavailable_reason = 2;
+  // Agents older than the panel are updated as they connect.
+  bool auto_update = 3;
+  // The panel's version, which nodes are updated to.
+  string panel_version = 4;
 }
 
 message CreateNodeRequest {
@@ -120,3 +138,15 @@ message DeleteNodeRequest {
 }
 
 message DeleteNodeResponse {}
+
+message UpdateNodeRequest {
+  string id = 1;
+}
+
+message UpdateNodeResponse {}
+
+message SetAutoUpdateRequest {
+  bool enabled = 1;
+}
+
+message SetAutoUpdateResponse {}

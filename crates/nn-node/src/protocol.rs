@@ -148,6 +148,14 @@ pub enum Request {
         /// Archive name.
         name: String,
     },
+    /// Update this agent to NetherNode `version`. The reply says how it went;
+    /// on success the agent then restarts as that version. Every version
+    /// must keep accepting this request as it is, since it's how an agent
+    /// too old for the panel gets updated.
+    SelfUpdate {
+        /// The version to run, like `0.2.1`.
+        version: String,
+    },
     /// Connect to a server's management protocol port. The reply is its
     /// secret (none if it has no management port), then the stream carries
     /// bytes both ways.

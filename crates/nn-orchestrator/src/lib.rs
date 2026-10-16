@@ -14,6 +14,7 @@ pub mod ports;
 pub mod properties;
 pub mod ring;
 pub mod runtime;
+pub mod self_update;
 pub mod spec;
 mod watcher;
 

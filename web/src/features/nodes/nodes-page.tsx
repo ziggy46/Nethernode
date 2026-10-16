@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Copy, Cpu, KeyRound, Pencil, Plus, Trash2, TriangleAlert } from "lucide-react";
-import { useState } from "react";
+import { Copy, Cpu, KeyRound, Pencil, Plus, RefreshCw, Trash2, TriangleAlert } from "lucide-react";
+import { useId, useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ErrorAlert, Field } from "@/components/ui/field";
+import { Switch } from "@/components/ui/switch";
 import { formatBytes } from "@/features/servers/format";
 import { type JoinCode, type Node, NodeStatus } from "@/gen/nethernode/v1/nodes_pb";
 import { errorMessage } from "@/lib/api";
@@ -63,6 +64,9 @@ export function NodesPage() {
         }
       />
       {unavailable && <ErrorAlert>Other machines can't join: {unavailable}.</ErrorAlert>}
+      {canManage && nodes.data?.nodes.some((n) => !n.local) && (
+        <AutoUpdate enabled={nodes.data.autoUpdate} version={nodes.data.panelVersion} />
+      )}
       {nodes.isError ? (
         <div className="rounded-lg border border-divider border-dashed bg-surface-subtle">
           <EmptyState
@@ -80,7 +84,13 @@ export function NodesPage() {
       ) : (
         <div className="grid grid-cols-2 gap-[18px] below-lg:grid-cols-1">
           {nodes.data.nodes.map((node) => (
-            <NodeCard key={node.id} node={node} canManage={canManage} onAction={setDialog} />
+            <NodeCard
+              key={node.id}
+              node={node}
+              panelVersion={nodes.data.panelVersion}
+              canManage={canManage}
+              onAction={setDialog}
+            />
           ))}
         </div>
       )}
@@ -100,7 +110,42 @@ export function NodesPage() {
   );
 }
 
+/** The switch for updating older nodes as they connect. */
+function AutoUpdate({ enabled, version }: { enabled: boolean; version: string }) {
+  const client = useQueryClient();
+  const id = useId();
+  const set = useMutation({
+    mutationFn: (on: boolean) => nodeClient.setAutoUpdate({ enabled: on }),
+    onSuccess: () => void client.invalidateQueries({ queryKey: nodesKey }),
+    onError: (e) => toast.error(errorMessage(e)),
+  });
+  return (
+    <div className="mb-[18px] flex items-start justify-between gap-5 rounded-lg border border-divider bg-surface-subtle px-4 py-3">
+      <label htmlFor={id} className="text-label">
+        <span className="block font-[550]">Update nodes automatically</span>
+        <span className="mt-0.5 block text-meta text-text-muted">
+          Nodes on an older version than this panel (v{version}) update themselves when they connect. Their
+          servers keep running.
+        </span>
+      </label>
+      <Switch
+        id={id}
+        checked={set.isPending ? Boolean(set.variables) : enabled}
+        disabled={set.isPending}
+        onCheckedChange={(on) => set.mutate(on)}
+      />
+    </div>
+  );
+}
+
 function StatusBadge({ node }: { node: Node }) {
+  if (node.updating) {
+    return (
+      <Badge tone="info" icon={<Dot pulse />}>
+        Updating
+      </Badge>
+    );
+  }
   if (node.status === NodeStatus.ONLINE && node.updateNeeded) {
     return (
       <Badge tone="warning" icon={<Dot />}>
@@ -132,14 +177,22 @@ function StatusBadge({ node }: { node: Node }) {
 
 function NodeCard({
   node,
+  panelVersion,
   canManage,
   onAction,
 }: {
   node: Node;
+  panelVersion: string;
   canManage: boolean;
   onAction: (dialog: Dialogs) => void;
 }) {
   const now = useNow();
+  const client = useQueryClient();
+  const update = useMutation({
+    mutationFn: () => nodeClient.updateNode({ id: node.id }),
+    onSuccess: () => void client.invalidateQueries({ queryKey: nodesKey }),
+    onError: (e) => toast.error(errorMessage(e)),
+  });
   const regenerate = useMutation({
     mutationFn: () => nodeClient.regenerateJoinCode({ id: node.id }),
     onSuccess: ({ join }) => join && onAction({ kind: "join", node, join }),
@@ -164,7 +217,12 @@ function NodeCard({
         ],
       ]
     : [];
-  if (node.version) facts.push(["NetherNode", `v${node.version}`]);
+  if (node.version) {
+    facts.push([
+      "NetherNode",
+      node.updateAvailable ? `v${node.version} (panel: v${panelVersion})` : `v${node.version}`,
+    ]);
+  }
   if (node.status === NodeStatus.OFFLINE && node.lastSeenMs !== undefined) {
     facts.push(["Last heard from", ago(node.lastSeenMs, now)]);
   }
@@ -202,7 +260,23 @@ function NodeCard({
           ))}
         </dl>
       )}
+      {node.updateError && !node.updating && (
+        <p className="mt-3 text-danger text-meta" role="alert">
+          The update didn't work: {node.updateError}
+        </p>
+      )}
       <div className="mt-auto flex flex-wrap gap-2 pt-4">
+        {canManage && node.status === NodeStatus.ONLINE && node.updateAvailable && (
+          <Button
+            size="mini"
+            variant="primary"
+            disabled={node.updating || update.isPending}
+            onClick={() => update.mutate()}
+          >
+            <RefreshCw />
+            {node.updating ? "Updating…" : `Update to v${panelVersion}`}
+          </Button>
+        )}
         {node.local && (
           <Button size="mini" asChild>
             <Link to="/host">

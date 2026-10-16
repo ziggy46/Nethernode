@@ -246,6 +246,11 @@ impl Orchestrator {
         Ok(work(server).await)
     }
 
+    /// The Docker connection.
+    pub fn docker(&self) -> &Docker {
+        &self.docker
+    }
+
     /// Where servers' folders are.
     pub fn servers_dir(&self) -> &std::path::Path {
         &self.config.servers_dir

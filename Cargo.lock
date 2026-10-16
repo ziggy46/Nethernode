@@ -2380,7 +2380,7 @@ dependencies = [
 
 [[package]]
 name = "nethernode"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "axum",
@@ -2419,7 +2419,7 @@ dependencies = [
 
 [[package]]
 name = "nn-api"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "axum",
  "base64 0.23.1",
@@ -2469,7 +2469,7 @@ dependencies = [
 
 [[package]]
 name = "nn-auth"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "argon2",
  "base64 0.23.1",
@@ -2494,7 +2494,7 @@ dependencies = [
 
 [[package]]
 name = "nn-catalog"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "hex",
  "jiff",
@@ -2513,7 +2513,7 @@ dependencies = [
 
 [[package]]
 name = "nn-events"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "serde",
  "tokio",
@@ -2521,7 +2521,7 @@ dependencies = [
 
 [[package]]
 name = "nn-files"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "cap-std",
  "hex",
@@ -2541,7 +2541,7 @@ dependencies = [
 
 [[package]]
 name = "nn-link"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "base64 0.23.1",
  "bytes",
@@ -2561,7 +2561,7 @@ dependencies = [
 
 [[package]]
 name = "nn-mcproto"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "bytes",
  "proptest",
@@ -2574,9 +2574,10 @@ dependencies = [
 
 [[package]]
 name = "nn-node"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "bytes",
+ "flate2",
  "futures-util",
  "hex",
  "http",
@@ -2591,10 +2592,14 @@ dependencies = [
  "nn-store",
  "nn-uploads",
  "rand 0.10.3",
+ "reqwest",
  "rustls",
  "rustls-platform-verifier",
  "serde",
  "serde_json",
+ "sha2 0.11.1",
+ "tar",
+ "tempfile",
  "thiserror",
  "tokio",
  "tokio-rustls",
@@ -2604,7 +2609,7 @@ dependencies = [
 
 [[package]]
 name = "nn-orchestrator"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "base64 0.23.1",
  "bollard",
@@ -2629,7 +2634,7 @@ dependencies = [
 
 [[package]]
 name = "nn-players"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "base64 0.23.1",
  "flate2",
@@ -2649,7 +2654,7 @@ dependencies = [
 
 [[package]]
 name = "nn-proxy"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "arc-swap",
  "bytes",
@@ -2666,7 +2671,7 @@ dependencies = [
 
 [[package]]
 name = "nn-store"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -2680,7 +2685,7 @@ dependencies = [
 
 [[package]]
 name = "nn-uploads"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "base64 0.23.1",
  "bytes",

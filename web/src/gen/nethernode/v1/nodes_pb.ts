@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file nethernode/v1/nodes.proto.
  */
 export const file_nethernode_v1_nodes: GenFile = /*@__PURE__*/
-  fileDesc("ChluZXRoZXJub2RlL3YxL25vZGVzLnByb3RvEg1uZXRoZXJub2RlLnYxIogCCghOb2RlSG9zdBIYChBkb2NrZXJfYXZhaWxhYmxlGAEgASgIEhQKDGRvY2tlcl9lcnJvchgCIAEoCRIQCghob3N0bmFtZRgDIAEoCRIYChBvcGVyYXRpbmdfc3lzdGVtGAQgASgJEhYKDmRvY2tlcl92ZXJzaW9uGAUgASgJEgwKBGNwdXMYBiABKA0SFAoMbWVtb3J5X2J5dGVzGAcgASgEEh0KEGRpc2tfdG90YWxfYnl0ZXMYCCABKARIAIgBARIcCg9kaXNrX2ZyZWVfYnl0ZXMYCSABKARIAYgBAUITChFfZGlza190b3RhbF9ieXRlc0ISChBfZGlza19mcmVlX2J5dGVzIpgCCgROb2RlEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSDQoFbG9jYWwYAyABKAgSKQoGc3RhdHVzGAQgASgOMhkubmV0aGVybm9kZS52MS5Ob2RlU3RhdHVzEg8KB3ZlcnNpb24YBSABKAkSFQoNdXBkYXRlX25lZWRlZBgGIAEoCBIZCgxsYXN0X3NlZW5fbXMYByABKANIAIgBARIlCgRob3N0GAggASgLMhcubmV0aGVybm9kZS52MS5Ob2RlSG9zdBIUCgxzZXJ2ZXJfY291bnQYCSABKA0SFQoNY3JlYXRlZF9hdF9tcxgKIAEoAxIUCgxqb2luX3BlbmRpbmcYCyABKAhCDwoNX2xhc3Rfc2Vlbl9tcyI/CghKb2luQ29kZRINCgV0b2tlbhgBIAEoCRIVCg1leHBpcmVzX2F0X21zGAIgASgDEg0KBWltYWdlGAMgASgJIhIKEExpc3ROb2Rlc1JlcXVlc3QiUwoRTGlzdE5vZGVzUmVzcG9uc2USIgoFbm9kZXMYASADKAsyEy5uZXRoZXJub2RlLnYxLk5vZGUSGgoSdW5hdmFpbGFibGVfcmVhc29uGAIgASgJIiEKEUNyZWF0ZU5vZGVSZXF1ZXN0EgwKBG5hbWUYASABKAkiXgoSQ3JlYXRlTm9kZVJlc3BvbnNlEiEKBG5vZGUYASABKAsyEy5uZXRoZXJub2RlLnYxLk5vZGUSJQoEam9pbhgCIAEoCzIXLm5ldGhlcm5vZGUudjEuSm9pbkNvZGUiJwoZUmVnZW5lcmF0ZUpvaW5Db2RlUmVxdWVzdBIKCgJpZBgBIAEoCSJDChpSZWdlbmVyYXRlSm9pbkNvZGVSZXNwb25zZRIlCgRqb2luGAEgASgLMhcubmV0aGVybm9kZS52MS5Kb2luQ29kZSItChFSZW5hbWVOb2RlUmVxdWVzdBIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJIjcKElJlbmFtZU5vZGVSZXNwb25zZRIhCgRub2RlGAEgASgLMhMubmV0aGVybm9kZS52MS5Ob2RlIjcKEURlbGV0ZU5vZGVSZXF1ZXN0EgoKAmlkGAEgASgJEhYKDmZvcmdldF9zZXJ2ZXJzGAIgASgIIhQKEkRlbGV0ZU5vZGVSZXNwb25zZSpzCgpOb2RlU3RhdHVzEhsKF05PREVfU1RBVFVTX1VOU1BFQ0lGSUVEEAASFgoSTk9ERV9TVEFUVVNfT05MSU5FEAESFwoTTk9ERV9TVEFUVVNfT0ZGTElORRACEhcKE05PREVfU1RBVFVTX1dBSVRJTkcQAzLGAwoLTm9kZVNlcnZpY2USUwoJTGlzdE5vZGVzEh8ubmV0aGVybm9kZS52MS5MaXN0Tm9kZXNSZXF1ZXN0GiAubmV0aGVybm9kZS52MS5MaXN0Tm9kZXNSZXNwb25zZSIDkAIBElEKCkNyZWF0ZU5vZGUSIC5uZXRoZXJub2RlLnYxLkNyZWF0ZU5vZGVSZXF1ZXN0GiEubmV0aGVybm9kZS52MS5DcmVhdGVOb2RlUmVzcG9uc2USaQoSUmVnZW5lcmF0ZUpvaW5Db2RlEigubmV0aGVybm9kZS52MS5SZWdlbmVyYXRlSm9pbkNvZGVSZXF1ZXN0GikubmV0aGVybm9kZS52MS5SZWdlbmVyYXRlSm9pbkNvZGVSZXNwb25zZRJRCgpSZW5hbWVOb2RlEiAubmV0aGVybm9kZS52MS5SZW5hbWVOb2RlUmVxdWVzdBohLm5ldGhlcm5vZGUudjEuUmVuYW1lTm9kZVJlc3BvbnNlElEKCkRlbGV0ZU5vZGUSIC5uZXRoZXJub2RlLnYxLkRlbGV0ZU5vZGVSZXF1ZXN0GiEubmV0aGVybm9kZS52MS5EZWxldGVOb2RlUmVzcG9uc2ViBnByb3RvMw");
+  fileDesc("ChluZXRoZXJub2RlL3YxL25vZGVzLnByb3RvEg1uZXRoZXJub2RlLnYxIogCCghOb2RlSG9zdBIYChBkb2NrZXJfYXZhaWxhYmxlGAEgASgIEhQKDGRvY2tlcl9lcnJvchgCIAEoCRIQCghob3N0bmFtZRgDIAEoCRIYChBvcGVyYXRpbmdfc3lzdGVtGAQgASgJEhYKDmRvY2tlcl92ZXJzaW9uGAUgASgJEgwKBGNwdXMYBiABKA0SFAoMbWVtb3J5X2J5dGVzGAcgASgEEh0KEGRpc2tfdG90YWxfYnl0ZXMYCCABKARIAIgBARIcCg9kaXNrX2ZyZWVfYnl0ZXMYCSABKARIAYgBAUITChFfZGlza190b3RhbF9ieXRlc0ISChBfZGlza19mcmVlX2J5dGVzItoCCgROb2RlEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSDQoFbG9jYWwYAyABKAgSKQoGc3RhdHVzGAQgASgOMhkubmV0aGVybm9kZS52MS5Ob2RlU3RhdHVzEg8KB3ZlcnNpb24YBSABKAkSFQoNdXBkYXRlX25lZWRlZBgGIAEoCBIZCgxsYXN0X3NlZW5fbXMYByABKANIAIgBARIlCgRob3N0GAggASgLMhcubmV0aGVybm9kZS52MS5Ob2RlSG9zdBIUCgxzZXJ2ZXJfY291bnQYCSABKA0SFQoNY3JlYXRlZF9hdF9tcxgKIAEoAxIUCgxqb2luX3BlbmRpbmcYCyABKAgSGAoQdXBkYXRlX2F2YWlsYWJsZRgMIAEoCBIQCgh1cGRhdGluZxgNIAEoCBIUCgx1cGRhdGVfZXJyb3IYDiABKAlCDwoNX2xhc3Rfc2Vlbl9tcyI/CghKb2luQ29kZRINCgV0b2tlbhgBIAEoCRIVCg1leHBpcmVzX2F0X21zGAIgASgDEg0KBWltYWdlGAMgASgJIhIKEExpc3ROb2Rlc1JlcXVlc3QifwoRTGlzdE5vZGVzUmVzcG9uc2USIgoFbm9kZXMYASADKAsyEy5uZXRoZXJub2RlLnYxLk5vZGUSGgoSdW5hdmFpbGFibGVfcmVhc29uGAIgASgJEhMKC2F1dG9fdXBkYXRlGAMgASgIEhUKDXBhbmVsX3ZlcnNpb24YBCABKAkiIQoRQ3JlYXRlTm9kZVJlcXVlc3QSDAoEbmFtZRgBIAEoCSJeChJDcmVhdGVOb2RlUmVzcG9uc2USIQoEbm9kZRgBIAEoCzITLm5ldGhlcm5vZGUudjEuTm9kZRIlCgRqb2luGAIgASgLMhcubmV0aGVybm9kZS52MS5Kb2luQ29kZSInChlSZWdlbmVyYXRlSm9pbkNvZGVSZXF1ZXN0EgoKAmlkGAEgASgJIkMKGlJlZ2VuZXJhdGVKb2luQ29kZVJlc3BvbnNlEiUKBGpvaW4YASABKAsyFy5uZXRoZXJub2RlLnYxLkpvaW5Db2RlIi0KEVJlbmFtZU5vZGVSZXF1ZXN0EgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkiNwoSUmVuYW1lTm9kZVJlc3BvbnNlEiEKBG5vZGUYASABKAsyEy5uZXRoZXJub2RlLnYxLk5vZGUiNwoRRGVsZXRlTm9kZVJlcXVlc3QSCgoCaWQYASABKAkSFgoOZm9yZ2V0X3NlcnZlcnMYAiABKAgiFAoSRGVsZXRlTm9kZVJlc3BvbnNlIh8KEVVwZGF0ZU5vZGVSZXF1ZXN0EgoKAmlkGAEgASgJIhQKElVwZGF0ZU5vZGVSZXNwb25zZSInChRTZXRBdXRvVXBkYXRlUmVxdWVzdBIPCgdlbmFibGVkGAEgASgIIhcKFVNldEF1dG9VcGRhdGVSZXNwb25zZSpzCgpOb2RlU3RhdHVzEhsKF05PREVfU1RBVFVTX1VOU1BFQ0lGSUVEEAASFgoSTk9ERV9TVEFUVVNfT05MSU5FEAESFwoTTk9ERV9TVEFUVVNfT0ZGTElORRACEhcKE05PREVfU1RBVFVTX1dBSVRJTkcQAzL1BAoLTm9kZVNlcnZpY2USUwoJTGlzdE5vZGVzEh8ubmV0aGVybm9kZS52MS5MaXN0Tm9kZXNSZXF1ZXN0GiAubmV0aGVybm9kZS52MS5MaXN0Tm9kZXNSZXNwb25zZSIDkAIBElEKCkNyZWF0ZU5vZGUSIC5uZXRoZXJub2RlLnYxLkNyZWF0ZU5vZGVSZXF1ZXN0GiEubmV0aGVybm9kZS52MS5DcmVhdGVOb2RlUmVzcG9uc2USaQoSUmVnZW5lcmF0ZUpvaW5Db2RlEigubmV0aGVybm9kZS52MS5SZWdlbmVyYXRlSm9pbkNvZGVSZXF1ZXN0GikubmV0aGVybm9kZS52MS5SZWdlbmVyYXRlSm9pbkNvZGVSZXNwb25zZRJRCgpSZW5hbWVOb2RlEiAubmV0aGVybm9kZS52MS5SZW5hbWVOb2RlUmVxdWVzdBohLm5ldGhlcm5vZGUudjEuUmVuYW1lTm9kZVJlc3BvbnNlElEKCkRlbGV0ZU5vZGUSIC5uZXRoZXJub2RlLnYxLkRlbGV0ZU5vZGVSZXF1ZXN0GiEubmV0aGVybm9kZS52MS5EZWxldGVOb2RlUmVzcG9uc2USUQoKVXBkYXRlTm9kZRIgLm5ldGhlcm5vZGUudjEuVXBkYXRlTm9kZVJlcXVlc3QaIS5uZXRoZXJub2RlLnYxLlVwZGF0ZU5vZGVSZXNwb25zZRJaCg1TZXRBdXRvVXBkYXRlEiMubmV0aGVybm9kZS52MS5TZXRBdXRvVXBkYXRlUmVxdWVzdBokLm5ldGhlcm5vZGUudjEuU2V0QXV0b1VwZGF0ZVJlc3BvbnNlYgZwcm90bzM");
 
 /**
  * What a node's machine reported, or this machine right now.
@@ -144,6 +144,27 @@ export type Node = Message<"nethernode.v1.Node"> & {
    * @generated from field: bool join_pending = 11;
    */
   joinPending: boolean;
+
+  /**
+   * The agent runs another version than the panel and can be updated.
+   *
+   * @generated from field: bool update_available = 12;
+   */
+  updateAvailable: boolean;
+
+  /**
+   * An update is under way.
+   *
+   * @generated from field: bool updating = 13;
+   */
+  updating: boolean;
+
+  /**
+   * Why the last update failed.
+   *
+   * @generated from field: string update_error = 14;
+   */
+  updateError: string;
 };
 
 /**
@@ -214,6 +235,20 @@ export type ListNodesResponse = Message<"nethernode.v1.ListNodesResponse"> & {
    * @generated from field: string unavailable_reason = 2;
    */
   unavailableReason: string;
+
+  /**
+   * Agents older than the panel are updated as they connect.
+   *
+   * @generated from field: bool auto_update = 3;
+   */
+  autoUpdate: boolean;
+
+  /**
+   * The panel's version, which nodes are updated to.
+   *
+   * @generated from field: string panel_version = 4;
+   */
+  panelVersion: string;
 };
 
 /**
@@ -371,6 +406,66 @@ export const DeleteNodeResponseSchema: GenMessage<DeleteNodeResponse> = /*@__PUR
   messageDesc(file_nethernode_v1_nodes, 12);
 
 /**
+ * @generated from message nethernode.v1.UpdateNodeRequest
+ */
+export type UpdateNodeRequest = Message<"nethernode.v1.UpdateNodeRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+};
+
+/**
+ * Describes the message nethernode.v1.UpdateNodeRequest.
+ * Use `create(UpdateNodeRequestSchema)` to create a new message.
+ */
+export const UpdateNodeRequestSchema: GenMessage<UpdateNodeRequest> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_nodes, 13);
+
+/**
+ * @generated from message nethernode.v1.UpdateNodeResponse
+ */
+export type UpdateNodeResponse = Message<"nethernode.v1.UpdateNodeResponse"> & {
+};
+
+/**
+ * Describes the message nethernode.v1.UpdateNodeResponse.
+ * Use `create(UpdateNodeResponseSchema)` to create a new message.
+ */
+export const UpdateNodeResponseSchema: GenMessage<UpdateNodeResponse> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_nodes, 14);
+
+/**
+ * @generated from message nethernode.v1.SetAutoUpdateRequest
+ */
+export type SetAutoUpdateRequest = Message<"nethernode.v1.SetAutoUpdateRequest"> & {
+  /**
+   * @generated from field: bool enabled = 1;
+   */
+  enabled: boolean;
+};
+
+/**
+ * Describes the message nethernode.v1.SetAutoUpdateRequest.
+ * Use `create(SetAutoUpdateRequestSchema)` to create a new message.
+ */
+export const SetAutoUpdateRequestSchema: GenMessage<SetAutoUpdateRequest> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_nodes, 15);
+
+/**
+ * @generated from message nethernode.v1.SetAutoUpdateResponse
+ */
+export type SetAutoUpdateResponse = Message<"nethernode.v1.SetAutoUpdateResponse"> & {
+};
+
+/**
+ * Describes the message nethernode.v1.SetAutoUpdateResponse.
+ * Use `create(SetAutoUpdateResponseSchema)` to create a new message.
+ */
+export const SetAutoUpdateResponseSchema: GenMessage<SetAutoUpdateResponse> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_nodes, 16);
+
+/**
  * @generated from enum nethernode.v1.NodeStatus
  */
 export enum NodeStatus {
@@ -464,6 +559,28 @@ export const NodeService: GenService<{
     methodKind: "unary";
     input: typeof DeleteNodeRequestSchema;
     output: typeof DeleteNodeResponseSchema;
+  },
+  /**
+   * Asks a connected node's agent to update itself to the panel's version,
+   * in the background. Progress shows in the node's `updating` and
+   * `update_error`.
+   *
+   * @generated from rpc nethernode.v1.NodeService.UpdateNode
+   */
+  updateNode: {
+    methodKind: "unary";
+    input: typeof UpdateNodeRequestSchema;
+    output: typeof UpdateNodeResponseSchema;
+  },
+  /**
+   * Whether agents older than the panel are updated as they connect.
+   *
+   * @generated from rpc nethernode.v1.NodeService.SetAutoUpdate
+   */
+  setAutoUpdate: {
+    methodKind: "unary";
+    input: typeof SetAutoUpdateRequestSchema;
+    output: typeof SetAutoUpdateResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_nethernode_v1_nodes, 0);

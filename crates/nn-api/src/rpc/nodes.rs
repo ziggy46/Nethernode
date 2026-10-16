@@ -44,6 +44,7 @@ impl NodeRpc {
         } else if let Some(live) = self.state.agents.live(&node.id) {
             out.status = pb::NodeStatus::NODE_STATUS_ONLINE.into();
             out.update_needed = !compatible(VERSION, &live.version);
+            out.update_available = live.version != VERSION;
             out.version = live.version;
             if let Some(host) = live.host {
                 out.host = proto_host(host).into();
@@ -66,6 +67,11 @@ impl NodeRpc {
             {
                 out.host = proto_host(host).into();
             }
+        }
+        if !node.is_local() {
+            let update = self.state.agents.update_state(&node.id);
+            out.updating = update.updating;
+            out.update_error = update.error.unwrap_or_default();
         }
         out.id = node.id;
         out.name = node.name;
@@ -211,8 +217,81 @@ impl pb::NodeService for NodeRpc {
                 .unavailable_reason()
                 .unwrap_or_default()
                 .to_owned(),
+            auto_update: self.state.agents.auto_updates().await,
+            panel_version: VERSION.to_owned(),
             ..Default::default()
         })
+    }
+
+    async fn update_node(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::UpdateNodeRequest>,
+    ) -> ServiceResult<pb::UpdateNodeResponse> {
+        let user = require(&ctx, Permission::ManageSettings)?.clone();
+        let node = self.load(request.id).await?;
+        if node.is_local() {
+            return Err(ConnectError::failed_precondition(
+                "This machine updates with the panel.",
+            ));
+        }
+        let servers = self
+            .state
+            .auth
+            .store()
+            .list_servers()
+            .await
+            .map_err(store_error)?;
+        if servers
+            .iter()
+            .any(|s| s.node_id == node.id && self.state.nodes.is_moving(&s.id))
+        {
+            return Err(ConnectError::failed_precondition(format!(
+                "A server is moving to or from {}. Try again once that's done.",
+                node.name
+            )));
+        }
+        let from = self
+            .state
+            .agents
+            .live(&node.id)
+            .map(|l| l.version)
+            .unwrap_or_default();
+        self.state
+            .agents
+            .start_update(&node.id)
+            .map_err(|e| ConnectError::failed_precondition(format!("{}: {e}.", node.name)))?;
+        audit(
+            &self.state,
+            &user,
+            "node.update",
+            ("node", &node.id),
+            json!({ "name": node.name, "from": from, "to": VERSION }),
+        )
+        .await;
+        Response::ok(pb::UpdateNodeResponse::default())
+    }
+
+    async fn set_auto_update(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::SetAutoUpdateRequest>,
+    ) -> ServiceResult<pb::SetAutoUpdateResponse> {
+        let user = require(&ctx, Permission::ManageSettings)?.clone();
+        self.state
+            .agents
+            .set_auto_updates(request.enabled)
+            .await
+            .map_err(store_error)?;
+        audit(
+            &self.state,
+            &user,
+            "node.auto_update",
+            ("settings", "nodes"),
+            json!({ "enabled": request.enabled }),
+        )
+        .await;
+        Response::ok(pb::SetAutoUpdateResponse::default())
     }
 
     async fn create_node(

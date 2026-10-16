@@ -31,6 +31,7 @@ pub mod jobs;
 mod moving;
 pub mod protocol;
 mod remote;
+pub mod update;
 
 pub use backups::{Archive, Restored};
 pub use folder::{FileReader, Folder};

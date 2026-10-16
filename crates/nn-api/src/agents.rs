@@ -10,7 +10,7 @@ use std::io;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll, ready};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use axum::Extension;
 use axum::extract::State;
@@ -37,6 +37,27 @@ const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(10);
 const MAX_HANDSHAKES: usize = 16;
 /// Silence after which a link is closed (three missed heartbeats).
 const SILENCE: Duration = Duration::from_secs(30);
+/// This panel's version, which agents are updated to.
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+/// Whether the panel updates agents older than itself on its own.
+const AUTO_UPDATE_SETTING: &str = "nodes.auto_update";
+/// How long an agent may take to answer an update (pulling an image can be
+/// slow on a home connection).
+const UPDATE_ANSWER: Duration = Duration::from_secs(15 * 60);
+/// How long an updated agent has to come back on the new version.
+const UPDATE_RETURN: Duration = Duration::from_secs(3 * 60);
+/// Automatic updates of one node, at most this often.
+const AUTO_RETRY: Duration = Duration::from_secs(60 * 60);
+
+/// Where a node's update stands.
+#[derive(Debug, Clone, Default)]
+pub struct UpdateState {
+    /// An update is under way.
+    pub updating: bool,
+    /// Why the last update failed, until the next one.
+    pub error: Option<String>,
+    last_auto: Option<Instant>,
+}
 
 /// A connected agent.
 #[derive(Clone)]
@@ -57,6 +78,7 @@ pub struct Agents {
     key: Option<Keypair>,
     unavailable: Option<String>,
     links: Mutex<HashMap<String, Live>>,
+    updates: Mutex<HashMap<String, UpdateState>>,
     generation: std::sync::atomic::AtomicU64,
     handshakes: Semaphore,
 }
@@ -77,6 +99,7 @@ impl Agents {
             key: None,
             unavailable: Some(reason.to_owned()),
             links: Mutex::default(),
+            updates: Mutex::default(),
             generation: Default::default(),
             handshakes: Semaphore::new(MAX_HANDSHAKES),
         }
@@ -106,6 +129,7 @@ impl Agents {
             key: Some(key),
             unavailable: None,
             links: Mutex::default(),
+            updates: Mutex::default(),
             generation: Default::default(),
             handshakes: Semaphore::new(MAX_HANDSHAKES),
         }
@@ -280,6 +304,12 @@ impl Agents {
             .await;
         self.publish(&node.id, true);
         tracing::info!(node = %node.id, %version, "an agent connected");
+        if version == VERSION {
+            self.updates().entry(node.id.clone()).or_default().error = None;
+        } else if older(&version, VERSION) {
+            let (agents, id) = (self.clone(), node.id.clone());
+            tokio::spawn(async move { agents.auto_update(&id).await });
+        }
 
         let heard = Arc::new(tokio::sync::Notify::new());
         let accept = {
@@ -683,9 +713,175 @@ pub(crate) fn compatible(panel: &str, agent: &str) -> bool {
     minor(panel) == minor(agent)
 }
 
+/// Updating agents to the panel's version.
+impl Agents {
+    fn updates(&self) -> std::sync::MutexGuard<'_, HashMap<String, UpdateState>> {
+        self.updates.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// Where a node's update stands.
+    pub fn update_state(&self, node_id: &str) -> UpdateState {
+        self.updates().get(node_id).cloned().unwrap_or_default()
+    }
+
+    /// Whether agents older than the panel are updated automatically (on
+    /// unless turned off).
+    pub async fn auto_updates(&self) -> bool {
+        match &self.store {
+            Some(store) => store
+                .get_setting::<bool>(AUTO_UPDATE_SETTING)
+                .await
+                .ok()
+                .flatten()
+                .unwrap_or(true),
+            None => false,
+        }
+    }
+
+    /// Turns automatic updates on or off.
+    pub async fn set_auto_updates(&self, on: bool) -> nn_store::Result<()> {
+        match &self.store {
+            Some(store) => store.set_setting(AUTO_UPDATE_SETTING, &on).await,
+            None => Ok(()),
+        }
+    }
+
+    /// Updates a node that just connected on an older version, if that's
+    /// on and it wasn't tried within the hour.
+    async fn auto_update(self: &Arc<Self>, node_id: &str) {
+        if !self.auto_updates().await {
+            return;
+        }
+        {
+            let mut updates = self.updates();
+            let state = updates.entry(node_id.to_owned()).or_default();
+            if state.last_auto.is_some_and(|at| at.elapsed() < AUTO_RETRY) {
+                return;
+            }
+            state.last_auto = Some(Instant::now());
+        }
+        if let Some(store) = &self.store {
+            audit(
+                store,
+                "node.update",
+                node_id,
+                json!({ "to": VERSION, "automatic": true }),
+            )
+            .await;
+        }
+        if let Err(e) = self.start_update(node_id) {
+            tracing::info!(node = %node_id, error = %e, "couldn't start an automatic update");
+        }
+    }
+
+    /// Asks a node's agent to update to the panel's version, in the
+    /// background; [`Self::update_state`] says how it's going.
+    pub fn start_update(self: &Arc<Self>, node_id: &str) -> Result<(), String> {
+        let live = self
+            .live(node_id)
+            .ok_or("the node is offline; it can be updated once its agent reconnects")?;
+        if live.version == VERSION {
+            return Err(format!("the node already runs {VERSION}"));
+        }
+        {
+            let mut updates = self.updates();
+            let state = updates.entry(node_id.to_owned()).or_default();
+            if state.updating {
+                return Err("the node is already updating".into());
+            }
+            state.updating = true;
+            state.error = None;
+        }
+        self.publish(node_id, true);
+        let (agents, id) = (self.clone(), node_id.to_owned());
+        tokio::spawn(async move {
+            let result = agents.run_update(&id, live).await;
+            match &result {
+                Ok(()) => tracing::info!(node = %id, version = VERSION, "a node updated"),
+                Err(e) => tracing::warn!(node = %id, error = %e, "a node didn't update"),
+            }
+            {
+                let mut updates = agents.updates();
+                let state = updates.entry(id.clone()).or_default();
+                state.updating = false;
+                // Only failures hold back the next automatic try.
+                if result.is_ok() {
+                    state.last_auto = None;
+                }
+                state.error = result.err();
+            }
+            agents.publish(&id, agents.live(&id).is_some());
+        });
+        Ok(())
+    }
+
+    async fn run_update(&self, node_id: &str, live: Live) -> Result<(), String> {
+        let gone = || "the node went offline before it could update".to_owned();
+        let mut stream = live.session.open().await.map_err(|_| gone())?;
+        let request = nn_node::protocol::Request::SelfUpdate {
+            version: VERSION.to_owned(),
+        };
+        messages::send(&mut stream, &request)
+            .await
+            .map_err(|_| gone())?;
+        let reply = tokio::time::timeout(
+            UPDATE_ANSWER,
+            messages::recv::<_, nn_node::protocol::Reply>(&mut stream),
+        )
+        .await;
+        match reply {
+            Err(_) => return Err("the node didn't answer within 15 minutes".into()),
+            Ok(Ok(Some(Ok(_)))) => {}
+            Ok(Ok(Some(Err(e)))) => return Err(e.message),
+            // Agents from before updates existed hang up on the request.
+            Ok(_) if live.session.is_closed() => return Err(gone()),
+            Ok(_) => {
+                return Err(format!(
+                    "its agent ({}) can't update itself. Update it by hand once; after that the panel can.",
+                    live.version
+                ));
+            }
+        }
+        // It restarts as the new version and reconnects.
+        let deadline = Instant::now() + UPDATE_RETURN;
+        while Instant::now() < deadline {
+            if self.live(node_id).is_some_and(|l| l.version == VERSION) {
+                return Ok(());
+            }
+            tokio::time::sleep(Duration::from_secs(2)).await;
+        }
+        Err(format!(
+            "it said it was updating, but hasn't come back on {VERSION}"
+        ))
+    }
+}
+
+/// Whether version `a` is older than `b` (`x.y.z`; anything after a `-`
+/// is ignored).
+pub(crate) fn older(a: &str, b: &str) -> bool {
+    let parse = |v: &str| -> Option<(u64, u64, u64)> {
+        let mut parts = v
+            .split('-')
+            .next()?
+            .split('.')
+            .map(|p| p.parse::<u64>().ok());
+        Some((parts.next()??, parts.next()??, parts.next()??))
+    };
+    matches!((parse(a), parse(b)), (Some(a), Some(b)) if a < b)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn versions_compare_as_numbers() {
+        assert!(super::older("0.2.0", "0.2.1"));
+        assert!(super::older("0.9.0", "0.10.0"));
+        assert!(!super::older("0.2.1", "0.2.1"));
+        assert!(!super::older("0.3.0", "0.2.9"));
+        assert!(!super::older("dev", "0.2.1"));
+    }
 
     #[test]
     fn versions_match_on_major_and_minor() {

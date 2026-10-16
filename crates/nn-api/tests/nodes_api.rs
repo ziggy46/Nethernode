@@ -130,6 +130,10 @@ fn agent(dir: &std::path::Path, url: Option<&str>, code: Option<&str>) -> AgentA
         panel_url: url.map(str::to_owned),
         code: code.map(str::to_owned),
         version: env!("CARGO_PKG_VERSION").to_owned(),
+        // Never the real thing in tests.
+        updater: Some(Arc::new(|version| {
+            Box::pin(async move { Err(format!("tests don't update (asked for {version})")) })
+        })),
     }
 }
 
@@ -319,6 +323,48 @@ async fn outdated_agents_moves_and_removing_a_machine_with_servers() {
     let old = tokio::spawn(nn_node::agent::run(args, Nodes::default().local().clone()));
     let node = wait_for(&mut admin, &id, |n| n["status"] == "NODE_STATUS_ONLINE").await;
     assert_eq!(node["updateNeeded"], true);
+    assert_eq!(node["updateAvailable"], true);
+
+    // Older agents are asked to update as they connect, to the panel's
+    // version (this test agent answers without updating).
+    let version = env!("CARGO_PKG_VERSION");
+    let asked = format!("asked for {version}");
+    let node = wait_for(&mut admin, &id, |n| {
+        n["updating"] != true
+            && n["updateError"]
+                .as_str()
+                .is_some_and(|e| e.contains(&asked))
+    })
+    .await;
+    assert!(
+        node["updateError"]
+            .as_str()
+            .unwrap()
+            .contains("tests don't update")
+    );
+    let list = admin.ok("NodeService/ListNodes", json!({})).await;
+    assert_eq!(list["autoUpdate"], true);
+    assert_eq!(list["panelVersion"], version);
+    // And by hand, with automatic updates off.
+    admin
+        .ok("NodeService/SetAutoUpdate", json!({ "enabled": false }))
+        .await;
+    let list = admin.ok("NodeService/ListNodes", json!({})).await;
+    assert_eq!(list.get("autoUpdate"), None, "off is the default value");
+    admin
+        .ok("NodeService/UpdateNode", json!({ "id": id }))
+        .await;
+    wait_for(&mut admin, &id, |n| {
+        n["updating"] != true
+            && n["updateError"]
+                .as_str()
+                .is_some_and(|e| e.contains(&asked))
+    })
+    .await;
+    let (status, _) = admin
+        .call("NodeService/UpdateNode", json!({ "id": "local" }))
+        .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
 
     // A server here, and one on that machine.
     let here = store

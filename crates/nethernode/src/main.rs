@@ -236,6 +236,9 @@ fn init_logging() {
 /// by a panel over the link. No web panel and no proxy here.
 async fn agent(config: Config, join: Option<String>, code: Option<String>) -> Result<()> {
     init_logging();
+    // An agent container that updated itself: the old one goes first, so the
+    // two never share the data folder.
+    nn_orchestrator::self_update::finish_replacing(&config.docker.socket).await;
     let store = open_store(&config).await?;
     let secrets = SecretBox::load(&config.data.secret_key_path())
         .map(Arc::new)
@@ -250,6 +253,7 @@ async fn agent(config: Config, join: Option<String>, code: Option<String>) -> Re
         panel_url: join,
         code,
         version: env!("CARGO_PKG_VERSION").to_owned(),
+        updater: None,
     };
     tracing::info!(
         version = env!("CARGO_PKG_VERSION"),

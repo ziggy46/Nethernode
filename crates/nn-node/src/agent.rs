@@ -99,6 +99,14 @@ impl AgentState {
     }
 }
 
+/// Stands in for updating, in tests: gets the version asked for and
+/// returns what to tell the panel, without restarting anything.
+pub type Updater = Arc<
+    dyn Fn(String) -> Pin<Box<dyn std::future::Future<Output = Result<String, String>> + Send>>
+        + Send
+        + Sync,
+>;
+
 /// How the agent was started.
 pub struct AgentArgs {
     /// Where `agent.json` lives (the agent's data folder).
@@ -109,6 +117,14 @@ pub struct AgentArgs {
     pub code: Option<String>,
     /// This NetherNode's version.
     pub version: String,
+    /// How to update when the panel asks; `None` for the real thing.
+    pub updater: Option<Updater>,
+}
+
+/// What every request handler needs besides the node.
+struct Ctx {
+    version: String,
+    updater: Option<Updater>,
 }
 
 /// Why the agent gave up.
@@ -133,6 +149,10 @@ pub enum AgentError {
 /// Runs the agent: joins if it hasn't, then keeps its link to the panel up
 /// for good, reporting `node`'s machine.
 pub async fn run(args: AgentArgs, node: Node) -> Result<(), AgentError> {
+    let ctx = Arc::new(Ctx {
+        version: args.version.clone(),
+        updater: args.updater.clone(),
+    });
     let state_error = |error| AgentError::State {
         dir: args.dir.display().to_string(),
         error,
@@ -201,7 +221,7 @@ pub async fn run(args: AgentArgs, node: Node) -> Result<(), AgentError> {
                 }
                 tracing::info!(panel = %url, node = %name, "connected to the panel");
                 let started = Instant::now();
-                serve(&session, inbound, &node).await;
+                serve(&session, inbound, &node, &ctx).await;
                 tracing::warn!(panel = %url, "lost the connection to the panel; reconnecting");
                 if started.elapsed() >= STABLE {
                     backoff = Duration::from_secs(1);
@@ -270,7 +290,7 @@ pub async fn connect(
 
 /// Serves the panel until the link drops: heartbeats on the control
 /// stream, the panel's requests, and this machine's events.
-async fn serve(session: &Session, mut inbound: Inbound, node: &Node) {
+async fn serve(session: &Session, mut inbound: Inbound, node: &Node, ctx: &Arc<Ctx>) {
     let mut control = match open(session, StreamKind::Control).await {
         Ok(stream) => stream,
         Err(e) => {
@@ -280,10 +300,10 @@ async fn serve(session: &Session, mut inbound: Inbound, node: &Node) {
     };
     let events = tokio::spawn(forward_events(session.clone(), node.clone()));
     let requests = {
-        let node = node.clone();
+        let (node, ctx, session) = (node.clone(), ctx.clone(), session.clone());
         tokio::spawn(async move {
             while let Some(stream) = inbound.next().await {
-                tokio::spawn(handle(stream, node.clone()));
+                tokio::spawn(handle(stream, node.clone(), ctx.clone(), session.clone()));
             }
         })
     };
@@ -387,7 +407,7 @@ async fn forward_events(session: Session, node: Node) {
 }
 
 /// Answers one request from the panel.
-async fn handle(mut stream: LinkStream, node: Node) {
+async fn handle(mut stream: LinkStream, node: Node, ctx: Arc<Ctx>, session: Session) {
     let request = match messages::recv::<_, Request>(&mut stream).await {
         Ok(Some(request)) => request,
         Ok(None) => return,
@@ -404,6 +424,9 @@ async fn handle(mut stream: LinkStream, node: Node) {
     }
     if let Request::Management { id } = &request {
         return relay_management(stream, &node, id).await;
+    }
+    if let Request::SelfUpdate { version } = &request {
+        return self_update(stream, &node, &ctx, &session, version).await;
     }
     if let Request::OpenBackup { name, offset } = &request {
         return send_backup(stream, &node, name, *offset).await;
@@ -493,7 +516,8 @@ async fn answer(node: &Node, request: Request) -> Reply {
         | Request::Folder { .. }
         | Request::OpenBackup { .. }
         | Request::ReceiveBackup { .. }
-        | Request::Management { .. } => {
+        | Request::Management { .. }
+        | Request::SelfUpdate { .. } => {
             unreachable!("handled by follow_logs, relay, folder, send_backup, and receive_archive")
         }
     }
@@ -605,6 +629,52 @@ async fn send_backup(mut stream: LinkStream, node: &Node, name: &str, offset: u6
         Err(e) => {
             let failed = crate::NodeError::File(FileError::Io(e));
             let _ = messages::send(&mut stream, &reply::<()>(Err(failed))).await;
+        }
+    }
+}
+
+/// Updates this agent to `version` as the panel asked, tells it how that
+/// went, then hands over to the new version.
+async fn self_update(
+    mut stream: LinkStream,
+    node: &Node,
+    ctx: &Ctx,
+    session: &Session,
+    version: &str,
+) {
+    if let Some(updater) = &ctx.updater {
+        let _ = messages::send(&mut stream, &said(updater(version.to_owned()).await)).await;
+        return;
+    }
+    tracing::info!(from = %ctx.version, to = %version, "the panel asked this agent to update");
+    let next = crate::update::prepare(node, &ctx.version, version).await;
+    let answer = next
+        .as_ref()
+        .map(|n| n.message().to_owned())
+        .map_err(Clone::clone);
+    if let Err(e) = &answer {
+        tracing::warn!(error = %e, "couldn't update");
+    }
+    let _ = messages::send(&mut stream, &said(answer)).await;
+    let next = match next {
+        Ok(next @ (crate::update::Next::Exit(_) | crate::update::Next::Exec(..))) => next,
+        _ => return,
+    };
+    // Let the answer reach the panel before leaving.
+    let _ = tokio::io::AsyncWriteExt::shutdown(&mut stream).await;
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    session.close();
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    match next {
+        crate::update::Next::Exec(exe, _) => {
+            tracing::info!(version = %version, "restarting as the new version");
+            let error = crate::update::exec(&exe);
+            tracing::error!(%error, "couldn't restart as the new version; exiting");
+            std::process::exit(1);
+        }
+        _ => {
+            tracing::info!(version = %version, "the new agent container has taken over; exiting");
+            std::process::exit(0);
         }
     }
 }
