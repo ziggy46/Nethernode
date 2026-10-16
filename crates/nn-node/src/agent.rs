@@ -388,6 +388,9 @@ async fn handle(mut stream: LinkStream, node: Node) {
     if let Request::Logs { id } = &request {
         return follow_logs(stream, &node, id).await;
     }
+    if let Request::Connect { id } = &request {
+        return relay(stream, &node, id).await;
+    }
     let reply = answer(&node, request).await;
     let _ = messages::send(&mut stream, &reply).await;
 }
@@ -429,8 +432,48 @@ async fn answer(node: &Node, request: Request) -> Reply {
             node.set_curseforge_key(key);
             reply(Ok(()))
         }
-        Request::Logs { .. } => unreachable!("handled by follow_logs"),
+        Request::Logs { .. } | Request::Connect { .. } => {
+            unreachable!("handled by follow_logs and relay")
+        }
     }
+}
+
+/// Connects the stream to a server's game port on this machine and passes
+/// bytes both ways until either side closes.
+async fn relay(mut stream: LinkStream, node: &Node, id: &str) {
+    let target = match node {
+        Node::Local(local) => match local.orchestrator() {
+            Ok(o) => match o.server(id).await {
+                Ok(server) => u16::try_from(server.internal_port)
+                    .ok()
+                    .map(|port| std::net::SocketAddr::new(o.backend_ip(), port)),
+                Err(_) => None,
+            },
+            Err(_) => None,
+        },
+        Node::Remote(_) => None,
+    };
+    let Some(addr) = target else {
+        let missing = crate::NodeError::Orchestrator(nn_orchestrator::OrchestratorError::NotFound);
+        let _ = messages::send(&mut stream, &reply::<()>(Err(missing))).await;
+        return;
+    };
+    let mut server = match TcpStream::connect(addr).await {
+        Ok(server) => server,
+        Err(e) => {
+            let failed =
+                crate::NodeError::Orchestrator(nn_orchestrator::OrchestratorError::InvalidState(
+                    format!("the server isn't accepting connections: {e}"),
+                ));
+            let _ = messages::send(&mut stream, &reply::<()>(Err(failed))).await;
+            return;
+        }
+    };
+    let _ = server.set_nodelay(true);
+    if messages::send(&mut stream, &reply(Ok(()))).await.is_err() {
+        return;
+    }
+    let _ = tokio::io::copy_bidirectional(&mut stream, &mut server).await;
 }
 
 /// Sends a server's console backlog, then each new line.

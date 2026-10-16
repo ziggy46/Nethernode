@@ -7,6 +7,12 @@ use std::pin::Pin;
 /// A boxed, sendable future.
 pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
+/// A connection to a server reached some other way than TCP (through the
+/// agent on its machine, say).
+pub trait Tunnel: tokio::io::AsyncRead + tokio::io::AsyncWrite + Send + Unpin {}
+
+impl<T: tokio::io::AsyncRead + tokio::io::AsyncWrite + Send + Unpin> Tunnel for T {}
+
 /// The result of asking for a sleeping server to start.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WakeOutcome {
@@ -48,6 +54,17 @@ pub struct Admission {
 /// What the proxy needs from the rest of the system. Implementations must
 /// be quick: calls happen on the connection path.
 pub trait ProxyHooks: Send + Sync + 'static {
+    /// Connects to a server on another machine ([`crate::BackendSpec::remote`]).
+    /// An error of kind `NotConnected` means its machine is offline.
+    fn dial<'a>(&'a self, _server_id: &'a str) -> BoxFuture<'a, std::io::Result<Box<dyn Tunnel>>> {
+        Box::pin(async {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Unsupported,
+                "no way to reach other machines",
+            ))
+        })
+    }
+
     /// Starts a sleeping server.
     fn wake<'a>(&'a self, server_id: &'a str) -> BoxFuture<'a, WakeOutcome>;
 

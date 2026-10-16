@@ -45,6 +45,7 @@ async fn main() {
             priority: 0,
         }],
         backends: vec![BackendSpec {
+            remote: false,
             server_id: "echo".into(),
             name: "echo".into(),
             slug: "echo".into(),

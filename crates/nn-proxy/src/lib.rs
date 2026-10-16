@@ -34,7 +34,7 @@ pub mod status_cache;
 
 pub use config::{BackendSpec, Limits, ListenerSpec, ProxyConfig, RouteSpec, ServerState};
 pub use conn::{SLEEPING_SUFFIX, UNKNOWN_HOST_MESSAGE};
-pub use hooks::{Admission, BoxFuture, NoopHooks, PlayerJoin, ProxyHooks, WakeOutcome};
+pub use hooks::{Admission, BoxFuture, NoopHooks, PlayerJoin, ProxyHooks, Tunnel, WakeOutcome};
 pub use registry::ConnectionInfo;
 pub use routes::{Resolution, RouteTable};
 
@@ -311,13 +311,24 @@ async fn refresh_status(shared: &Shared) {
         .filter(|b| b.spec.state == ServerState::Running)
     {
         let backend = backend.clone();
+        let hooks = shared.hooks.clone();
         pings.spawn(async move {
-            let result = status_cache::ping_backend(
-                backend.spec.addr,
-                backend.expects_proxy_protocol,
-                Duration::from_secs(3),
-            )
-            .await;
+            let result = if backend.spec.remote {
+                status_cache::ping_through(
+                    hooks.as_ref(),
+                    &backend.spec,
+                    backend.expects_proxy_protocol,
+                    Duration::from_secs(3),
+                )
+                .await
+            } else {
+                status_cache::ping_backend(
+                    backend.spec.addr,
+                    backend.expects_proxy_protocol,
+                    Duration::from_secs(3),
+                )
+                .await
+            };
             (backend.spec.server_id.clone(), result)
         });
     }

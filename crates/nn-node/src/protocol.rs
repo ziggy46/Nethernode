@@ -92,6 +92,12 @@ pub enum Request {
         /// Server ID.
         id: String,
     },
+    /// Open the server's game port: a [`Reply`], then the stream carries a
+    /// player's connection, bytes as they are.
+    Connect {
+        /// Server ID.
+        id: String,
+    },
     /// The CurseForge API key, for CurseForge modpacks.
     SetCurseforgeKey {
         /// The key, or none.

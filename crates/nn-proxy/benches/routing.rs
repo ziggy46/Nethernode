@@ -11,6 +11,7 @@ use nn_proxy::{BackendSpec, RouteSpec, RouteTable, ServerState};
 fn table(n: usize) -> RouteTable {
     let backends: Vec<_> = (0..n)
         .map(|i| BackendSpec {
+            remote: false,
             server_id: format!("s{i}"),
             name: format!("Server {i}"),
             slug: format!("s{i}"),

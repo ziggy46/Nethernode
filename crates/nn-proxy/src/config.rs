@@ -52,6 +52,9 @@ pub struct BackendSpec {
     pub slug: String,
     /// Where the server listens (normally `127.0.0.1:<internal_port>`).
     pub addr: SocketAddr,
+    /// It runs on another machine: reach it with [`crate::ProxyHooks::dial`]
+    /// instead of `addr`.
+    pub remote: bool,
     /// Lifecycle state.
     pub state: ServerState,
 }

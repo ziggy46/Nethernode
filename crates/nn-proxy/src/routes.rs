@@ -191,6 +191,7 @@ mod tests {
 
     fn backend(id: &str, slug: &str) -> BackendSpec {
         BackendSpec {
+            remote: false,
             server_id: id.into(),
             name: slug.into(),
             slug: slug.into(),

@@ -44,24 +44,36 @@ pub async fn ping(
     tokio::time::timeout(timeout, async {
         let mut stream = TcpStream::connect(addr).await?;
         stream.set_nodelay(true)?;
-        let handshake = Handshake {
-            protocol_version: PING_PROTOCOL,
-            server_address: addr.ip().to_string(),
-            server_port: addr.port(),
-            next_state: NextState::Status,
-        };
-        let mut out = prelude.to_vec();
-        out.extend_from_slice(&frame(&handshake.encode()));
-        out.extend_from_slice(&frame(&encode_status_request()));
-        stream.write_all(&out).await?;
-
-        let mut buf = FrameBuffer::new();
-        let range = buf
-            .next_frame(&mut stream, MAX_STATUS_RESPONSE_FRAME)
-            .await?;
-        let json = decode_status_response(buf.payload(range))?;
-        Ok(StatusResponse::from_json(&json)?)
+        ping_on(&mut stream, &addr.ip().to_string(), addr.port(), prelude).await
     })
     .await
     .map_err(|_| PingError::Timeout)?
+}
+
+/// Asks for a server's status over an open connection to it (one reached
+/// through a tunnel, say). `host` and `port` go in the handshake.
+pub async fn ping_on<S>(
+    stream: &mut S,
+    host: &str,
+    port: u16,
+    prelude: &[u8],
+) -> Result<StatusResponse, PingError>
+where
+    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
+{
+    let handshake = Handshake {
+        protocol_version: PING_PROTOCOL,
+        server_address: host.to_owned(),
+        server_port: port,
+        next_state: NextState::Status,
+    };
+    let mut out = prelude.to_vec();
+    out.extend_from_slice(&frame(&handshake.encode()));
+    out.extend_from_slice(&frame(&encode_status_request()));
+    stream.write_all(&out).await?;
+
+    let mut buf = FrameBuffer::new();
+    let range = buf.next_frame(stream, MAX_STATUS_RESPONSE_FRAME).await?;
+    let json = decode_status_response(buf.payload(range))?;
+    Ok(StatusResponse::from_json(&json)?)
 }

@@ -96,12 +96,12 @@ impl ProxyRuntime {
             .list_servers()
             .await?
             .into_iter()
-            // TODO(multi-node step 4): reach servers on other machines
-            // through their agent; until then the proxy can't route to them.
-            .filter(|s| s.node_id == nn_store::LOCAL_NODE)
             .filter_map(|s| {
                 let port = u16::try_from(s.internal_port).ok()?;
                 Some(BackendSpec {
+                    // Servers on other machines are reached through their
+                    // agent (StoreProxyHooks::dial); the port is theirs.
+                    remote: s.node_id != nn_store::LOCAL_NODE,
                     addr: SocketAddr::new(self.backend_ip, port),
                     state: ServerState::from_status(&s.status),
                     server_id: s.id,
@@ -149,6 +149,25 @@ impl StoreProxyHooks {
 }
 
 impl ProxyHooks for StoreProxyHooks {
+    fn dial<'a>(
+        &'a self,
+        server_id: &'a str,
+    ) -> BoxFuture<'a, std::io::Result<Box<dyn nn_proxy::Tunnel>>> {
+        Box::pin(async move {
+            let Some(nodes) = self.nodes.get() else {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::NotConnected,
+                    "no nodes yet",
+                ));
+            };
+            nodes
+                .for_server_id(server_id)
+                .await
+                .connect(server_id)
+                .await
+        })
+    }
+
     fn wake<'a>(&'a self, server_id: &'a str) -> BoxFuture<'a, WakeOutcome> {
         Box::pin(async move {
             let node = match self.nodes.get() {

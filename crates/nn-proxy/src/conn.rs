@@ -30,8 +30,8 @@ use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tokio::time::timeout;
 
-use crate::config::{ListenerSpec, ServerState};
-use crate::hooks::{Admission, PlayerJoin, WakeOutcome};
+use crate::config::{BackendSpec, ListenerSpec, ServerState};
+use crate::hooks::{Admission, PlayerJoin, Tunnel, WakeOutcome};
 use crate::io::{FrameBuffer, ReadError};
 use crate::registry::ConnectionInfo;
 use crate::routes::Resolution;
@@ -216,7 +216,7 @@ async fn status(
         && res.backend.spec.state == ServerState::Running
         && let Ok(Ok(backend)) = timeout(
             shared.limits.status_backend_timeout,
-            TcpStream::connect(res.backend.spec.addr),
+            connect_backend(shared, &res.backend.spec),
         )
         .await
     {
@@ -395,11 +395,22 @@ async fn forward_login(
     let spec = &res.backend.spec;
     let backend = match timeout(
         shared.limits.backend_connect_timeout,
-        TcpStream::connect(spec.addr),
+        connect_backend(shared, spec),
     )
     .await
     {
         Ok(Ok(stream)) => stream,
+        Ok(Err(e)) if e.kind() == std::io::ErrorKind::NotConnected => {
+            disconnect(
+                client,
+                &format!(
+                    "{} runs on a machine that's offline right now. Try again later.",
+                    spec.name
+                ),
+            )
+            .await;
+            return Summary::routed(Some(res), "node_offline");
+        }
         _ => {
             disconnect(
                 client,
@@ -488,7 +499,7 @@ async fn legacy_ping(
         && res.backend.spec.state == ServerState::Running
         && let Ok(Ok(backend)) = timeout(
             shared.limits.status_backend_timeout,
-            TcpStream::connect(res.backend.spec.addr),
+            connect_backend(shared, &res.backend.spec),
         )
         .await
     {
@@ -526,29 +537,63 @@ async fn disconnect(client: &mut TcpStream, message: &str) {
 /// Writes the PROXY header (if enabled) and the client's buffered bytes to
 /// the backend, then copies both ways until either side closes. Returns
 /// (bytes up, bytes down), including the replayed prelude.
+/// A connection to a backend: TCP on this machine, or a tunnel to another.
+pub(crate) enum Backend {
+    Tcp(TcpStream),
+    Tunnel(Box<dyn Tunnel>),
+}
+
+/// Connects to `spec`'s server, wherever it runs.
+pub(crate) async fn connect_backend(
+    shared: &Shared,
+    spec: &BackendSpec,
+) -> std::io::Result<Backend> {
+    if spec.remote {
+        return shared
+            .hooks
+            .dial(&spec.server_id)
+            .await
+            .map(Backend::Tunnel);
+    }
+    let stream = TcpStream::connect(spec.addr).await?;
+    let _ = stream.set_nodelay(true);
+    Ok(Backend::Tcp(stream))
+}
+
 async fn splice(
     client: &mut TcpStream,
-    mut backend: TcpStream,
+    mut backend: Backend,
     peer: SocketAddr,
     listener: &ListenerSpec,
     shared: &Shared,
     route: &str,
     prelude: &[u8],
 ) -> (u64, u64) {
-    let _ = backend.set_nodelay(true);
     let mut first = Vec::with_capacity(prelude.len() + 52);
     if listener.proxy_protocol {
         let local = client.local_addr().unwrap_or(listener.bind);
         first.extend_from_slice(&proxy_protocol::proxied(peer, local));
     }
     first.extend_from_slice(prelude);
-    if backend.write_all(&first).await.is_err() {
+    let written = match &mut backend {
+        Backend::Tcp(stream) => stream.write_all(&first).await,
+        Backend::Tunnel(stream) => stream.write_all(&first).await,
+    };
+    if written.is_err() {
         return (0, 0);
     }
 
     let gauge = metrics::gauge!(m::ACTIVE_CONNECTIONS, "route" => route.to_owned());
     gauge.increment(1.0);
-    let (up, down) = crate::splice::copy_bidirectional(client, &mut backend, &shared.buffers).await;
+    let (up, down) = match &mut backend {
+        Backend::Tcp(stream) => {
+            crate::splice::copy_bidirectional(client, stream, &shared.buffers).await
+        }
+        // Tunnels have their own buffering; a plain copy is enough.
+        Backend::Tunnel(stream) => tokio::io::copy_bidirectional(client, stream)
+            .await
+            .unwrap_or((0, 0)),
+    };
     gauge.decrement(1.0);
     (up + prelude.len() as u64, down)
 }

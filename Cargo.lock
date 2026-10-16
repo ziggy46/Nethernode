@@ -2575,6 +2575,7 @@ dependencies = [
  "nn-link",
  "nn-orchestrator",
  "nn-players",
+ "nn-proxy",
  "nn-store",
  "nn-uploads",
  "rustls",

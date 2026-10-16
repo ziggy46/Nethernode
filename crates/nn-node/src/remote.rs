@@ -176,6 +176,21 @@ impl RemoteNode {
         reply.map_err(NodeError::Remote)
     }
 
+    /// Opens a tunnel to a server's game port.
+    pub(crate) async fn connect(&self, id: &str) -> std::io::Result<Box<dyn nn_proxy::Tunnel>> {
+        let offline = |_| std::io::Error::new(std::io::ErrorKind::NotConnected, "offline");
+        let mut stream = self.open().await.map_err(offline)?;
+        self.exchange(&mut stream, &Request::Connect { id: id.to_owned() })
+            .await
+            .map_err(|e| match e {
+                NodeError::Offline(_) => {
+                    std::io::Error::new(std::io::ErrorKind::NotConnected, e.to_string())
+                }
+                other => std::io::Error::other(other.to_string()),
+            })?;
+        Ok(Box::new(stream))
+    }
+
     /// Follows a server's console.
     pub(crate) async fn logs(&self, id: &str) -> Result<LogSubscription> {
         let mut stream = self.open().await?;

@@ -133,6 +133,7 @@ async fn fake_status_server(motd: &'static str) -> SocketAddr {
 
 fn backend(id: &str, addr: SocketAddr, state: ServerState) -> BackendSpec {
     BackendSpec {
+        remote: false,
         server_id: id.into(),
         name: format!("{id} server"),
         slug: id.into(),
@@ -806,4 +807,102 @@ async fn joined_players_are_listed_before_the_event_fires() {
             break;
         }
     }
+}
+
+/// Hooks that reach "other machines" by dialing a local fake backend (or
+/// report the machine offline).
+struct TunnelHooks {
+    far: Option<SocketAddr>,
+    dials: Mutex<Vec<String>>,
+}
+
+impl ProxyHooks for TunnelHooks {
+    fn dial<'a>(
+        &'a self,
+        server_id: &'a str,
+    ) -> BoxFuture<'a, std::io::Result<Box<dyn nn_proxy::Tunnel>>> {
+        self.dials.lock().unwrap().push(server_id.to_owned());
+        Box::pin(async move {
+            match self.far {
+                Some(addr) => {
+                    Ok(Box::new(TcpStream::connect(addr).await?) as Box<dyn nn_proxy::Tunnel>)
+                }
+                None => Err(std::io::Error::new(
+                    std::io::ErrorKind::NotConnected,
+                    "offline",
+                )),
+            }
+        })
+    }
+
+    fn wake<'a>(&'a self, _server_id: &'a str) -> BoxFuture<'a, WakeOutcome> {
+        Box::pin(async { WakeOutcome::Starting })
+    }
+
+    fn player_joined<'a>(&'a self, _join: &'a PlayerJoin) -> BoxFuture<'a, Option<String>> {
+        Box::pin(async { None })
+    }
+
+    fn player_left(&self, _session_id: String) -> BoxFuture<'_, ()> {
+        Box::pin(async {})
+    }
+}
+
+async fn start_tunneled(far: Option<SocketAddr>) -> (Proxy, SocketAddr, Arc<TunnelHooks>) {
+    let hooks = Arc::new(TunnelHooks {
+        far,
+        dials: Mutex::default(),
+    });
+    let proxy = Proxy::new(hooks.clone(), EventBus::default(), Limits::default());
+    let mut far_server = backend(
+        "far",
+        "0.0.0.0:30000".parse().unwrap(),
+        ServerState::Running,
+    );
+    far_server.remote = true;
+    let statuses = proxy
+        .apply(ProxyConfig {
+            listeners: vec![ListenerSpec {
+                id: "main".into(),
+                bind: "127.0.0.1:0".parse().unwrap(),
+                proxy_protocol: false,
+            }],
+            routes: vec![route("far.example.com", Some("far"))],
+            backends: vec![far_server],
+        })
+        .await;
+    let ListenerState::Listening(addr) = statuses[0].state.clone() else {
+        panic!("listener failed: {statuses:?}")
+    };
+    (proxy, addr, hooks)
+}
+
+#[tokio::test]
+async fn servers_on_other_machines_are_reached_through_the_dial_hook() {
+    let (far_addr, mut far_rx) = fake_backend().await;
+    let (_proxy, addr, hooks) = start_tunneled(Some(far_addr)).await;
+
+    let mut client = connect(addr).await;
+    let mut sent = handshake("far.example.com", NextState::Login);
+    sent.extend(login_start("Steve"));
+    client.write_all(&sent).await.unwrap();
+    assert_eq!(
+        read_exact(&mut client, BACKEND_HELLO.len()).await,
+        BACKEND_HELLO
+    );
+    assert_eq!(far_rx.recv().await.unwrap(), sent, "the exact bytes cross");
+    client.write_all(b"ping").await.unwrap();
+    assert_eq!(read_exact(&mut client, 4).await, b"ping", "both ways");
+    assert_eq!(*hooks.dials.lock().unwrap(), vec!["far".to_owned()]);
+}
+
+#[tokio::test]
+async fn a_server_whose_machine_is_offline_says_so() {
+    let (_proxy, addr, _hooks) = start_tunneled(None).await;
+    let mut client = connect(addr).await;
+    let mut sent = handshake("far.example.com", NextState::Login);
+    sent.extend(login_start("Steve"));
+    client.write_all(&sent).await.unwrap();
+    let reason = disconnect_reason(&read_frame(&mut client).await);
+    assert!(reason.contains("offline"), "{reason}");
 }

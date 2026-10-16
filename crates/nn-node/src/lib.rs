@@ -404,6 +404,19 @@ impl Node {
         Some(MgmtClient::connect(addr, &secret, timeout).await)
     }
 
+    /// A connection to the server's game port, for the proxy. An error of
+    /// kind `NotConnected` means the node is offline.
+    pub async fn connect(&self, id: &str) -> std::io::Result<Box<dyn nn_proxy::Tunnel>> {
+        match self {
+            // The proxy dials servers on this machine itself.
+            Self::Local(_) => Err(std::io::Error::new(
+                std::io::ErrorKind::Unsupported,
+                "servers on this machine are reached directly",
+            )),
+            Self::Remote(node) => node.connect(id).await,
+        }
+    }
+
     // ----- settings pushed from the panel -----
 
     /// The CurseForge API key, for installing CurseForge modpacks.

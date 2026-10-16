@@ -74,3 +74,24 @@ pub async fn ping_backend(
     };
     nn_mcproto::client::ping(addr, &prelude, timeout).await
 }
+
+/// Asks a server on another machine for its status, through the hooks'
+/// tunnel to it.
+pub async fn ping_through(
+    hooks: &dyn crate::ProxyHooks,
+    spec: &crate::BackendSpec,
+    proxy_protocol: bool,
+    timeout: Duration,
+) -> Result<StatusResponse, PingError> {
+    let prelude = if proxy_protocol {
+        proxy_protocol::local()
+    } else {
+        Vec::new()
+    };
+    tokio::time::timeout(timeout, async {
+        let mut tunnel = hooks.dial(&spec.server_id).await?;
+        nn_mcproto::client::ping_on(&mut tunnel, "localhost", spec.addr.port(), &prelude).await
+    })
+    .await
+    .map_err(|_| PingError::Timeout)?
+}
