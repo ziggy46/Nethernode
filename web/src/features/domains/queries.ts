@@ -1,6 +1,6 @@
 import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { proxyClient } from "@/lib/api";
+import { proxyClient } from "@/features/proxy/client";
 
 export const domainsKey = ["proxy", "domains"] as const;
 

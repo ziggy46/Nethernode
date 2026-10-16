@@ -6,7 +6,8 @@ import { toast } from "sonner";
 import { Panel, PanelHeader } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ErrorAlert, Input } from "@/components/ui/field";
-import { errorMessage, proxyClient } from "@/lib/api";
+import { proxyClient } from "@/features/proxy/client";
+import { errorMessage } from "@/lib/api";
 
 import { domainError, domainsQuery, useSetDomains } from "./queries";
 

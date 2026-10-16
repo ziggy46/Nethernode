@@ -14,9 +14,10 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, Input, Select } from "@/components/ui/field";
+import { proxyClient } from "@/features/proxy/client";
 import { Platform, ProjectKind } from "@/gen/nethernode/v1/catalog_pb";
 import { type Node, NodeStatus } from "@/gen/nethernode/v1/nodes_pb";
-import { errorMessage, proxyClient } from "@/lib/api";
+import { errorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 import { PlatformTabs, ProjectIcon, ProjectSearch } from "../../catalog/project-search";

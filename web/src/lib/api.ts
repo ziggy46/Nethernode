@@ -2,7 +2,6 @@ import { Code, ConnectError, createClient, type Interceptor } from "@connectrpc/
 import { createConnectTransport } from "@connectrpc/connect-web";
 
 import { AuthService } from "@/gen/nethernode/v1/auth_pb";
-import { ProxyService } from "@/gen/nethernode/v1/proxy_pb";
 import { ServerService } from "@/gen/nethernode/v1/servers_pb";
 
 const CSRF_COOKIE = "nn_csrf";
@@ -50,7 +49,6 @@ export const transport = createConnectTransport({
 });
 
 export const authClient = createClient(AuthService, transport);
-export const proxyClient = createClient(ProxyService, transport);
 export const serverClient = createClient(ServerService, transport);
 
 /** A user-facing message for an RPC failure. */

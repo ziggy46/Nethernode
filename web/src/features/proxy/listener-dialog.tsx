@@ -14,8 +14,9 @@ import {
 } from "@/components/ui/dialog";
 import { ErrorAlert, Field } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
+import { proxyClient } from "@/features/proxy/client";
 import type { Listener } from "@/gen/nethernode/v1/proxy_pb";
-import { errorMessage, proxyClient } from "@/lib/api";
+import { errorMessage } from "@/lib/api";
 
 export const PROXY_PROTOCOL_WARNING =
   "Every server behind this listener must expect the PROXY header (Paper: proxies.proxy-protocol: true in paper-global.yml), or players can't connect.";

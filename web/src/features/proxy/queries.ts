@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { proxyClient } from "@/lib/api";
+import { proxyClient } from "@/features/proxy/client";
 
 export { serversQuery } from "@/features/servers/queries";
 

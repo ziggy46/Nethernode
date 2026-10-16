@@ -18,9 +18,10 @@ import { EmptyState, Footer, PageHeader, Panel, PanelHeader, SectionHeading } fr
 import { Badge, Dot, ServerStatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { proxyClient } from "@/features/proxy/client";
 import { type Listener, ListenerState, type Route, RouteKind } from "@/gen/nethernode/v1/proxy_pb";
 import type { Server } from "@/gen/nethernode/v1/servers_pb";
-import { errorMessage, proxyClient } from "@/lib/api";
+import { errorMessage } from "@/lib/api";
 import { healthQuery } from "@/lib/health";
 import { useCanManage } from "@/lib/session";
 import { useDocumentTitle } from "@/lib/use-document-title";

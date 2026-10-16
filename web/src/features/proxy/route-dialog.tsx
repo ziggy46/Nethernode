@@ -13,8 +13,9 @@ import {
 } from "@/components/ui/dialog";
 
 import { ErrorAlert, Field, Select } from "@/components/ui/field";
+import { proxyClient } from "@/features/proxy/client";
 import type { Route } from "@/gen/nethernode/v1/proxy_pb";
-import { errorMessage, proxyClient } from "@/lib/api";
+import { errorMessage } from "@/lib/api";
 
 import { listenersQuery, serversQuery } from "./queries";
 

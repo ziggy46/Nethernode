@@ -15,9 +15,10 @@ import {
 } from "@/components/ui/dialog";
 import { ErrorAlert } from "@/components/ui/field";
 import { nodesQuery } from "@/features/nodes/queries";
+import { proxyClient } from "@/features/proxy/client";
 import { Platform } from "@/gen/nethernode/v1/catalog_pb";
 import { NodeStatus } from "@/gen/nethernode/v1/nodes_pb";
-import { errorMessage, proxyClient, serverClient } from "@/lib/api";
+import { errorMessage, serverClient } from "@/lib/api";
 import { healthQuery } from "@/lib/health";
 import { useCanManage } from "@/lib/session";
 import { cn } from "@/lib/utils";
