@@ -34,6 +34,10 @@ web panel:
 - **Backups you don't think about.** Live backups while people play, safe
   restores that keep a copy of what was there, and schedules for backups,
   restarts with in-game warnings, commands and announcements.
+- **More machines.** Add other computers as nodes and run servers on them
+  from the same panel. They connect out to the panel, so they need no open
+  ports, and players still join through the one address. Stopped servers move
+  between machines in a click.
 - **Room for friends.** Roles from viewer to owner, one-time passwords,
   two-factor sign-in, an audit log, and Discord notifications.
 - **Light.** A single static binary with the panel built in; it idles at a few
@@ -103,7 +107,7 @@ page.
 ## Documentation
 
 The full guides (installing, DNS and ports, the proxy, Cloudflare Tunnel,
-backups, users, configuration, the API and the security model) live in the
+backups, more machines, users, configuration, the API and the security model) live in the
 **NetherNode-docs** repository, with a hosted site coming.
 
 ## The install count
