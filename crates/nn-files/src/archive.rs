@@ -106,7 +106,7 @@ impl ServerFiles {
                 report.skipped_links += 1;
                 continue;
             }
-            let raw = entry.name().replace('\\', "/");
+            let raw = entry.name().map_err(bad_zip(archive))?.replace('\\', "/");
             let path = entry_path(dest, &raw).map_err(|_| {
                 FileError::Invalid(format!(
                     "{archive} contains an unsafe path ({raw:?}); nothing was extracted"
