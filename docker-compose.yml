@@ -12,6 +12,9 @@
 services:
   nethernode:
     image: ghcr.io/ziggy46/nethernode:latest
+    # Check for a newer image on every "docker compose up", so an old copy
+    # of :latest is never started by mistake.
+    pull_policy: always
     restart: unless-stopped
     # The panel (8080) and the Smart Proxy (25565) listen on this machine
     # directly; servers stay on 127.0.0.1 where only NetherNode reaches them.
