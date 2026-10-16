@@ -42,7 +42,7 @@ pub(crate) async fn start_move(
         .map_err(store_error)?
         .map_or_else(|| server.node_id.clone(), |n| n.name);
     let (from, dest) = (state.nodes.for_server(&server), state.nodes.get(to));
-    for (node, name) in [(&from, &origin), (&dest, &target.name)] {
+    for (node, name) in [(&dest, &target.name), (&from, &origin)] {
         ready(state, node, name)?;
     }
     if !matches!(server.status.as_str(), "stopped" | "crashed" | "sleeping") {

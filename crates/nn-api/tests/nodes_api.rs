@@ -21,9 +21,10 @@ const CSRF: &str = "csrf";
 const PASSWORD: &str = "correct horse battery";
 
 /// The panel, also listening on a real port for agents.
-async fn app() -> (Router, String, String) {
+async fn app() -> (Router, String, String, Store) {
     let store = Store::open_in_memory().await.unwrap();
     store.migrate().await.unwrap();
+    let kept = store.clone();
     let events = EventBus::default();
     let proxy = nn_proxy::Proxy::new(
         StoreProxyHooks::new(store.clone()),
@@ -71,7 +72,7 @@ async fn app() -> (Router, String, String) {
         .await
         .unwrap();
     });
-    (app, owner, url)
+    (app, owner, url, kept)
 }
 
 /// One browser: a session cookie (once signed in) and the CSRF cookie.
@@ -153,7 +154,7 @@ async fn wait_for(admin: &mut Client, id: &str, check: impl Fn(&Value) -> bool) 
 
 #[tokio::test]
 async fn an_agent_joins_reconnects_and_is_removed() {
-    let (app, owner, url) = app().await;
+    let (app, owner, url, _) = app().await;
     let mut admin = Client::new(&app, Some(owner));
 
     let list = admin.ok("NodeService/ListNodes", json!({})).await;
@@ -299,4 +300,123 @@ async fn an_agent_joins_reconnects_and_is_removed() {
         result.err()
     );
     again.abort();
+}
+
+#[tokio::test]
+async fn outdated_agents_moves_and_removing_a_machine_with_servers() {
+    let (app, owner, url, store) = app().await;
+    let mut admin = Client::new(&app, Some(owner));
+    let created = admin
+        .ok("NodeService/CreateNode", json!({ "name": "Garage" }))
+        .await;
+    let id = created["node"]["id"].as_str().unwrap().to_owned();
+    let token = created["join"]["token"].as_str().unwrap().to_owned();
+
+    // An agent on another version reports in, but needs updating.
+    let dir = tempfile::tempdir().unwrap();
+    let mut args = agent(dir.path(), Some(&url), Some(&token));
+    args.version = "0.0.1".into();
+    let old = tokio::spawn(nn_node::agent::run(args, Nodes::default().local().clone()));
+    let node = wait_for(&mut admin, &id, |n| n["status"] == "NODE_STATUS_ONLINE").await;
+    assert_eq!(node["updateNeeded"], true);
+
+    // A server here, and one on that machine.
+    let here = store
+        .insert_server(nn_store::NewServer {
+            name: "Here",
+            slug: "here",
+            status: "stopped",
+            mc_version: "1.21.4",
+            loader: "paper",
+            image: "itzg/minecraft-server",
+            memory_mb: 2048,
+            internal_port: 30000,
+            sleep_when_empty: false,
+        })
+        .await
+        .unwrap();
+    let there = nn_store::Server {
+        id: "there-1".into(),
+        name: "There".into(),
+        slug: "there".into(),
+        internal_port: 30010,
+        ..here.clone()
+    };
+    store.upsert_server_mirror(&there, &id).await.unwrap();
+
+    // Its server says why it can't be managed.
+    let got = admin
+        .ok("ServerService/GetServer", json!({ "id": "there-1" }))
+        .await;
+    assert_eq!(got["server"]["nodeOffline"], true);
+    assert_eq!(got["server"]["nodeUpdateNeeded"], true);
+    assert_eq!(got["server"]["nodeName"], "Garage");
+    let (_, body) = admin
+        .call("ServerService/StartServer", json!({ "id": "there-1" }))
+        .await;
+    assert!(
+        body["message"]
+            .as_str()
+            .unwrap()
+            .contains("different NetherNode version"),
+        "{body}"
+    );
+
+    // Moves: not to where it is, nowhere, or a machine that needs updating.
+    let (status, body) = admin
+        .call(
+            "ServerService/MoveServer",
+            json!({ "id": here.id, "nodeId": "local" }),
+        )
+        .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
+    let (status, _) = admin
+        .call(
+            "ServerService/MoveServer",
+            json!({ "id": here.id, "nodeId": "no-such-node" }),
+        )
+        .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+    let (status, body) = admin
+        .call(
+            "ServerService/MoveServer",
+            json!({ "id": here.id, "nodeId": id }),
+        )
+        .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
+    assert!(
+        body["message"]
+            .as_str()
+            .unwrap()
+            .contains("Update it first"),
+        "{body}"
+    );
+
+    // Removing a machine that has servers needs saying so; then the panel
+    // forgets them, and only them.
+    let (status, body) = admin
+        .call("NodeService/DeleteNode", json!({ "id": id }))
+        .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
+    assert!(
+        body["message"]
+            .as_str()
+            .unwrap()
+            .contains("still has servers"),
+        "{body}"
+    );
+    admin
+        .ok(
+            "NodeService/DeleteNode",
+            json!({ "id": id, "forgetServers": true }),
+        )
+        .await;
+    let (status, _) = admin
+        .call("ServerService/GetServer", json!({ "id": "there-1" }))
+        .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+    admin
+        .ok("ServerService/GetServer", json!({ "id": here.id }))
+        .await;
+    old.abort();
 }
