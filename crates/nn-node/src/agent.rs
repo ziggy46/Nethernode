@@ -474,6 +474,7 @@ async fn answer(node: &Node, request: Request) -> Reply {
             reply(Ok(required))
         }
         Request::StatsHistory { id } => reply(Ok(node.stats_history(&id).await)),
+        Request::FolderUsage { id } => reply(Ok(node.folder_usage(&id).await)),
         Request::Command { id, command } => reply(node.command(&id, &command).await),
         Request::SetCurseforgeKey { key } => {
             node.set_curseforge_key(key);

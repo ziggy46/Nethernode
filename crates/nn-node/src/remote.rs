@@ -140,6 +140,12 @@ impl RemoteNode {
                 memory_limit_bytes,
                 net_rx_bytes,
                 net_tx_bytes,
+                disk_read_bytes,
+                disk_write_bytes,
+                players_online,
+                mspt,
+                mspt_p95,
+                tps,
             } => {
                 cache.entry(server_id.clone()).or_default().stats = Some(StatSample {
                     at_ms: nn_store::now_ms(),
@@ -148,6 +154,16 @@ impl RemoteNode {
                     memory_limit_bytes: *memory_limit_bytes,
                     net_rx_bytes: *net_rx_bytes,
                     net_tx_bytes: *net_tx_bytes,
+                    disk_read_bytes: *disk_read_bytes,
+                    disk_write_bytes: *disk_write_bytes,
+                    players_online: *players_online,
+                    tick: mspt
+                        .zip(*tps)
+                        .map(|(mspt, tps)| nn_orchestrator::TickStats {
+                            mspt,
+                            mspt_p95: *mspt_p95,
+                            tps,
+                        }),
                 });
             }
             Event::ServerStatusChanged { server_id, status } if status != "running" => {

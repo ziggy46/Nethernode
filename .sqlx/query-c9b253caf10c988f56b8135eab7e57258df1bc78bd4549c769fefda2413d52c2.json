@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT joined_at AS \"joined_at!: i64\", left_at\n               FROM player_sessions\n               WHERE server_id = ?1 AND (left_at IS NULL OR left_at >= ?2)",
+  "describe": {
+    "columns": [
+      {
+        "name": "joined_at!: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "player_sessions",
+            "name": "joined_at"
+          }
+        }
+      },
+      {
+        "name": "left_at",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "player_sessions",
+            "name": "left_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "c9b253caf10c988f56b8135eab7e57258df1bc78bd4549c769fefda2413d52c2"
+}

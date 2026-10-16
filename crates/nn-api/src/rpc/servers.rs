@@ -771,11 +771,8 @@ impl pb::ServerService for ServerRpc {
         request: ServiceRequest<'_, pb::GetServerStatsRequest>,
     ) -> ServiceResult<pb::GetServerStatsResponse> {
         require(&ctx, Permission::View)?;
-        let samples = self
-            .state
-            .nodes
-            .for_server_id(request.id)
-            .await
+        let node = self.state.nodes.for_server_id(request.id).await;
+        let samples = node
             .stats_history(request.id)
             .await
             .into_iter()
@@ -786,10 +783,28 @@ impl pb::ServerService for ServerRpc {
                 memory_limit_bytes: s.memory_limit_bytes,
                 net_rx_bytes: s.net_rx_bytes,
                 net_tx_bytes: s.net_tx_bytes,
+                disk_read_bytes: s.disk_read_bytes,
+                disk_write_bytes: s.disk_write_bytes,
+                players_online: s.players_online,
+                mspt: s.tick.map(|t| t.mspt),
+                mspt_p95: s.tick.and_then(|t| t.mspt_p95),
+                tps: s.tick.map(|t| t.tps),
                 ..Default::default()
             })
             .collect();
+        let usage = node.folder_usage(request.id).await;
+        let day_ago = nn_store::now_ms() - 24 * 60 * 60 * 1000;
+        let players_peak_day = self
+            .state
+            .auth
+            .store()
+            .player_peak_since(request.id, day_ago)
+            .await
+            .unwrap_or(0);
         Response::ok(pb::GetServerStatsResponse {
+            folder_bytes: usage.map(|u| u.total_bytes),
+            world_bytes: usage.map(|u| u.world_bytes),
+            players_peak_day,
             samples,
             ..Default::default()
         })

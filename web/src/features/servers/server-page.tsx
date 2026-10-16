@@ -11,7 +11,6 @@ import {
   Square,
   SquareTerminal,
   TriangleAlert,
-  Zap,
 } from "lucide-react";
 import { Tabs } from "radix-ui";
 import { useState } from "react";
@@ -39,10 +38,10 @@ import { hasMods, ModsPanel } from "../mods/mods-panel";
 import { PlayersPanel } from "../players/players-panel";
 import { ConfigurationTab } from "./configuration-tab";
 import { useDockerAvailable } from "./docker-notice";
-import { formatBytes, gb, loaderName, memoryLimitBytes, versionLabel } from "./format";
+import { gb, loaderName, memoryLimitBytes, versionLabel } from "./format";
+import { PerformancePanel } from "./performance-panel";
 import { type PullProgress, pullKey, serverQuery } from "./queries";
 import { subtitle, useLiveStats } from "./server-card";
-import { Sparkline, useStatsSeries } from "./sparkline";
 import { StopDialog } from "./stop-dialog";
 import { useServerAction } from "./use-server-actions";
 
@@ -162,11 +161,6 @@ export function ServerPage({ id }: { id: string }) {
 }
 
 function ConsoleTab({ server }: { server: Server }) {
-  const running = server.status === ServerStatus.RUNNING;
-  const series = useStatsSeries(server.id, running || server.status === ServerStatus.STARTING);
-  const live = useLiveStats(server.id);
-  const recent = series.slice(-300);
-
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_260px] gap-5 below-lg:grid-cols-1">
       <div className="flex min-w-0 flex-col gap-5">
@@ -191,34 +185,7 @@ function ConsoleTab({ server }: { server: Server }) {
           <ConsolePanel server={server} />
         )}
 
-        <Panel>
-          <PanelHeader title="Performance" icon={<Zap />} />
-          {running && recent.length > 1 ? (
-            <div className="grid grid-cols-2 gap-6 below-sm:grid-cols-1">
-              <div>
-                <p className="text-meta text-text-muted">CPU · last 5 minutes</p>
-                <p className="font-[650] text-title tabular-nums">{Math.round(live?.cpuPercent ?? 0)}%</p>
-                <Sparkline values={recent.map((p) => p.cpu)} max={100} className="mt-2 h-16 w-full" />
-              </div>
-              <div>
-                <p className="text-meta text-text-muted">Memory · last 5 minutes</p>
-                <p className="font-[650] text-title tabular-nums">
-                  {formatBytes(live?.memoryBytes ?? 0)}
-                  <span className="ml-1 font-normal text-label text-text-muted">
-                    / {formatBytes(live?.memoryLimitBytes ?? 0)}
-                  </span>
-                </p>
-                <Sparkline
-                  values={recent.map((p) => p.memory)}
-                  max={recent[recent.length - 1]?.limit ?? 0}
-                  className="mt-2 h-16 w-full"
-                />
-              </div>
-            </div>
-          ) : (
-            <p className="text-label text-text-muted">Resource graphs appear while the server is running.</p>
-          )}
-        </Panel>
+        <PerformancePanel server={server} />
       </div>
 
       <aside className="flex flex-col gap-[18px] below-lg:grid below-lg:grid-cols-2 below-lg:gap-[15px] below-sm:grid-cols-1">

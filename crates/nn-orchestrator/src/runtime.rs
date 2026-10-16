@@ -34,6 +34,18 @@ pub struct StatSample {
     pub net_rx_bytes: u64,
     /// Cumulative bytes sent.
     pub net_tx_bytes: u64,
+    /// Cumulative bytes read from disk.
+    #[serde(default)]
+    pub disk_read_bytes: u64,
+    /// Cumulative bytes written to disk.
+    #[serde(default)]
+    pub disk_write_bytes: u64,
+    /// Players online, from the latest status ping.
+    #[serde(default)]
+    pub players_online: Option<u32>,
+    /// Tick health, when the server reports it.
+    #[serde(default)]
+    pub tick: Option<crate::ticks::TickStats>,
 }
 
 /// Player counts from the last successful status ping.
@@ -86,6 +98,8 @@ pub(crate) struct State {
     /// Monitor, stats, and log tasks for the running container.
     pub tasks: Vec<JoinHandle<()>>,
     pub players: Option<Players>,
+    /// The latest tick timing, while running.
+    pub tick: Option<crate::ticks::TickStats>,
     pub crash_restarts: VecDeque<Instant>,
     /// NetherNode is starting the container itself, so Docker's `start`
     /// event shouldn't be treated as an outside start.
@@ -130,6 +144,18 @@ pub struct Runtime {
     pub logs: LogHub,
     /// RCON connection for console commands, kept open between commands.
     pub(crate) rcon: tokio::sync::Mutex<Option<nn_players::Rcon>>,
+    /// The latest folder measurement, and when it was taken.
+    pub(crate) usage: Mutex<Option<(std::time::Instant, FolderUsage)>>,
+}
+
+/// How much space a server's folder takes.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct FolderUsage {
+    /// Everything in the server's folder.
+    pub total_bytes: u64,
+    /// Its worlds (the overworld, and the Nether and End where they're
+    /// separate folders).
+    pub world_bytes: u64,
 }
 
 impl Runtime {
@@ -140,6 +166,7 @@ impl Runtime {
             stats: Mutex::new(Ring::new(STATS_HISTORY)),
             logs: LogHub::new(),
             rcon: tokio::sync::Mutex::new(None),
+            usage: Mutex::new(None),
         }
     }
 

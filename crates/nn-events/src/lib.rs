@@ -98,6 +98,24 @@ pub enum Event {
         net_rx_bytes: u64,
         /// Total bytes sent.
         net_tx_bytes: u64,
+        /// Total bytes read from disk.
+        #[serde(default)]
+        disk_read_bytes: u64,
+        /// Total bytes written to disk.
+        #[serde(default)]
+        disk_write_bytes: u64,
+        /// Players online, from the latest status ping.
+        #[serde(default)]
+        players_online: Option<u32>,
+        /// Average milliseconds per tick, when the server reports it.
+        #[serde(default)]
+        mspt: Option<f64>,
+        /// The slowest 5% of recent ticks took at least this long.
+        #[serde(default)]
+        mspt_p95: Option<f64>,
+        /// Ticks per second achieved (20 is full speed).
+        #[serde(default)]
+        tps: Option<f64>,
     },
     /// Players online, from the server's status ping.
     ServerPlayers {

@@ -31,6 +31,12 @@ type DataEvent =
       cpu_percent: number;
       memory_bytes: number;
       memory_limit_bytes: number;
+      disk_read_bytes?: number;
+      disk_write_bytes?: number;
+      players_online?: number | null;
+      mspt?: number | null;
+      mspt_p95?: number | null;
+      tps?: number | null;
     }
   | { type: "image_pull_progress"; server_id: string; percent: number | null; status: string }
   | { type: "server_operation_failed"; server_id: string; operation: string; message: string }
@@ -72,6 +78,12 @@ function applyData(client: QueryClient, event: DataEvent) {
         memoryBytes: event.memory_bytes,
         memoryLimitBytes: event.memory_limit_bytes,
         atMs: Date.now(),
+        diskReadBytes: event.disk_read_bytes,
+        diskWriteBytes: event.disk_write_bytes,
+        players: event.players_online,
+        mspt: event.mspt,
+        msptP95: event.mspt_p95,
+        tps: event.tps,
       };
       client.setQueryData(liveStatsKey(event.server_id), live);
       break;

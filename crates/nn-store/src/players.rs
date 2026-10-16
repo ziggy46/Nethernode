@@ -121,6 +121,36 @@ impl Store {
         .await?;
         Ok(rows)
     }
+
+    /// The most players on a server at once since `since` (unix ms), from
+    /// the proxy's join and leave records.
+    pub async fn player_peak_since(&self, server_id: &str, since: i64) -> Result<u32> {
+        let rows = sqlx::query!(
+            r#"SELECT joined_at AS "joined_at!: i64", left_at
+               FROM player_sessions
+               WHERE server_id = ?1 AND (left_at IS NULL OR left_at >= ?2)"#,
+            server_id,
+            since,
+        )
+        .fetch_all(self.pool())
+        .await?;
+        // +1 at each join, -1 at each leave; leaves sort before joins at the
+        // same moment.
+        let mut changes: Vec<(i64, i32)> = Vec::with_capacity(rows.len() * 2);
+        for row in rows {
+            changes.push((row.joined_at.max(since), 1));
+            if let Some(left) = row.left_at {
+                changes.push((left, -1));
+            }
+        }
+        changes.sort_unstable();
+        let (mut now, mut peak) = (0i32, 0i32);
+        for (_, change) in changes {
+            now += change;
+            peak = peak.max(now);
+        }
+        Ok(u32::try_from(peak).unwrap_or(0))
+    }
 }
 
 #[cfg(test)]
@@ -128,6 +158,32 @@ mod tests {
     use super::*;
     use crate::servers::test_server;
     use crate::test_store;
+
+    #[tokio::test]
+    async fn the_peak_counts_players_online_at_once() {
+        let store = test_store().await;
+        let server = store
+            .insert_server(test_server("smp", 30001))
+            .await
+            .unwrap();
+        let join = |name: &'static str| NewPlayerSession {
+            server_id: &server.id,
+            uuid: Some(name),
+            username: name,
+            ip: Some("127.0.0.1"),
+        };
+        assert_eq!(store.player_peak_since(&server.id, 0).await.unwrap(), 0);
+        let a = store.open_player_session(join("a")).await.unwrap();
+        let b = store.open_player_session(join("b")).await.unwrap();
+        assert_eq!(store.player_peak_since(&server.id, 0).await.unwrap(), 2);
+        store.close_player_session(&a).await.unwrap();
+        store.close_player_session(&b).await.unwrap();
+        store.open_player_session(join("c")).await.unwrap();
+        assert_eq!(store.player_peak_since(&server.id, 0).await.unwrap(), 2);
+        // Sessions that ended before the window don't count.
+        let later = crate::now_ms() + 60_000;
+        assert_eq!(store.player_peak_since(&server.id, later).await.unwrap(), 1);
+    }
 
     #[tokio::test]
     async fn sessions_open_and_close() {

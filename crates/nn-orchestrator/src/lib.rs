@@ -16,11 +16,13 @@ pub mod ring;
 pub mod runtime;
 pub mod self_update;
 pub mod spec;
+pub mod ticks;
 mod watcher;
 
 pub use error::{OrchestratorError, Result};
 pub use lifecycle::{
     BeforeStart, CreateServer, HostInfo, Orchestrator, OrchestratorConfig, slugify,
 };
-pub use runtime::{Players, StatSample};
+pub use runtime::{FolderUsage, Players, StatSample};
+pub use ticks::TickStats;
 pub use watcher::{reconcile, spawn_background};

@@ -341,6 +341,21 @@ impl Node {
         }
     }
 
+    /// How much space a server's folder and worlds take, if that can be
+    /// measured.
+    pub async fn folder_usage(&self, id: &str) -> Option<nn_orchestrator::FolderUsage> {
+        match self {
+            Self::Local(node) => node.orchestrator().ok()?.folder_usage(id).await.ok(),
+            Self::Remote(node) => node
+                .call::<Option<nn_orchestrator::FolderUsage>>(Request::FolderUsage {
+                    id: id.into(),
+                })
+                .await
+                .ok()
+                .flatten(),
+        }
+    }
+
     /// Facts about the machine's Docker host.
     pub async fn host_info(&self) -> Result<HostInfo> {
         match self {

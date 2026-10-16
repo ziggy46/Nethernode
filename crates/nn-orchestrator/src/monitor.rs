@@ -43,6 +43,11 @@ pub(crate) fn spawn(
     let mut state = rt.state();
     state.stop_tasks();
     state.launching = false;
+    state.tick = None;
+    state.tasks.push(tokio::spawn(crate::ticks::poll(
+        orch.clone(),
+        id.to_owned(),
+    )));
     state.tasks.push(tokio::spawn(watch_health(
         orch.clone(),
         id.to_owned(),
@@ -161,9 +166,15 @@ async fn stream_stats(orch: Arc<Orchestrator>, id: String, container: String) {
     let options = StatsOptionsBuilder::default().stream(true).build();
     let mut stream = orch.docker.stats(&container, Some(options));
     while let Some(Ok(stats)) = stream.next().await {
-        let Some(sample) = sample_from(&stats) else {
+        let Some(mut sample) = sample_from(&stats) else {
             continue;
         };
+        {
+            let rt = orch.runtime(&id);
+            let state = rt.state();
+            sample.players_online = state.players.map(|p| p.online);
+            sample.tick = state.tick;
+        }
         orch.record_stats(&id, sample);
         orch.events.publish(Event::ServerStats {
             server_id: id.clone(),
@@ -172,6 +183,12 @@ async fn stream_stats(orch: Arc<Orchestrator>, id: String, container: String) {
             memory_limit_bytes: sample.memory_limit_bytes,
             net_rx_bytes: sample.net_rx_bytes,
             net_tx_bytes: sample.net_tx_bytes,
+            disk_read_bytes: sample.disk_read_bytes,
+            disk_write_bytes: sample.disk_write_bytes,
+            players_online: sample.players_online,
+            mspt: sample.tick.map(|t| t.mspt),
+            mspt_p95: sample.tick.and_then(|t| t.mspt_p95),
+            tps: sample.tick.map(|t| t.tps),
         });
     }
 }
@@ -215,6 +232,22 @@ pub(crate) fn sample_from(stats: &ContainerStatsResponse) -> Option<StatSample> 
             })
         })
         .unwrap_or((0, 0));
+    // cgroup v2 says `read`/`write`, v1 `Read`/`Write`.
+    let (disk_read, disk_write) = stats
+        .blkio_stats
+        .as_ref()
+        .and_then(|b| b.io_service_bytes_recursive.as_ref())
+        .map(|entries| {
+            entries.iter().fold((0, 0), |(r, w), e| {
+                let value = e.value.unwrap_or(0);
+                match e.op.as_deref().map(str::to_ascii_lowercase).as_deref() {
+                    Some("read") => (r + value, w),
+                    Some("write") => (r, w + value),
+                    _ => (r, w),
+                }
+            })
+        })
+        .unwrap_or((0, 0));
     Some(StatSample {
         at_ms: now_ms(),
         cpu_percent,
@@ -222,6 +255,10 @@ pub(crate) fn sample_from(stats: &ContainerStatsResponse) -> Option<StatSample> 
         memory_limit_bytes: memory.and_then(|m| m.limit).unwrap_or(0),
         net_rx_bytes: rx,
         net_tx_bytes: tx,
+        disk_read_bytes: disk_read,
+        disk_write_bytes: disk_write,
+        players_online: None,
+        tick: None,
     })
 }
 

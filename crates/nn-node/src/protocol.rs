@@ -156,6 +156,12 @@ pub enum Request {
         /// The version to run, like `0.2.1`.
         version: String,
     },
+    /// How much space a server's folder and worlds take; the reply is a
+    /// `FolderUsage`, or none.
+    FolderUsage {
+        /// Server ID.
+        id: String,
+    },
     /// Connect to a server's management protocol port. The reply is its
     /// secret (none if it has no management port), then the stream carries
     /// bytes both ways.

@@ -241,6 +241,16 @@ message StatSample {
   uint64 memory_limit_bytes = 4;
   uint64 net_rx_bytes = 5;
   uint64 net_tx_bytes = 6;
+  // Cumulative bytes read from and written to disk.
+  uint64 disk_read_bytes = 7;
+  uint64 disk_write_bytes = 8;
+  // Players online, from the latest status ping.
+  optional uint32 players_online = 9;
+  // Tick health, when the server reports it: average and 95th-percentile
+  // milliseconds per tick, and ticks per second achieved (20 is full speed).
+  optional double mspt = 10;
+  optional double mspt_p95 = 11;
+  optional double tps = 12;
 }
 
 message GetServerStatsRequest {
@@ -250,6 +260,12 @@ message GetServerStatsRequest {
 message GetServerStatsResponse {
   // Oldest first.
   repeated StatSample samples = 1;
+  // Space the server's folder and its worlds take, when it can be measured
+  // (refreshed every few minutes).
+  optional uint64 folder_bytes = 2;
+  optional uint64 world_bytes = 3;
+  // The most players online at once in the last 24 hours.
+  uint32 players_peak_day = 4;
 }
 
 message GetHostInfoRequest {}

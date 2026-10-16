@@ -33,7 +33,7 @@ use nn_store::{Server, ServerSettings, Store, now_ms};
 use rand::Rng;
 
 use crate::error::{OrchestratorError, Result};
-use crate::runtime::{Players, Runtime, StatSample};
+use crate::runtime::{FolderUsage, Players, Runtime, StatSample};
 use crate::spec::{self, SpecInput};
 use crate::{java, ports};
 
@@ -320,6 +320,26 @@ impl Orchestrator {
             .unwrap_or_else(|e| e.into_inner())
             .get(id)
             .and_then(|rt| rt.state().players)
+    }
+
+    /// How much space a server's folder and worlds take. Measured at most
+    /// every few minutes, since big folders take a while to walk.
+    pub async fn folder_usage(&self, id: &str) -> Result<FolderUsage> {
+        const FRESH: Duration = Duration::from_secs(5 * 60);
+        let rt = self.runtime(id);
+        if let Some((at, usage)) = *rt.usage.lock().unwrap_or_else(|e| e.into_inner())
+            && at.elapsed() < FRESH
+        {
+            return Ok(usage);
+        }
+        let server = self.load(id).await?;
+        let dir = self.server_dir(&server.slug)?;
+        let usage = tokio::task::spawn_blocking(move || measure_folder(&dir))
+            .await
+            .map_err(std::io::Error::other)?;
+        *rt.usage.lock().unwrap_or_else(|e| e.into_inner()) =
+            Some((std::time::Instant::now(), usage));
+        Ok(usage)
     }
 
     /// Up to an hour of resource samples, oldest first.
@@ -1248,6 +1268,54 @@ impl Orchestrator {
             .unwrap_or_else(|e| e.into_inner())
             .push(sample);
     }
+}
+
+/// Sizes a server folder: everything, and the worlds named by
+/// `level-name` in `server.properties` (with Bukkit-style `_nether` and
+/// `_the_end` folders beside it).
+fn measure_folder(dir: &std::path::Path) -> FolderUsage {
+    let level = std::fs::read_to_string(dir.join("server.properties"))
+        .ok()
+        .and_then(|props| {
+            props.lines().find_map(|line| {
+                line.strip_prefix("level-name=")
+                    .map(|v| v.trim().to_owned())
+            })
+        })
+        .filter(|level| !level.is_empty() && !level.contains(['/', '\\']) && level != "..")
+        .unwrap_or_else(|| "world".to_owned());
+    let world_bytes = [
+        level.clone(),
+        format!("{level}_nether"),
+        format!("{level}_the_end"),
+    ]
+    .iter()
+    .map(|name| folder_size(&dir.join(name)))
+    .sum();
+    FolderUsage {
+        total_bytes: folder_size(dir),
+        world_bytes,
+    }
+}
+
+/// Bytes in the files under `path`, not following links.
+fn folder_size(path: &std::path::Path) -> u64 {
+    let mut total = 0;
+    let mut pending = vec![path.to_owned()];
+    while let Some(dir) = pending.pop() {
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let Ok(meta) = entry.metadata() else { continue };
+            if meta.is_dir() {
+                pending.push(entry.path());
+            } else if meta.is_file() {
+                total += meta.len();
+            }
+        }
+    }
+    total
 }
 
 /// Lowercase letters, digits, and single dashes; at most 32 characters.

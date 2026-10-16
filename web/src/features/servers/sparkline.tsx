@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 
-import type { StatSample } from "@/gen/nethernode/v1/servers_pb";
+import type { GetServerStatsResponse, StatSample } from "@/gen/nethernode/v1/servers_pb";
 import { statsHistoryQuery } from "./queries";
 import { useLiveStats } from "./server-card";
 
@@ -10,6 +10,13 @@ export interface Point {
   cpu: number;
   memory: number;
   limit: number;
+  /** Cumulative bytes. */
+  diskRead: number;
+  diskWrite: number;
+  players?: number;
+  mspt?: number;
+  msptP95?: number;
+  tps?: number;
 }
 
 const toPoint = (s: StatSample): Point => ({
@@ -17,6 +24,12 @@ const toPoint = (s: StatSample): Point => ({
   cpu: s.cpuPercent,
   memory: Number(s.memoryBytes),
   limit: Number(s.memoryLimitBytes),
+  diskRead: Number(s.diskReadBytes),
+  diskWrite: Number(s.diskWriteBytes),
+  players: s.playersOnline,
+  mspt: s.mspt,
+  msptP95: s.msptP95,
+  tps: s.tps,
 });
 
 /**
@@ -30,21 +43,27 @@ export function useStatsSeries(id: string, enabled: boolean): Point[] {
 
   useEffect(() => {
     if (!live || !enabled) return;
-    client.setQueryData<StatSample[]>(statsHistoryQuery(id).queryKey, (prev) => {
+    client.setQueryData<GetServerStatsResponse>(statsHistoryQuery(id).queryKey, (prev) => {
       if (!prev) return prev;
-      const last = prev[prev.length - 1];
+      const last = prev.samples[prev.samples.length - 1];
       if (last && Number(last.atMs) >= live.atMs) return prev;
       const sample = {
         atMs: BigInt(live.atMs),
         cpuPercent: live.cpuPercent,
         memoryBytes: BigInt(live.memoryBytes),
         memoryLimitBytes: BigInt(live.memoryLimitBytes),
+        diskReadBytes: BigInt(live.diskReadBytes ?? 0),
+        diskWriteBytes: BigInt(live.diskWriteBytes ?? 0),
+        playersOnline: live.players ?? undefined,
+        mspt: live.mspt ?? undefined,
+        msptP95: live.msptP95 ?? undefined,
+        tps: live.tps ?? undefined,
       } as StatSample;
-      return [...prev.slice(-3599), sample];
+      return { ...prev, samples: [...prev.samples.slice(-3599), sample] };
     });
   }, [client, id, live, enabled]);
 
-  return (history.data ?? []).map(toPoint);
+  return (history.data?.samples ?? []).map(toPoint);
 }
 
 /**

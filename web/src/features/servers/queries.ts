@@ -20,7 +20,7 @@ export const serverQuery = (id: string) =>
 export const statsHistoryQuery = (id: string) =>
   queryOptions({
     queryKey: ["servers", "stats", id],
-    queryFn: async () => (await serverClient.getServerStats({ id })).samples,
+    queryFn: () => serverClient.getServerStats({ id }),
     staleTime: Number.POSITIVE_INFINITY,
   });
 
@@ -36,6 +36,12 @@ export interface LiveStats {
   memoryBytes: number;
   memoryLimitBytes: number;
   atMs: number;
+  diskReadBytes?: number;
+  diskWriteBytes?: number;
+  players?: number | null;
+  mspt?: number | null;
+  msptP95?: number | null;
+  tps?: number | null;
 }
 export const liveStatsKey = (id: string) => ["servers", "live", id] as const;
 
