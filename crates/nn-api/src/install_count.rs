@@ -1,6 +1,6 @@
 //! The opt-in "active installs" count.
 //!
-//! Off unless the configuration or an owner turns it on. Then, about once a
+//! Off unless an owner turns it on in Settings. Then, about once a
 //! day, NetherNode sends a random install ID (made on this machine, from
 //! nothing) and its version to the counter, and nothing else. Turning it
 //! off deletes the ID.
@@ -33,8 +33,6 @@ pub fn payload(id: &str) -> serde_json::Value {
 pub struct Status {
     /// Reporting is on.
     pub enabled: bool,
-    /// Turned on by the configuration, so the switch can't turn it off.
-    pub forced: bool,
     /// The install ID, while on.
     pub id: Option<String>,
     /// Where reports go.
@@ -55,7 +53,6 @@ struct Last {
 #[derive(Debug)]
 pub struct InstallCount {
     url: String,
-    forced: bool,
     client: reqwest::Client,
     wake: Notify,
     last: RwLock<Last>,
@@ -63,16 +60,15 @@ pub struct InstallCount {
 
 impl Default for InstallCount {
     fn default() -> Self {
-        Self::new(DEFAULT_URL.to_owned(), false)
+        Self::new(DEFAULT_URL.to_owned())
     }
 }
 
 impl InstallCount {
-    /// Reports to `url`; `forced` means the configuration turned it on.
-    pub fn new(url: String, forced: bool) -> Self {
+    /// Reports to `url`.
+    pub fn new(url: String) -> Self {
         Self {
             url,
-            forced,
             client: reqwest::Client::builder()
                 .redirect(reqwest::redirect::Policy::none())
                 .timeout(Duration::from_secs(15))
@@ -85,13 +81,34 @@ impl InstallCount {
     }
 
     async fn enabled(&self, store: &Store) -> bool {
-        self.forced
-            || store
-                .get_setting::<bool>(ENABLED_KEY)
-                .await
-                .ok()
-                .flatten()
-                .unwrap_or(false)
+        store
+            .get_setting::<bool>(ENABLED_KEY)
+            .await
+            .ok()
+            .flatten()
+            .unwrap_or(false)
+    }
+
+    /// Carries over `install_count.enabled = true` from the configuration,
+    /// where it used to be set: once, when Settings has no answer yet. From
+    /// then on only the switch in Settings counts.
+    pub async fn adopt_configuration(&self, store: &Store) {
+        match store.get_setting::<bool>(ENABLED_KEY).await {
+            Ok(None) => {
+                if let Err(e) = store.set_setting(ENABLED_KEY, &true).await {
+                    tracing::warn!(error = %e, "couldn't carry over the install count setting");
+                    return;
+                }
+                tracing::warn!(
+                    "install_count.enabled in the configuration is no longer used: counting was \
+                     turned on in Settings instead, where it can be turned off. Remove the setting."
+                );
+            }
+            _ => tracing::warn!(
+                "install_count.enabled in the configuration is ignored; use the switch in Settings, \
+                 and remove the setting"
+            ),
+        }
     }
 
     /// The install ID, made the first time it's needed.
@@ -119,7 +136,6 @@ impl InstallCount {
         let last = self.last.read().unwrap_or_else(|e| e.into_inner());
         Status {
             enabled,
-            forced: self.forced,
             id,
             url: self.url.clone(),
             last_sent_ms: last.sent_ms,
@@ -129,11 +145,6 @@ impl InstallCount {
 
     /// Turns reporting on or off. Off deletes the install ID.
     pub(crate) async fn set(&self, store: &Store, on: bool) -> Result<(), ConnectError> {
-        if self.forced && !on {
-            return Err(ConnectError::failed_precondition(
-                "it's turned on in NetherNode's configuration; remove the setting there to turn it off",
-            ));
-        }
         store
             .set_setting(ENABLED_KEY, &on)
             .await
@@ -151,8 +162,8 @@ impl InstallCount {
         Ok(())
     }
 
-    /// Deletes the install ID, as turning counting off promises. Covers the
-    /// configuration turning it off too (the switch already does this).
+    /// Deletes the install ID, as turning counting off promises (in case
+    /// it was turned off some other way).
     async fn forget(&self, store: &Store) {
         if store
             .get_setting::<String>(ID_KEY)
@@ -262,7 +273,7 @@ mod tests {
         let store = Store::open_in_memory().await.unwrap();
         store.migrate().await.unwrap();
         let (url, seen) = counter().await;
-        let count = InstallCount::new(url, false);
+        let count = InstallCount::new(url);
         let status = count.status(&store).await;
         assert!(!status.enabled && status.id.is_none());
         assert!(
@@ -288,12 +299,17 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn the_configuration_can_turn_it_on_for_good() {
+    async fn the_old_configuration_setting_is_carried_over_once() {
         let store = Store::open_in_memory().await.unwrap();
         store.migrate().await.unwrap();
-        let count = InstallCount::new("http://127.0.0.1:9/ping".into(), true);
+        let count = InstallCount::new("http://127.0.0.1:9/ping".into());
+        count.adopt_configuration(&store).await;
         assert!(count.status(&store).await.enabled);
-        assert!(count.set(&store, false).await.is_err());
+        // The switch decides from then on, whatever the configuration says.
+        count.set(&store, false).await.unwrap();
+        count.adopt_configuration(&store).await;
+        assert!(!count.status(&store).await.enabled);
+        count.set(&store, true).await.unwrap();
         count.report(&store).await;
         assert!(
             count

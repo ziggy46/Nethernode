@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file nethernode/v1/install_count.proto.
  */
 export const file_nethernode_v1_install_count: GenFile = /*@__PURE__*/
-  fileDesc("CiFuZXRoZXJub2RlL3YxL2luc3RhbGxfY291bnQucHJvdG8SDW5ldGhlcm5vZGUudjEiGAoWR2V0SW5zdGFsbENvdW50UmVxdWVzdCKYAQoXR2V0SW5zdGFsbENvdW50UmVzcG9uc2USDwoHZW5hYmxlZBgBIAEoCBIOCgZmb3JjZWQYAiABKAgSDwoHcGF5bG9hZBgDIAEoCRILCgN1cmwYBCABKAkSGQoMbGFzdF9zZW50X21zGAUgASgDSACIAQESEgoKbGFzdF9lcnJvchgGIAEoCUIPCg1fbGFzdF9zZW50X21zIikKFlNldEluc3RhbGxDb3VudFJlcXVlc3QSDwoHZW5hYmxlZBgBIAEoCCIZChdTZXRJbnN0YWxsQ291bnRSZXNwb25zZTLeAQoTSW5zdGFsbENvdW50U2VydmljZRJlCg9HZXRJbnN0YWxsQ291bnQSJS5uZXRoZXJub2RlLnYxLkdldEluc3RhbGxDb3VudFJlcXVlc3QaJi5uZXRoZXJub2RlLnYxLkdldEluc3RhbGxDb3VudFJlc3BvbnNlIgOQAgESYAoPU2V0SW5zdGFsbENvdW50EiUubmV0aGVybm9kZS52MS5TZXRJbnN0YWxsQ291bnRSZXF1ZXN0GiYubmV0aGVybm9kZS52MS5TZXRJbnN0YWxsQ291bnRSZXNwb25zZWIGcHJvdG8z");
+  fileDesc("CiFuZXRoZXJub2RlL3YxL2luc3RhbGxfY291bnQucHJvdG8SDW5ldGhlcm5vZGUudjEiGAoWR2V0SW5zdGFsbENvdW50UmVxdWVzdCKWAQoXR2V0SW5zdGFsbENvdW50UmVzcG9uc2USDwoHZW5hYmxlZBgBIAEoCBIPCgdwYXlsb2FkGAMgASgJEgsKA3VybBgEIAEoCRIZCgxsYXN0X3NlbnRfbXMYBSABKANIAIgBARISCgpsYXN0X2Vycm9yGAYgASgJQg8KDV9sYXN0X3NlbnRfbXNKBAgCEANSBmZvcmNlZCIpChZTZXRJbnN0YWxsQ291bnRSZXF1ZXN0Eg8KB2VuYWJsZWQYASABKAgiGQoXU2V0SW5zdGFsbENvdW50UmVzcG9uc2Uy3gEKE0luc3RhbGxDb3VudFNlcnZpY2USZQoPR2V0SW5zdGFsbENvdW50EiUubmV0aGVybm9kZS52MS5HZXRJbnN0YWxsQ291bnRSZXF1ZXN0GiYubmV0aGVybm9kZS52MS5HZXRJbnN0YWxsQ291bnRSZXNwb25zZSIDkAIBEmAKD1NldEluc3RhbGxDb3VudBIlLm5ldGhlcm5vZGUudjEuU2V0SW5zdGFsbENvdW50UmVxdWVzdBomLm5ldGhlcm5vZGUudjEuU2V0SW5zdGFsbENvdW50UmVzcG9uc2ViBnByb3RvMw");
 
 /**
  * @generated from message nethernode.v1.GetInstallCountRequest
@@ -33,13 +33,6 @@ export type GetInstallCountResponse = Message<"nethernode.v1.GetInstallCountResp
    * @generated from field: bool enabled = 1;
    */
   enabled: boolean;
-
-  /**
-   * Turned on in NetherNode's configuration; the switch can't turn it off.
-   *
-   * @generated from field: bool forced = 2;
-   */
-  forced: boolean;
 
   /**
    * Exactly what's sent each day (JSON), while on.
@@ -120,8 +113,7 @@ export const InstallCountService: GenService<{
     output: typeof GetInstallCountResponseSchema;
   },
   /**
-   * Turning it off deletes the install ID. Fails with FAILED_PRECONDITION
-   * when the configuration turned it on.
+   * Turning it off deletes the install ID.
    *
    * @generated from rpc nethernode.v1.InstallCountService.SetInstallCount
    */

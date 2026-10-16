@@ -8,8 +8,7 @@ service InstallCountService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
-  // Turning it off deletes the install ID. Fails with FAILED_PRECONDITION
-  // when the configuration turned it on.
+  // Turning it off deletes the install ID.
   rpc SetInstallCount(SetInstallCountRequest) returns (SetInstallCountResponse);
 }
 
@@ -17,8 +16,8 @@ message GetInstallCountRequest {}
 
 message GetInstallCountResponse {
   bool enabled = 1;
-  // Turned on in NetherNode's configuration; the switch can't turn it off.
-  bool forced = 2;
+  reserved 2;
+  reserved "forced";
   // Exactly what's sent each day (JSON), while on.
   string payload = 3;
   // Where it's sent.

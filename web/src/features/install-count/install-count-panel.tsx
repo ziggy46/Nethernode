@@ -58,15 +58,10 @@ export default function InstallCountPanel() {
             <Switch
               id={switchId}
               checked={data.enabled}
-              disabled={set.isPending || data.forced}
+              disabled={set.isPending}
               onCheckedChange={(on) => set.mutate(on)}
             />
           </div>
-          {data.forced && (
-            <p className="mt-3 text-meta text-text-muted">
-              Turned on in NetherNode's configuration (install_count.enabled); change it there.
-            </p>
-          )}
           {data.enabled && (
             <dl className="mt-4 space-y-2 border-divider border-t pt-3 text-meta">
               <div>

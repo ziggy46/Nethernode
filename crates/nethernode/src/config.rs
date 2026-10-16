@@ -33,9 +33,8 @@ pub struct Config {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(default, deny_unknown_fields)]
 pub struct InstallCountConfig {
-    /// Report this install to the counter once a day (a random ID and the
-    /// version, nothing else). Off by default; owners can also turn it on
-    /// in Settings.
+    /// No longer used: the switch is in Settings. If it's `true` when
+    /// Settings has no answer yet, counting is turned on there once.
     pub enabled: bool,
     /// Where reports go.
     pub url: String,

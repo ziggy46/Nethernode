@@ -22,7 +22,6 @@ services:
     # Optional settings; see the configuration reference for the rest.
     # environment:
     #   NETHERNODE_HTTP__TRUST_PROXY_HEADERS: "true"   # behind a reverse proxy or tunnel
-    #   NETHERNODE_INSTALL_COUNT__ENABLED: "true"      # join the public install count
 
 volumes:
   nethernode-data:

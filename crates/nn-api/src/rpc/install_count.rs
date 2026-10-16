@@ -35,7 +35,6 @@ impl pb::InstallCountService for InstallCountRpc {
             .await;
         Response::ok(pb::GetInstallCountResponse {
             enabled: status.enabled,
-            forced: status.forced,
             payload: status
                 .id
                 .map(|id| payload(&id).to_string())

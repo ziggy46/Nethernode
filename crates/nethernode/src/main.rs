@@ -154,7 +154,6 @@ async fn serve(config: Config) -> Result<()> {
     );
     let install_count = Arc::new(nn_api::install_count::InstallCount::new(
         config.install_count.url.clone(),
-        config.install_count.enabled,
     ));
     let state = AppState {
         auth: auth.clone(),
@@ -179,6 +178,9 @@ async fn serve(config: Config) -> Result<()> {
     nn_api::backups::tasks::recover(&state).await;
     nn_api::schedules::runner::spawn(state.clone());
     nn_api::notify::spawn(state.clone());
+    if config.install_count.enabled {
+        state.install_count.adopt_configuration(&store).await;
+    }
     nn_api::install_count::spawn(state.clone());
     let app = nn_api::router(state);
 
