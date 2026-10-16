@@ -238,11 +238,13 @@ impl Config {
     fn figment(path: &Path) -> Figment {
         Figment::from(Serialized::defaults(Config::default()))
             .merge(Toml::file(path))
-            // The command line's own variables aren't settings.
+            // The command line's own variables, and the agent's release
+            // mirror, aren't settings.
             .merge(Env::prefixed("NETHERNODE_").split("__").ignore(&[
                 "config",
                 "join",
                 "join_code",
+                "releases_url",
             ]))
     }
 }
@@ -301,6 +303,7 @@ mod tests {
             // An agent's join details, given as variables.
             jail.set_env("NETHERNODE_JOIN", "https://panel.example.com");
             jail.set_env("NETHERNODE_JOIN_CODE", "nnj1.x");
+            jail.set_env("NETHERNODE_RELEASES_URL", "http://mirror.example");
             let config = Config::load(Path::new("nethernode.toml")).map_err(|e| *e)?;
             assert_eq!(config.docker.backend_ip.to_string(), "172.17.0.1");
             assert_eq!(
