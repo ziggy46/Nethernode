@@ -155,8 +155,8 @@ test("Discord settings refuse a URL that isn't a Discord webhook", async ({ brow
   await page.getByRole("button", { name: "Verify" }).click();
   await page.goto("/settings");
   await page
-    .getByRole("navigation", { name: "Settings" })
-    .getByRole("link", { name: "Notifications" })
+    .getByRole("navigation", { name: "Settings", exact: true })
+    .getByRole("link", { name: "Notifications", exact: true })
     .click();
   await page.getByLabel("Webhook URL").fill("https://example.com/api/webhooks/1/abc");
   await page.getByRole("button", { name: "Save", exact: true }).first().click();
