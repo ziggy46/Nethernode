@@ -163,7 +163,7 @@ async fn run(
     progress(70);
 
     // 3. Set it up there, then switch the panel over.
-    let switched = switch(state, server, to, &name, job_id).await;
+    let switched = switch(state, server, to, &name).await;
     // The copy it was set up from isn't needed any more.
     if let Err(e) = to.node.delete_backup(&name).await {
         tracing::warn!(server = %server.id, error = %e, "couldn't remove a moved server's archive");
@@ -192,7 +192,6 @@ async fn switch(
     server: &Server,
     to: &Destination,
     name: &str,
-    job_id: &str,
 ) -> Result<(), String> {
     let store = state.auth.store();
     let avoid = store
@@ -205,7 +204,8 @@ async fn switch(
         mgmt_secret_enc: None,
         ..server.clone()
     };
-    match to.node.adopt(&sent, name, &avoid, job_id).await {
+    // Its own job, so the restore's progress doesn't show as the move's.
+    match to.node.adopt(&sent, name, &avoid, &nn_store::new_id()).await {
         Ok(row) => {
             // This machine's orchestrator has already recorded it.
             if !to.node.is_local() {
