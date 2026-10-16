@@ -96,7 +96,12 @@ export default function GameSettings({ server }: { server: Server }) {
     await query.refetch();
   };
 
-  const groups = [...new Set(properties.map((p) => p.group))];
+  // Settings NetherNode sets itself go in one collapsed group at the end.
+  const MANAGED = "Managed by NetherNode";
+  const groupOf = (p: (typeof properties)[number]) => (p.managedReason ? MANAGED : p.group);
+  const groups = [...new Set(properties.map(groupOf))].sort(
+    (a, b) => Number(a === MANAGED) - Number(b === MANAGED),
+  );
 
   return (
     <Panel>
@@ -186,7 +191,7 @@ export default function GameSettings({ server }: { server: Server }) {
             save.isError && <ErrorAlert>{errorMessage(save.error)}</ErrorAlert>
           )}
           {groups.map((group) => {
-            const fields = properties.filter((p) => p.group === group);
+            const fields = properties.filter((p) => groupOf(p) === group);
             const body = (
               <div key="fields" className="divide-y divide-divider">
                 {fields.map((p) => (
@@ -201,11 +206,17 @@ export default function GameSettings({ server }: { server: Server }) {
                 ))}
               </div>
             );
-            return COLLAPSED.has(group) ? (
+            return COLLAPSED.has(group) || group === MANAGED ? (
               <details key={group} className="mb-[17px] rounded-md border border-divider px-3 py-2.5">
                 <summary className="cursor-pointer text-label text-text-secondary">
                   {group} <span className="text-text-muted">({fields.length})</span>
                 </summary>
+                {group === MANAGED && (
+                  <p className="mt-2 text-meta text-text-muted">
+                    NetherNode sets these on every start so it can reach the server, send it commands and
+                    manage its players. They're shown for reference and can't be changed here.
+                  </p>
+                )}
                 <div className="mt-2">{body}</div>
               </details>
             ) : (

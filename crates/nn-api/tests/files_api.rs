@@ -339,7 +339,7 @@ async fn server_properties_form() {
         find("motd")["managedReason"]
             .as_str()
             .unwrap()
-            .contains("Server settings")
+            .contains("Server configuration")
     );
     assert_eq!(
         find("rcon.password")["value"],

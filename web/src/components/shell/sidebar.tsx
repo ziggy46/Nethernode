@@ -118,7 +118,7 @@ function ConnectionCard() {
   const label = health.isPending ? "Connecting…" : connected ? "Panel connected" : "Connection lost";
   return (
     <div className="mb-[17px] rounded-[9px] border border-divider p-[13px] text-label" role="status">
-      <div className="mb-[7px] flex items-center justify-between">
+      <div className="flex items-center justify-between">
         <span className="flex items-center gap-1.5 font-semibold">
           <span
             aria-hidden
@@ -135,10 +135,6 @@ function ConnectionCard() {
         ) : (
           health.isError && <CircleAlert className="size-[13px] text-danger" aria-hidden />
         )}
-      </div>
-      <div className="flex justify-between text-meta text-text-muted">
-        <span>This host</span>
-        {health.data && <span>v{health.data.version}</span>}
       </div>
     </div>
   );

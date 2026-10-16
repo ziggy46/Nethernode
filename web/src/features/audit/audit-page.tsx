@@ -2,12 +2,11 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { ClipboardList, Lock, TriangleAlert } from "lucide-react";
 import { useId, useState } from "react";
 
-import { EmptyState, Footer, PageHeader } from "@/components/page";
+import { EmptyState, PageHeader } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/field";
 import { Role } from "@/gen/nethernode/v1/auth_pb";
 import { errorMessage } from "@/lib/api";
-import { healthQuery } from "@/lib/health";
 import { useCurrentUser } from "@/lib/session";
 import { ago, dateTime } from "@/lib/time";
 import { useDocumentTitle } from "@/lib/use-document-title";
@@ -20,7 +19,6 @@ import { actionLabel, CATEGORIES, detailPairs } from "./labels";
 /** Who did what, and when. Administrators and owners. */
 export function AuditPage() {
   useDocumentTitle("Audit log");
-  const health = useQuery(healthQuery);
   const { role } = useCurrentUser();
   const allowed = role >= Role.ADMIN;
   const ids = { category: useId(), user: useId(), server: useId() };
@@ -169,7 +167,6 @@ export function AuditPage() {
           )}
         </>
       )}
-      <Footer version={health.data?.version} />
     </>
   );
 }

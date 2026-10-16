@@ -16,9 +16,16 @@ const INVALIDATES: Record<string, string[][]> = {
   player_left: [["proxy", "connections"], ["players"]],
   players_changed: [["players"], ["activity"]],
   proxy_connection_closed: [["proxy", "connections"]],
-  node_changed: [["nodes"], ["servers"]],
+  node_changed: [["nodes"], ["servers"], ["notices"]],
   proxy_listener_changed: [["proxy", "listeners"]],
-  server_status_changed: [["servers"], ["proxy", "routes"], ["players"], ["schedules"], ["activity"]],
+  server_status_changed: [
+    ["servers"],
+    ["proxy", "routes"],
+    ["players"],
+    ["schedules"],
+    ["activity"],
+    ["notices"],
+  ],
   server_players: [["servers"]],
   server_operation_failed: [["servers"]],
 };
@@ -94,11 +101,11 @@ function applyData(client: QueryClient, event: DataEvent) {
       break;
     }
     case "server_operation_failed": {
-      // Crashes and failed operations stay visible until dismissed.
+      // Failed operations show for a while; crashes also stay under the bell.
       const name = client
         .getQueryData<{ id: string; name: string }[]>(["servers"])
         ?.find((s) => s.id === event.server_id)?.name;
-      toast.error(name ? `${name}: ${event.message}` : event.message, { duration: Number.POSITIVE_INFINITY });
+      toast.error(name ? `${name}: ${event.message}` : event.message, { duration: 15_000 });
       break;
     }
     case "file_job_progress":
@@ -113,6 +120,7 @@ function applyData(client: QueryClient, event: DataEvent) {
           void client.invalidateQueries({ queryKey: key });
       }
       if (event.kind === "backup" || event.kind === "restore" || event.kind === "move") {
+        void client.invalidateQueries({ queryKey: ["notices"] });
         void client.invalidateQueries({ queryKey: ["backups"] });
         void client.invalidateQueries({ queryKey: ["schedules"] });
         void client.invalidateQueries({ queryKey: ["activity"] });

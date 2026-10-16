@@ -4,11 +4,11 @@ import { Bell, Menu, Search, X } from "lucide-react";
 import type * as React from "react";
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 
+import { Footer } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { useServerEvents } from "@/lib/events";
-import { healthQuery } from "@/lib/health";
+import { noticesQuery, seenNotices } from "@/lib/notices";
 import { useCurrentUser } from "@/lib/session";
-import { cn } from "@/lib/utils";
 
 import { AccountMenu } from "./account-menu";
 import { Avatar } from "./avatar";
@@ -68,14 +68,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           onClick={closeNav}
         />
       )}
-      <div className="ml-(--nn-sidebar-width) below-md:ml-0">
+      <div className="ml-(--nn-sidebar-width) flex min-h-dvh flex-col below-md:ml-0">
         <TopBar navOpen={navOpen} onToggleNav={() => setNavOpen((v) => !v)} onOpenPalette={openPalette} />
         <main
           id="main"
           tabIndex={-1}
-          className="mx-auto max-w-[1700px] px-(--nn-main-padding-x) pt-(--nn-main-padding-y) pb-[26px] outline-none"
+          className="mx-auto flex w-full max-w-[1700px] flex-1 flex-col px-(--nn-main-padding-x) pt-(--nn-main-padding-y) pb-[26px] outline-none"
         >
           {children}
+          <Footer />
         </main>
       </div>
       {paletteLoaded && (
@@ -99,9 +100,11 @@ function TopBar({
   const user = useCurrentUser();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const page = navItemFor(pathname)?.label ?? "Overview";
-  const health = useQuery(healthQuery);
+  const notices = useQuery(noticesQuery).data;
   const [activityOpen, setActivityOpen] = useState(false);
   const [activityLoaded, setActivityLoaded] = useState(false);
+  const seen = activityOpen ? new Set<string>() : seenNotices();
+  const unseen = activityOpen ? 0 : (notices ?? []).filter((n) => !seen.has(n.id)).length;
 
   return (
     <header className="flex h-(--nn-topbar-height) items-center gap-3 border-divider border-b bg-background px-(--nn-main-padding-x)">
@@ -122,19 +125,6 @@ function TopBar({
         </span>
       </nav>
       <div className="ml-auto flex items-center gap-[18px] below-md:gap-2.5">
-        <span
-          className="flex items-center gap-1.5 text-meta text-text-secondary below-lg:hidden"
-          role="status"
-        >
-          <span
-            aria-hidden
-            className={cn(
-              "size-1.5 rounded-full",
-              health.isSuccess ? "bg-success" : health.isError ? "bg-danger" : "bg-text-muted",
-            )}
-          />
-          {health.isSuccess ? "Panel online" : health.isError ? "Panel unreachable" : "Checking…"}
-        </span>
         <Button
           variant="ghost"
           size="icon"
@@ -148,14 +138,22 @@ function TopBar({
         <Button
           variant="ghost"
           size="icon"
-          className="border-divider"
-          aria-label="View notifications"
+          className="relative border-divider"
+          aria-label={unseen ? `Notifications: ${unseen} new` : "Notifications"}
           onClick={() => {
             setActivityLoaded(true);
             setActivityOpen(true);
           }}
         >
           <Bell />
+          {unseen > 0 && (
+            <span
+              aria-hidden
+              className="-top-1 -right-1 absolute flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 font-semibold text-[10px] text-primary-foreground"
+            >
+              {unseen > 9 ? "9+" : unseen}
+            </span>
+          )}
         </Button>
         <AccountMenu>
           <button type="button" aria-label="Account menu" className="rounded-full">
@@ -165,7 +163,7 @@ function TopBar({
       </div>
       {activityLoaded && (
         <Suspense fallback={null}>
-          <NotificationsDialog open={activityOpen} onOpenChange={setActivityOpen} />
+          <NotificationsDialog open={activityOpen} onOpenChange={setActivityOpen} notices={notices} />
         </Suspense>
       )}
     </header>

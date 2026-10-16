@@ -12,8 +12,8 @@ type Filter = "all" | "running" | "offline";
 
 const isRunning = (s: Server) => s.status === ServerStatus.RUNNING || s.status === ServerStatus.STARTING;
 
-/** Search + status filter + card grid (UI reference). */
-export function ServerGrid({ servers }: { servers: Server[] }) {
+/** Card grid, with search and a status filter unless `controls` is off (the overview, which links here). */
+export function ServerGrid({ servers, controls = true }: { servers: Server[]; controls?: boolean }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const now = useNow();
@@ -27,7 +27,7 @@ export function ServerGrid({ servers }: { servers: Server[] }) {
 
   return (
     <>
-      <div className="mb-[17px] flex items-center gap-2">
+      <div className={controls ? "mb-[17px] flex items-center gap-2" : "hidden"}>
         <div className="relative min-w-[100px] flex-1">
           <Search
             className="pointer-events-none absolute top-1/2 left-3 size-[15px] -translate-y-1/2 text-text-muted"
@@ -56,7 +56,7 @@ export function ServerGrid({ servers }: { servers: Server[] }) {
         >
           <option value="all">All statuses</option>
           <option value="running">Running</option>
-          <option value="offline">Offline</option>
+          <option value="offline">Not running</option>
         </Select>
       </div>
       {visible.length === 0 ? (

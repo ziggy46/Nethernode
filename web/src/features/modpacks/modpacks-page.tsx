@@ -2,12 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Download, ExternalLink, KeyRound, Plus, Search, TriangleAlert } from "lucide-react";
 import { lazy, Suspense, useDeferredValue, useState } from "react";
 
-import { EmptyState, Footer, PageHeader } from "@/components/page";
+import { EmptyState, PageHeader } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/field";
 import { Platform, type Project, ProjectKind } from "@/gen/nethernode/v1/catalog_pb";
 import { errorMessage } from "@/lib/api";
-import { healthQuery } from "@/lib/health";
 import { useCanManage } from "@/lib/session";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { cn } from "@/lib/utils";
@@ -24,7 +23,6 @@ const CreateServerDialog = lazy(() =>
 /** Browse Modrinth and CurseForge modpacks and start a server from one. */
 export function ModpacksPage() {
   useDocumentTitle("Modpacks");
-  const health = useQuery(healthQuery);
   const canManage = useCanManage();
   const [platform, setPlatform] = useState(Platform.MODRINTH);
   const [text, setText] = useState("");
@@ -226,7 +224,6 @@ export function ModpacksPage() {
           <CreateServerDialog open onOpenChange={(o) => !o && setPreset(null)} preset={preset} />
         </Suspense>
       )}
-      <Footer version={health.data?.version} />
     </>
   );
 }

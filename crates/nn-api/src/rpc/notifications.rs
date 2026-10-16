@@ -40,8 +40,37 @@ impl pb::NotificationService for NotificationRpc {
             .into(),
             last_error: status.last_error.unwrap_or_default(),
             last_sent_ms: status.last_sent_ms,
+            update_check: crate::notices::update_check_on(&self.state).await,
+            latest_version: crate::notices::latest_release()
+                .map(|r| r.version)
+                .unwrap_or_default(),
             ..Default::default()
         })
+    }
+
+    async fn set_update_check(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::SetUpdateCheckRequest>,
+    ) -> ServiceResult<pb::SetUpdateCheckResponse> {
+        let user = require(&ctx, Permission::ManageSettings)?.clone();
+        self.state
+            .auth
+            .store()
+            .set_setting(crate::notices::UPDATE_CHECK_SETTING, &request.enabled)
+            .await
+            .map_err(crate::rpc::store_error)?;
+        audit(
+            &self.state,
+            &user,
+            "settings.update_check",
+            ("settings", "updates"),
+            json!({ "enabled": request.enabled }),
+        )
+        .await;
+        let state = self.state.clone();
+        tokio::spawn(async move { crate::notices::check_now(&state).await });
+        Response::ok(pb::SetUpdateCheckResponse::default())
     }
 
     async fn update_notifications(

@@ -69,7 +69,7 @@ export default function BackupsTab({ server }: { server: Server }) {
       />
       <div className="mb-[17px] flex items-center justify-between gap-3">
         <h2 className="font-semibold text-section">
-          Snapshots
+          Backups
           <span className="ml-[7px] font-normal text-label text-text-muted tracking-normal">
             {list.backups.length}
           </span>
@@ -78,7 +78,8 @@ export default function BackupsTab({ server }: { server: Server }) {
           <div className="flex items-center gap-3">
             {list.freeBytes !== undefined && (
               <span className="text-meta text-text-muted below-sm:hidden">
-                {bytes(Number(list.freeBytes))} free
+                {bytes(Number(list.freeBytes))} free on{" "}
+                {server.nodeId === "local" ? "this machine" : server.nodeName}
               </span>
             )}
             {backUpButton}

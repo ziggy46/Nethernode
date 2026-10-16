@@ -220,7 +220,7 @@ impl RemoteNode {
         let sent = body(&mut stream).await;
         let reply = tokio::time::timeout(
             std::time::Duration::from_secs(if sent.is_ok() { 3600 } else { 5 }),
-            messages::recv::<_, Reply>(&mut stream),
+            messages::recv_large::<_, Reply>(&mut stream),
         )
         .await;
         let reply = match (reply, sent) {
@@ -245,7 +245,7 @@ impl RemoteNode {
         messages::send(stream, request)
             .await
             .map_err(|_| self.offline())?;
-        let reply: Reply = messages::recv(stream)
+        let reply: Reply = messages::recv_large(stream)
             .await
             .map_err(|_| self.offline())?
             .ok_or_else(|| self.offline())?;
@@ -300,7 +300,7 @@ impl RemoteNode {
             }
         }
         stream.flush().await?;
-        let reply: FolderReply = messages::recv(&mut stream).await?.ok_or_else(|| {
+        let reply: FolderReply = messages::recv_large(&mut stream).await?.ok_or_else(|| {
             nn_files::FileError::Io(std::io::Error::other(self.offline().to_string()))
         })?;
         let value = reply.map_err(nn_files::FileError::from)?;

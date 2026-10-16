@@ -182,6 +182,7 @@ async fn serve(config: Config) -> Result<()> {
         state.install_count.adopt_configuration(&store).await;
     }
     nn_api::install_count::spawn(state.clone());
+    nn_api::notices::spawn_update_check(state.clone());
     let app = nn_api::router(state);
 
     let listener = tokio::net::TcpListener::bind(config.http.bind)

@@ -2,10 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Plus, Server as ServerIcon, TriangleAlert } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
 
-import { EmptyState, Footer, PageHeader } from "@/components/page";
+import { EmptyState, PageHeader } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/lib/api";
-import { healthQuery } from "@/lib/health";
 import { useCanManage } from "@/lib/session";
 import { useDocumentTitle } from "@/lib/use-document-title";
 
@@ -20,7 +19,6 @@ const CreateServerDialog = lazy(() =>
 export function ServersPage() {
   useDocumentTitle("Servers");
   const servers = useQuery(serversQuery);
-  const health = useQuery(healthQuery);
   const canManage = useCanManage();
   const docker = useDockerAvailable();
   const [creating, setCreating] = useState(false);
@@ -79,7 +77,6 @@ export function ServersPage() {
           <CreateServerDialog open={creating} onOpenChange={setCreating} />
         </Suspense>
       )}
-      <Footer version={health.data?.version} />
     </>
   );
 }

@@ -5,7 +5,7 @@ import { useId, useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { EmptyState, Footer, PageHeader, Panel } from "@/components/page";
+import { EmptyState, PageHeader, Panel } from "@/components/page";
 import { Badge, Dot } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,7 +21,6 @@ import { Switch } from "@/components/ui/switch";
 import { formatBytes } from "@/features/servers/format";
 import { type JoinCode, type Node, NodeStatus } from "@/gen/nethernode/v1/nodes_pb";
 import { errorMessage } from "@/lib/api";
-import { healthQuery } from "@/lib/health";
 import { useCanManage } from "@/lib/session";
 import { ago } from "@/lib/time";
 import { useDocumentTitle } from "@/lib/use-document-title";
@@ -38,7 +37,6 @@ type Dialogs =
 /** The machines that run servers. */
 export function NodesPage() {
   useDocumentTitle("Nodes");
-  const health = useQuery(healthQuery);
   const nodes = useQuery(nodesQuery);
   const canManage = useCanManage();
   const [dialog, setDialog] = useState<Dialogs | null>(null);
@@ -105,7 +103,6 @@ export function NodesPage() {
       )}
       {dialog?.kind === "rename" && <RenameDialog node={dialog.node} onClose={() => setDialog(null)} />}
       {dialog?.kind === "remove" && <RemoveDialog node={dialog.node} onClose={() => setDialog(null)} />}
-      <Footer version={health.data?.version} />
     </>
   );
 }

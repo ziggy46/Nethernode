@@ -1,13 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { CircleCheck, History, ShieldAlert, ShieldCheck, TriangleAlert } from "lucide-react";
 
-import { EmptyState, Footer, PageHeader, Panel, SectionHeading } from "@/components/page";
+import { EmptyState, PageHeader, Panel, SectionHeading } from "@/components/page";
 import { Badge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { type Backup, BackupStatus } from "@/gen/nethernode/v1/backups_pb";
 import { type Schedule, ScheduleAction } from "@/gen/nethernode/v1/schedules_pb";
 import { errorMessage } from "@/lib/api";
-import { healthQuery } from "@/lib/health";
 import { useCanManage } from "@/lib/session";
 import { ago } from "@/lib/time";
 import { useDocumentTitle } from "@/lib/use-document-title";
@@ -24,7 +23,6 @@ import { useBackUpNow } from "./use-back-up";
 /** Every server's backups and schedules. */
 export function BackupsPage() {
   useDocumentTitle("Backups");
-  const health = useQuery(healthQuery);
   const servers = useQuery(serversQuery);
   const backups = useQuery(backupsQuery());
   const schedules = useQuery(schedulesQuery());
@@ -38,7 +36,7 @@ export function BackupsPage() {
       <PageHeader
         eyebrow="World protection"
         title="Keep every world safe."
-        description="Automatic snapshots, so you can focus on the adventure."
+        description="Copies of your servers' worlds and files, made by hand or on a schedule, to go back to if something goes wrong."
         actions={
           canManage && (
             <Button
@@ -89,11 +87,10 @@ export function BackupsPage() {
             />
           )}
           <SchedulesPanel schedules={schedules.data.schedules} servers={list} />
-          <SectionHeading title="Snapshots" count={backups.data.backups.length} />
+          <SectionHeading title="Backups" count={backups.data.backups.length} />
           <BackupTable backups={backups.data.backups} showServer />
         </>
       )}
-      <Footer version={health.data?.version} />
     </>
   );
 }
@@ -123,7 +120,7 @@ function Protection({
           : " · keeps every backup"
       }`,
     latest ? `Last backup ${ago(latest.createdAtMs, now)}` : "No backups yet",
-    freeBytes !== undefined && `${bytes(Number(freeBytes))} free`,
+    freeBytes !== undefined && `${bytes(Number(freeBytes))} free on this machine`,
   ].filter(Boolean);
 
   const all = covered === servers.length;

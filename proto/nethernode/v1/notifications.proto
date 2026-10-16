@@ -14,6 +14,11 @@ service NotificationService {
   // Sends a test message. Fails with FAILED_PRECONDITION, saying why, if it
   // doesn't go through.
   rpc SendTestNotification(SendTestNotificationRequest) returns (SendTestNotificationResponse);
+
+  // Whether the panel looks for new NetherNode releases (on by default):
+  // about twice a day it asks GitHub for the newest release, and the bell
+  // says when there's a newer one.
+  rpc SetUpdateCheck(SetUpdateCheckRequest) returns (SetUpdateCheckResponse);
 }
 
 message NotificationEvents {
@@ -32,6 +37,10 @@ message GetNotificationsResponse {
   // Why the last message didn't go through.
   string last_error = 3;
   optional int64 last_sent_ms = 4;
+  // Looking for new NetherNode releases is on.
+  bool update_check = 5;
+  // The newest release found, like "0.2.3", while checking is on.
+  string latest_version = 6;
 }
 
 message UpdateNotificationsRequest {
@@ -45,3 +54,9 @@ message UpdateNotificationsResponse {}
 message SendTestNotificationRequest {}
 
 message SendTestNotificationResponse {}
+
+message SetUpdateCheckRequest {
+  bool enabled = 1;
+}
+
+message SetUpdateCheckResponse {}

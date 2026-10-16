@@ -16,13 +16,12 @@ import { Tabs } from "radix-ui";
 import { useState } from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { EmptyState, Footer, Panel, PanelHeader } from "@/components/page";
+import { EmptyState, Panel, PanelHeader } from "@/components/page";
 import { ServerStatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { BackupStatus } from "@/gen/nethernode/v1/backups_pb";
 import { type Server, ServerStatus } from "@/gen/nethernode/v1/servers_pb";
 import { errorMessage } from "@/lib/api";
-import { healthQuery } from "@/lib/health";
 import { useCanManage } from "@/lib/session";
 import { ago } from "@/lib/time";
 import { useDocumentTitle } from "@/lib/use-document-title";
@@ -47,7 +46,6 @@ import { useServerAction } from "./use-server-actions";
 
 export function ServerPage({ id }: { id: string }) {
   const server = useQuery(serverQuery(id));
-  const health = useQuery(healthQuery);
   const [tab, setTab] = useState("console");
   // The Files tab stays mounted once visited, so unsaved edits survive
   // switching tabs.
@@ -155,7 +153,6 @@ export function ServerPage({ id }: { id: string }) {
           <BackupsPanel server={s} />
         </Tabs.Content>
       </Tabs.Root>
-      <Footer version={health.data?.version} />
     </>
   );
 }

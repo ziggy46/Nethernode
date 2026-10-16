@@ -62,11 +62,11 @@ pub const RESERVED_ENV: &[&str] = &[
 pub const MANAGED_PROPERTIES: &[(&str, &str)] = &[
     (
         "motd",
-        "Set in Server settings; NetherNode applies it on every start.",
+        "Set under Server configuration above; NetherNode applies it on every start.",
     ),
     (
         "max-players",
-        "Set in Server settings; NetherNode applies it on every start.",
+        "Set under Server configuration above; NetherNode applies it on every start.",
     ),
     (
         "server-port",
@@ -78,9 +78,12 @@ pub const MANAGED_PROPERTIES: &[(&str, &str)] = &[
     ),
     (
         "enable-rcon",
-        "NetherNode sends console commands over RCON.",
+        "For sending console commands to the server over RCON.",
     ),
-    ("rcon.port", "NetherNode sends console commands over RCON."),
+    (
+        "rcon.port",
+        "For sending console commands to the server over RCON.",
+    ),
     ("rcon.password", "Generated and kept secret by NetherNode."),
     ("management-server-enabled", MGMT_REASON),
     ("management-server-host", MGMT_REASON),
@@ -93,7 +96,7 @@ pub const MANAGED_PROPERTIES: &[(&str, &str)] = &[
 ];
 
 const MGMT_REASON: &str =
-    "NetherNode manages players through this server's management protocol (Minecraft 1.21.9+).";
+    "For managing players through the server's management protocol (Minecraft 1.21.9+).";
 
 /// Container memory limit in MiB for a Java heap of `heap_mb`: the heap plus
 /// `percent` of it, but at least `min_mb` more. Java needs a few hundred MB

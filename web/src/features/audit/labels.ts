@@ -22,6 +22,16 @@ const LABELS: Record<string, string> = {
   "server.kill": "Force-stopped a server",
   "server.update": "Changed server settings",
   "server.allowlist_enabled": "Changed the allowlist setting",
+  "server.properties": "Changed game settings",
+  "server.move": "Moved a server to another machine",
+  "node.create": "Added a node",
+  "node.join": "A node's agent joined",
+  "node.join_failed": "An agent failed to join",
+  "node.join_code": "Made a new join code",
+  "node.rename": "Renamed a node",
+  "node.delete": "Removed a node",
+  "node.update": "Updated a node",
+  "node.auto_update": "Changed automatic node updates",
   "player.ban": "Banned a player",
   "player.unban": "Unbanned a player",
   "player.ban_expired": "A ban expired",
@@ -67,6 +77,7 @@ const LABELS: Record<string, string> = {
   "settings.curseforge_key": "Changed the CurseForge key",
   "settings.notifications": "Changed Discord notifications",
   "settings.install_count": "Changed whether this install is counted",
+  "settings.update_check": "Changed checking for new versions",
 };
 
 export function actionLabel(action: string): string {
@@ -84,6 +95,7 @@ export const CATEGORIES: { value: string; label: string }[] = [
   { value: "backup", label: "Backups" },
   { value: "schedule", label: "Schedules" },
   { value: "proxy", label: "Proxy" },
+  { value: "node", label: "Nodes" },
   { value: "settings", label: "Settings" },
 ];
 

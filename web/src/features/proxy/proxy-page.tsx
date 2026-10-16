@@ -14,7 +14,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { EmptyState, Footer, PageHeader, Panel, PanelHeader, SectionHeading } from "@/components/page";
+import { EmptyState, PageHeader, Panel, PanelHeader, SectionHeading } from "@/components/page";
 import { Badge, Dot, ServerStatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -22,7 +22,6 @@ import { proxyClient } from "@/features/proxy/client";
 import { type Listener, ListenerState, type Route, RouteKind } from "@/gen/nethernode/v1/proxy_pb";
 import type { Server } from "@/gen/nethernode/v1/servers_pb";
 import { errorMessage } from "@/lib/api";
-import { healthQuery } from "@/lib/health";
 import { useCanManage } from "@/lib/session";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { cn } from "@/lib/utils";
@@ -36,7 +35,6 @@ import { RouteDialog } from "./route-dialog";
 export function ProxyPage() {
   useDocumentTitle("Proxy & routes");
   const canManage = useCanManage();
-  const health = useQuery(healthQuery);
   const [routeDialog, setRouteDialog] = useState<{ open: boolean; route?: Route }>({ open: false });
 
   return (
@@ -66,7 +64,6 @@ export function ProxyPage() {
         route={routeDialog.route}
         onOpenChange={(open) => setRouteDialog((d) => ({ ...d, open }))}
       />
-      <Footer version={health.data?.version} />
     </>
   );
 }
@@ -194,9 +191,9 @@ function RoutesSection({ onEdit, canManage }: { onEdit: (route: Route) => void; 
 
 const KIND_LABEL: Record<RouteKind, string> = {
   [RouteKind.UNSPECIFIED]: "Route",
-  [RouteKind.EXACT]: "Incoming Minecraft connection",
-  [RouteKind.WILDCARD]: "Any subdomain",
-  [RouteKind.DEFAULT]: "Any address no other route matches",
+  [RouteKind.EXACT]: "Players who join at this address",
+  [RouteKind.WILDCARD]: "Players who join at any subdomain",
+  [RouteKind.DEFAULT]: "Players whose address no other route matches",
 };
 
 function RouteCard({

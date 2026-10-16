@@ -326,10 +326,13 @@ impl Node {
                 .orchestrator()
                 .map(|o| o.stats_history(id))
                 .unwrap_or_default(),
-            Self::Remote(node) => node
-                .call(Request::StatsHistory { id: id.into() })
-                .await
-                .unwrap_or_default(),
+            Self::Remote(node) => match node.call(Request::StatsHistory { id: id.into() }).await {
+                Ok(samples) => samples,
+                Err(e) => {
+                    tracing::warn!(server = %id, error = %e, "couldn't get a server's stats from its machine");
+                    Vec::new()
+                }
+            },
         }
     }
 

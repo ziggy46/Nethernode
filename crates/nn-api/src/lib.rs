@@ -40,6 +40,7 @@ mod files_http;
 pub mod install_count;
 mod middleware;
 mod moves;
+pub mod notices;
 pub mod notify;
 mod observability;
 pub mod players;
@@ -165,6 +166,7 @@ pub fn router(state: AppState) -> Router {
         )
         .route("/ws/servers/{id}/console", get(console::console))
         .route("/api/agent", get(agents::connect))
+        .route("/api/notices", get(notices::list))
         .route("/api/players/{uuid}/head", get(players::heads::head))
         .route("/api/catalog/icon", get(content::icons::icon))
         .route("/api/backups/{id}/download", get(backups::http::download))

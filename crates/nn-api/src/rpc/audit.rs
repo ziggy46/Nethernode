@@ -14,6 +14,7 @@ use crate::rpc::{require, store_error};
 /// Action families the log can be filtered by.
 const CATEGORIES: &[&str] = &[
     "auth", "user", "server", "player", "file", "mod", "backup", "schedule", "proxy", "settings",
+    "node",
 ];
 
 /// What the activity feed shows: things that happened to servers, not

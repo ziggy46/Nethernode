@@ -1,12 +1,18 @@
 //! What the panel and an agent say to each other. JSON, each message
-//! prefixed with its length (big-endian `u32`), at most [`MAX_MESSAGE`].
+//! prefixed with its length (big-endian `u32`): at most [`MAX_MESSAGE`], or
+//! [`MAX_LARGE_MESSAGE`] where the panel reads an agent's replies.
 
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
-/// Largest message accepted.
+/// Largest message accepted by default: handshakes, heartbeats, and
+/// everything an agent is sent.
 pub const MAX_MESSAGE: usize = 64 * 1024;
+
+/// Largest reply or report the panel accepts from a joined agent: an hour of
+/// stats, a console backlog, a big folder listing. See [`recv_large`].
+pub const MAX_LARGE_MESSAGE: usize = 16 * 1024 * 1024;
 
 /// The agent's first message once the link is encrypted.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -109,7 +115,7 @@ where
     T: Serialize,
 {
     let body = serde_json::to_vec(message)?;
-    if body.len() > MAX_MESSAGE {
+    if body.len() > MAX_LARGE_MESSAGE {
         return Err(std::io::Error::other("message too large"));
     }
     out.write_u32(body.len() as u32).await?;
@@ -117,8 +123,27 @@ where
     out.flush().await
 }
 
-/// Reads one message. `Ok(None)` when the stream ends between messages.
+/// Reads one message of at most [`MAX_MESSAGE`]. `Ok(None)` when the stream
+/// ends between messages.
 pub async fn recv<R, T>(input: &mut R) -> std::io::Result<Option<T>>
+where
+    R: AsyncRead + Unpin,
+    T: DeserializeOwned,
+{
+    recv_limited(input, MAX_MESSAGE).await
+}
+
+/// Like [`recv`], up to [`MAX_LARGE_MESSAGE`]: for what the panel reads from
+/// an agent that has already proved its key.
+pub async fn recv_large<R, T>(input: &mut R) -> std::io::Result<Option<T>>
+where
+    R: AsyncRead + Unpin,
+    T: DeserializeOwned,
+{
+    recv_limited(input, MAX_LARGE_MESSAGE).await
+}
+
+async fn recv_limited<R, T>(input: &mut R, max: usize) -> std::io::Result<Option<T>>
 where
     R: AsyncRead + Unpin,
     T: DeserializeOwned,
@@ -128,7 +153,7 @@ where
         Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => return Ok(None),
         Err(e) => return Err(e),
     };
-    if len > MAX_MESSAGE {
+    if len > max {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
             "message too large",
@@ -139,4 +164,24 @@ where
     serde_json::from_slice(&body)
         .map(Some)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn large_messages_only_where_allowed() {
+        let big = "x".repeat(MAX_MESSAGE * 4);
+        let mut wire = Vec::new();
+        send(&mut wire, &big).await.unwrap();
+        assert!(recv::<_, String>(&mut wire.as_slice()).await.is_err());
+        let got: Option<String> = recv_large(&mut wire.as_slice()).await.unwrap();
+        assert_eq!(got.as_deref(), Some(big.as_str()));
+
+        let mut wire = Vec::new();
+        send(&mut wire, &"small").await.unwrap();
+        let got: Option<String> = recv(&mut wire.as_slice()).await.unwrap();
+        assert_eq!(got.as_deref(), Some("small"));
+    }
 }

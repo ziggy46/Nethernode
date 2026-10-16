@@ -1,14 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Bell, Box, ChartNoAxesColumn, Globe, LogOut, Palette, UserRound } from "lucide-react";
 import type * as React from "react";
 import { lazy, Suspense } from "react";
 
-import { Footer, PageHeader, Panel, PanelHeader } from "@/components/page";
+import { PageHeader, Panel, PanelHeader } from "@/components/page";
 import { useSignOut } from "@/components/shell/use-sign-out";
 import { Button } from "@/components/ui/button";
 import { Role } from "@/gen/nethernode/v1/auth_pb";
-import { healthQuery } from "@/lib/health";
 import { ROLE_LABELS, useCanManage, useCurrentUser } from "@/lib/session";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { cn } from "@/lib/utils";
@@ -23,6 +21,7 @@ export const Route = createFileRoute("/_app/settings")({
 const AppearancePanel = lazy(() => import("@/features/appearance/appearance-panel"));
 const SecurityPanel = lazy(() => import("@/features/account/security-panel"));
 const DiscordPanel = lazy(() => import("@/features/notifications/discord-panel"));
+const UpdateCheckPanel = lazy(() => import("@/features/notifications/update-check-panel"));
 const DomainsPanel = lazy(() => import("@/features/domains/domains-panel"));
 const InstallCountPanel = lazy(() => import("@/features/install-count/install-count-panel"));
 
@@ -50,7 +49,6 @@ function formatTime(ms: bigint | undefined): string {
 function SettingsPage() {
   const user = useCurrentUser();
   const canManage = useCanManage();
-  const health = useQuery(healthQuery);
   const { section } = Route.useSearch();
   const allowed = (access: Access) =>
     access === "everyone" || (access === "admins" ? canManage : user.role === Role.OWNER);
@@ -95,7 +93,6 @@ function SettingsPage() {
           <Section id={current?.id ?? "account"} />
         </div>
       </div>
-      <Footer version={health.data?.version} />
     </>
   );
 }
@@ -121,6 +118,7 @@ function Section({ id }: { id: string }) {
     case "notifications":
       return (
         <Suspense fallback={<Loading height="h-48" />}>
+          <UpdateCheckPanel />
           <DiscordPanel />
         </Suspense>
       );

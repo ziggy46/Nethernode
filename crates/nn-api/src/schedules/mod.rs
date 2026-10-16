@@ -89,6 +89,20 @@ pub fn warning(action: &str, minutes: u32) -> String {
 mod tests {
     use super::*;
 
+    #[test]
+    fn time_zones_work_without_a_system_database() {
+        // The image has no /usr/share/zoneinfo; the bundled copy covers it.
+        let bundled = jiff::tz::TimeZoneDatabase::bundled();
+        for zone in [
+            "America/New_York",
+            "Europe/Berlin",
+            "Australia/Sydney",
+            "UTC",
+        ] {
+            assert!(bundled.get(zone).is_ok(), "{zone} isn't bundled");
+        }
+    }
+
     fn ms(zone: &str, y: i16, mo: i8, d: i8, h: i8, mi: i8) -> i64 {
         jiff::civil::date(y, mo, d)
             .at(h, mi, 0, 0)

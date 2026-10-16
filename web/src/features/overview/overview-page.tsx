@@ -14,15 +14,7 @@ import {
 } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
 
-import {
-  EmptyState,
-  Footer,
-  MetricCard,
-  PageHeader,
-  Panel,
-  PanelHeader,
-  SectionHeading,
-} from "@/components/page";
+import { EmptyState, MetricCard, PageHeader, Panel, PanelHeader, SectionHeading } from "@/components/page";
 import { ResourceMeter } from "@/components/resource-meter";
 import { Button } from "@/components/ui/button";
 import { backupsQuery } from "@/features/backups/api";
@@ -34,7 +26,6 @@ import { bytes } from "@/features/uploads/format";
 import { BackupStatus } from "@/gen/nethernode/v1/backups_pb";
 import { ServerStatus, type Server as ServerT } from "@/gen/nethernode/v1/servers_pb";
 import { errorMessage } from "@/lib/api";
-import { healthQuery } from "@/lib/health";
 import { useCanManage } from "@/lib/session";
 import { ago } from "@/lib/time";
 import { useDocumentTitle } from "@/lib/use-document-title";
@@ -94,7 +85,6 @@ const CreateServerDialog = lazy(() =>
 
 export function OverviewPage() {
   useDocumentTitle("Overview");
-  const health = useQuery(healthQuery);
   const servers = useQuery(serversQuery);
   const host = useQuery(hostQuery);
   const canManage = useCanManage();
@@ -103,12 +93,16 @@ export function OverviewPage() {
 
   const list = servers.data ?? [];
   const totals = useLiveTotals(list);
+  // The host card and memory figures are this machine's; servers on other
+  // machines show their own use on their cards.
+  const here = useLiveTotals(list.filter((s) => s.nodeId === "local"));
+  const sleeping = list.filter((s) => s.status === ServerStatus.SLEEPING).length;
   const players = list.reduce(
     (n, s) => n + (s.status === ServerStatus.RUNNING ? (s.playersOnline ?? 0) : 0),
     0,
   );
   const hostMemory = host.data?.dockerAvailable ? Number(host.data.memoryBytes) : 0;
-  const offline = list.length - totals.running;
+  const stopped = list.length - totals.running - sleeping;
 
   return (
     <>
@@ -147,8 +141,8 @@ export function OverviewPage() {
             ) : (
               <>
                 <span className="text-success">● {totals.running} running</span>
-                {" · "}
-                {offline} offline
+                {sleeping > 0 && ` · ${sleeping} asleep`}
+                {stopped > 0 && ` · ${stopped} stopped`}
               </>
             )
           }
@@ -165,16 +159,14 @@ export function OverviewPage() {
           }
         />
         <MetricCard
-          label="Memory usage"
+          label="Memory on this machine"
           icon={<MemoryStick />}
-          value={
-            totals.running > 0 && totals.measured > 0 ? gb(totals.memory) : totals.running === 0 ? "0" : "—"
-          }
+          value={here.running > 0 && here.measured > 0 ? gb(here.memory) : here.running === 0 ? "0" : "—"}
           unit={hostMemory ? `/ ${gb(hostMemory)} GB` : undefined}
           note={
             hostMemory
-              ? `${Math.round((totals.memory / hostMemory) * 100)}% of host memory, used by servers`
-              : "Host memory unknown"
+              ? `${Math.round((here.memory / hostMemory) * 100)}% used by servers running here`
+              : "This machine's memory is unknown"
           }
         />
         <LatestBackup />
@@ -186,7 +178,11 @@ export function OverviewPage() {
             <SectionHeading
               title="Your servers"
               count={list.length}
-              caption="All your worlds in one place."
+              caption={
+                <Link to="/servers" className="hover:text-text-primary hover:underline">
+                  Search and filter on the Servers page
+                </Link>
+              }
             />
           </div>
           {servers.isPending ? (
@@ -218,7 +214,7 @@ export function OverviewPage() {
               </EmptyState>
             </div>
           ) : (
-            <ServerGrid servers={list} />
+            <ServerGrid servers={list} controls={false} />
           )}
         </section>
 
@@ -226,7 +222,7 @@ export function OverviewPage() {
           aria-label="Host and activity"
           className="flex flex-col gap-[18px] below-lg:grid below-lg:grid-cols-2 below-lg:gap-[15px] below-sm:grid-cols-1"
         >
-          <HostPanel totals={totals} />
+          <HostPanel totals={here} />
           <Panel>
             <PanelHeader title="Recent activity" icon={<History />} />
             <Suspense fallback={<div className="h-24 animate-pulse rounded-md bg-surface" aria-busy />}>
@@ -255,7 +251,6 @@ export function OverviewPage() {
           <CreateServerDialog open={creating} onOpenChange={setCreating} />
         </Suspense>
       )}
-      <Footer version={health.data?.version} />
     </>
   );
 }
@@ -313,7 +308,7 @@ export function HostPanel({ totals }: { totals: { memory: number; cpu: number; r
           </div>
           <div className="mt-[18px] flex justify-between border-divider border-t pt-[13px] text-meta text-text-muted">
             <span>
-              Running <b className="font-normal text-text-secondary">{totals.running}</b>
+              Servers running here <b className="font-normal text-text-secondary">{totals.running}</b>
             </span>
             <span>
               {info.diskFreeBytes !== undefined

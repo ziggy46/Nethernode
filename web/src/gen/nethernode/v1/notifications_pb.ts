@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file nethernode/v1/notifications.proto.
  */
 export const file_nethernode_v1_notifications: GenFile = /*@__PURE__*/
-  fileDesc("CiFuZXRoZXJub2RlL3YxL25vdGlmaWNhdGlvbnMucHJvdG8SDW5ldGhlcm5vZGUudjEiYwoSTm90aWZpY2F0aW9uRXZlbnRzEhIKCnN0YXJ0X3N0b3AYASABKAgSDQoFY3Jhc2gYAiABKAgSEwoLcGxheWVyX2pvaW4YAyABKAgSFQoNYmFja3VwX2ZhaWxlZBgEIAEoCCIZChdHZXROb3RpZmljYXRpb25zUmVxdWVzdCK5AQoYR2V0Tm90aWZpY2F0aW9uc1Jlc3BvbnNlEhkKDHdlYmhvb2tfaGludBgBIAEoCUgAiAEBEjEKBmV2ZW50cxgCIAEoCzIhLm5ldGhlcm5vZGUudjEuTm90aWZpY2F0aW9uRXZlbnRzEhIKCmxhc3RfZXJyb3IYAyABKAkSGQoMbGFzdF9zZW50X21zGAQgASgDSAGIAQFCDwoNX3dlYmhvb2tfaGludEIPCg1fbGFzdF9zZW50X21zInkKGlVwZGF0ZU5vdGlmaWNhdGlvbnNSZXF1ZXN0EhgKC3dlYmhvb2tfdXJsGAEgASgJSACIAQESMQoGZXZlbnRzGAIgASgLMiEubmV0aGVybm9kZS52MS5Ob3RpZmljYXRpb25FdmVudHNCDgoMX3dlYmhvb2tfdXJsIh0KG1VwZGF0ZU5vdGlmaWNhdGlvbnNSZXNwb25zZSIdChtTZW5kVGVzdE5vdGlmaWNhdGlvblJlcXVlc3QiHgocU2VuZFRlc3ROb3RpZmljYXRpb25SZXNwb25zZTLeAgoTTm90aWZpY2F0aW9uU2VydmljZRJoChBHZXROb3RpZmljYXRpb25zEiYubmV0aGVybm9kZS52MS5HZXROb3RpZmljYXRpb25zUmVxdWVzdBonLm5ldGhlcm5vZGUudjEuR2V0Tm90aWZpY2F0aW9uc1Jlc3BvbnNlIgOQAgESbAoTVXBkYXRlTm90aWZpY2F0aW9ucxIpLm5ldGhlcm5vZGUudjEuVXBkYXRlTm90aWZpY2F0aW9uc1JlcXVlc3QaKi5uZXRoZXJub2RlLnYxLlVwZGF0ZU5vdGlmaWNhdGlvbnNSZXNwb25zZRJvChRTZW5kVGVzdE5vdGlmaWNhdGlvbhIqLm5ldGhlcm5vZGUudjEuU2VuZFRlc3ROb3RpZmljYXRpb25SZXF1ZXN0GisubmV0aGVybm9kZS52MS5TZW5kVGVzdE5vdGlmaWNhdGlvblJlc3BvbnNlYgZwcm90bzM");
+  fileDesc("CiFuZXRoZXJub2RlL3YxL25vdGlmaWNhdGlvbnMucHJvdG8SDW5ldGhlcm5vZGUudjEiYwoSTm90aWZpY2F0aW9uRXZlbnRzEhIKCnN0YXJ0X3N0b3AYASABKAgSDQoFY3Jhc2gYAiABKAgSEwoLcGxheWVyX2pvaW4YAyABKAgSFQoNYmFja3VwX2ZhaWxlZBgEIAEoCCIZChdHZXROb3RpZmljYXRpb25zUmVxdWVzdCLnAQoYR2V0Tm90aWZpY2F0aW9uc1Jlc3BvbnNlEhkKDHdlYmhvb2tfaGludBgBIAEoCUgAiAEBEjEKBmV2ZW50cxgCIAEoCzIhLm5ldGhlcm5vZGUudjEuTm90aWZpY2F0aW9uRXZlbnRzEhIKCmxhc3RfZXJyb3IYAyABKAkSGQoMbGFzdF9zZW50X21zGAQgASgDSAGIAQESFAoMdXBkYXRlX2NoZWNrGAUgASgIEhYKDmxhdGVzdF92ZXJzaW9uGAYgASgJQg8KDV93ZWJob29rX2hpbnRCDwoNX2xhc3Rfc2VudF9tcyJ5ChpVcGRhdGVOb3RpZmljYXRpb25zUmVxdWVzdBIYCgt3ZWJob29rX3VybBgBIAEoCUgAiAEBEjEKBmV2ZW50cxgCIAEoCzIhLm5ldGhlcm5vZGUudjEuTm90aWZpY2F0aW9uRXZlbnRzQg4KDF93ZWJob29rX3VybCIdChtVcGRhdGVOb3RpZmljYXRpb25zUmVzcG9uc2UiHQobU2VuZFRlc3ROb3RpZmljYXRpb25SZXF1ZXN0Ih4KHFNlbmRUZXN0Tm90aWZpY2F0aW9uUmVzcG9uc2UiKAoVU2V0VXBkYXRlQ2hlY2tSZXF1ZXN0Eg8KB2VuYWJsZWQYASABKAgiGAoWU2V0VXBkYXRlQ2hlY2tSZXNwb25zZTK9AwoTTm90aWZpY2F0aW9uU2VydmljZRJoChBHZXROb3RpZmljYXRpb25zEiYubmV0aGVybm9kZS52MS5HZXROb3RpZmljYXRpb25zUmVxdWVzdBonLm5ldGhlcm5vZGUudjEuR2V0Tm90aWZpY2F0aW9uc1Jlc3BvbnNlIgOQAgESbAoTVXBkYXRlTm90aWZpY2F0aW9ucxIpLm5ldGhlcm5vZGUudjEuVXBkYXRlTm90aWZpY2F0aW9uc1JlcXVlc3QaKi5uZXRoZXJub2RlLnYxLlVwZGF0ZU5vdGlmaWNhdGlvbnNSZXNwb25zZRJvChRTZW5kVGVzdE5vdGlmaWNhdGlvbhIqLm5ldGhlcm5vZGUudjEuU2VuZFRlc3ROb3RpZmljYXRpb25SZXF1ZXN0GisubmV0aGVybm9kZS52MS5TZW5kVGVzdE5vdGlmaWNhdGlvblJlc3BvbnNlEl0KDlNldFVwZGF0ZUNoZWNrEiQubmV0aGVybm9kZS52MS5TZXRVcGRhdGVDaGVja1JlcXVlc3QaJS5uZXRoZXJub2RlLnYxLlNldFVwZGF0ZUNoZWNrUmVzcG9uc2ViBnByb3RvMw");
 
 /**
  * @generated from message nethernode.v1.NotificationEvents
@@ -84,6 +84,20 @@ export type GetNotificationsResponse = Message<"nethernode.v1.GetNotificationsRe
    * @generated from field: optional int64 last_sent_ms = 4;
    */
   lastSentMs?: bigint | undefined;
+
+  /**
+   * Looking for new NetherNode releases is on.
+   *
+   * @generated from field: bool update_check = 5;
+   */
+  updateCheck: boolean;
+
+  /**
+   * The newest release found, like "0.2.3", while checking is on.
+   *
+   * @generated from field: string latest_version = 6;
+   */
+  latestVersion: string;
 };
 
 /**
@@ -157,6 +171,36 @@ export const SendTestNotificationResponseSchema: GenMessage<SendTestNotification
   messageDesc(file_nethernode_v1_notifications, 6);
 
 /**
+ * @generated from message nethernode.v1.SetUpdateCheckRequest
+ */
+export type SetUpdateCheckRequest = Message<"nethernode.v1.SetUpdateCheckRequest"> & {
+  /**
+   * @generated from field: bool enabled = 1;
+   */
+  enabled: boolean;
+};
+
+/**
+ * Describes the message nethernode.v1.SetUpdateCheckRequest.
+ * Use `create(SetUpdateCheckRequestSchema)` to create a new message.
+ */
+export const SetUpdateCheckRequestSchema: GenMessage<SetUpdateCheckRequest> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_notifications, 7);
+
+/**
+ * @generated from message nethernode.v1.SetUpdateCheckResponse
+ */
+export type SetUpdateCheckResponse = Message<"nethernode.v1.SetUpdateCheckResponse"> & {
+};
+
+/**
+ * Describes the message nethernode.v1.SetUpdateCheckResponse.
+ * Use `create(SetUpdateCheckResponseSchema)` to create a new message.
+ */
+export const SetUpdateCheckResponseSchema: GenMessage<SetUpdateCheckResponse> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_notifications, 8);
+
+/**
  * Discord webhook notifications. Administrators and owners.
  *
  * @generated from service nethernode.v1.NotificationService
@@ -190,6 +234,18 @@ export const NotificationService: GenService<{
     methodKind: "unary";
     input: typeof SendTestNotificationRequestSchema;
     output: typeof SendTestNotificationResponseSchema;
+  },
+  /**
+   * Whether the panel looks for new NetherNode releases (on by default):
+   * about twice a day it asks GitHub for the newest release, and the bell
+   * says when there's a newer one.
+   *
+   * @generated from rpc nethernode.v1.NotificationService.SetUpdateCheck
+   */
+  setUpdateCheck: {
+    methodKind: "unary";
+    input: typeof SetUpdateCheckRequestSchema;
+    output: typeof SetUpdateCheckResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_nethernode_v1_notifications, 0);

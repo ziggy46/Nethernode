@@ -17,7 +17,7 @@ import { useId, useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { EmptyState, Footer, PageHeader } from "@/components/page";
+import { EmptyState, PageHeader } from "@/components/page";
 import { Badge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,7 +39,6 @@ import { ErrorAlert, Field, Select } from "@/components/ui/field";
 import { Role, type User } from "@/gen/nethernode/v1/auth_pb";
 import { UserService, type UserSummary } from "@/gen/nethernode/v1/users_pb";
 import { errorMessage, transport } from "@/lib/api";
-import { healthQuery } from "@/lib/health";
 import { ROLE_LABELS, useCurrentUser } from "@/lib/session";
 import { ago, dateTime } from "@/lib/time";
 import { useDocumentTitle } from "@/lib/use-document-title";
@@ -68,7 +67,6 @@ type Action =
 export function UsersPage() {
   useDocumentTitle("Users");
   const me = useCurrentUser();
-  const health = useQuery(healthQuery);
   const owner = me.role === Role.OWNER;
   const users = useQuery({ queryKey: usersKey, queryFn: () => userClient.listUsers({}), enabled: owner });
   const [creating, setCreating] = useState(false);
@@ -133,7 +131,6 @@ export function UsersPage() {
         />
       )}
       {revealed && <PasswordReveal {...revealed} onClose={() => setRevealed(null)} />}
-      <Footer version={health.data?.version} />
     </>
   );
 }

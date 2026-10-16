@@ -1,8 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
 import type * as React from "react";
 
-import { EmptyState, Footer, PageHeader } from "@/components/page";
-import { healthQuery } from "@/lib/health";
+import { EmptyState, PageHeader } from "@/components/page";
 import { useDocumentTitle } from "@/lib/use-document-title";
 
 /**
@@ -27,7 +25,6 @@ export function PlaceholderPage({
   emptyBody: string;
 }) {
   useDocumentTitle(title);
-  const health = useQuery(healthQuery);
   return (
     <>
       <PageHeader eyebrow={eyebrow} title={heading} description={description} />
@@ -36,7 +33,6 @@ export function PlaceholderPage({
           {emptyBody}
         </EmptyState>
       </div>
-      <Footer version={health.data?.version} />
     </>
   );
 }

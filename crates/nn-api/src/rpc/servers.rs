@@ -645,14 +645,13 @@ impl pb::ServerService for ServerRpc {
         let (id, from) = (server.id.clone(), server.node_id.clone());
         let job_id =
             crate::moves::start_move(&self.state, server, request.node_id, &user.id).await?;
-        audit(
-            &self.state,
-            &user,
-            "server.move",
-            ("server", &id),
-            json!({ "from": from, "to": request.node_id }),
-        )
-        .await;
+        let store = self.state.auth.store();
+        let name = async |node_id: &str| match store.find_node(node_id).await {
+            Ok(Some(node)) => node.name,
+            _ => node_id.to_owned(),
+        };
+        let details = json!({ "from": name(&from).await, "to": name(request.node_id).await });
+        audit(&self.state, &user, "server.move", ("server", &id), details).await;
         Response::ok(pb::MoveServerResponse {
             job_id,
             ..Default::default()

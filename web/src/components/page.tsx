@@ -1,6 +1,8 @@
+import { useQuery } from "@tanstack/react-query";
 import { ShieldCheck } from "lucide-react";
 import type * as React from "react";
 
+import { healthQuery } from "@/lib/health";
 import { cn } from "@/lib/utils";
 
 /** Eyebrow, heading, description, and top-right actions. */
@@ -130,7 +132,7 @@ export function SectionHeading({
 }: {
   title: string;
   count?: number;
-  caption?: string;
+  caption?: React.ReactNode;
 }) {
   return (
     <div className="mb-[17px] flex items-center justify-between gap-3">
@@ -145,9 +147,11 @@ export function SectionHeading({
   );
 }
 
-export function Footer({ version }: { version?: string }) {
+/** The line at the bottom of every page, kept at the bottom of the window on short pages. */
+export function Footer() {
+  const version = useQuery(healthQuery).data?.version;
   return (
-    <footer className="mt-7 flex flex-wrap items-center justify-between gap-2.5 text-meta text-text-muted">
+    <footer className="mt-auto flex flex-wrap items-center justify-between gap-2.5 pt-7 text-meta text-text-muted">
       <span className="flex items-center gap-[5px]">
         <ShieldCheck className="size-3" aria-hidden />
         NetherNode · Your worlds, under control.

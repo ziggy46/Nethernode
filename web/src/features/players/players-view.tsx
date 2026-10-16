@@ -152,7 +152,14 @@ export function PlayersView({ serverId, serverName }: { serverId?: string; serve
         column.display({
           id: "status",
           header: "Status",
-          cell: ({ row }) => <PlayerBadges row={{ ...row.original, online: false } as PlayerRow} now={now} />,
+          cell: ({ row }) => {
+            const p = row.original;
+            return p.online || p.opLevel > 0 || p.allowlisted || p.ban ? (
+              <PlayerBadges row={p} now={now} />
+            ) : (
+              <span className="text-text-muted">Offline</span>
+            );
+          },
         }),
         column.accessor((p) => (p.online ? Number.MAX_SAFE_INTEGER : Number(p.lastSeenMs)), {
           id: "lastSeen",

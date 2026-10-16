@@ -15,9 +15,29 @@ const titles = new Map<string, string>();
 const finished = new Map<string, Result>();
 const REMEMBER = 100;
 
+/** How long a failure stays up (it can be closed sooner). */
+const ERROR_MS = 15_000;
+/** A job not heard from in this long has its progress toast taken down. */
+const STALE_MS = 30 * 60_000;
+const stale = new Map<string, ReturnType<typeof setTimeout>>();
+
 function show(jobId: string, result: Result) {
-  if (result.failed) toast.error(result.message, { id: jobId, duration: Number.POSITIVE_INFINITY });
+  clearTimeout(stale.get(jobId));
+  stale.delete(jobId);
+  if (result.failed) toast.error(result.message, { id: jobId, duration: ERROR_MS });
   else toast.success(result.message, { id: jobId });
+}
+
+/** Takes the toast down if the job goes quiet (its finish event was missed). */
+function watch(jobId: string) {
+  clearTimeout(stale.get(jobId));
+  stale.set(
+    jobId,
+    setTimeout(() => {
+      stale.delete(jobId);
+      if (titles.delete(jobId)) toast.dismiss(jobId);
+    }, STALE_MS),
+  );
 }
 
 /** A job was started here; show its progress under `title`. */
@@ -30,11 +50,14 @@ export function trackJob(jobId: string, title: string) {
   }
   titles.set(jobId, title);
   toast.loading(title, { id: jobId });
+  watch(jobId);
 }
 
 export function jobProgress(jobId: string, percent: number) {
   const title = titles.get(jobId);
-  if (title) toast.loading(`${title} ${percent}%`, { id: jobId });
+  if (!title) return;
+  toast.loading(`${title} ${percent}%`, { id: jobId });
+  watch(jobId);
 }
 
 export function jobFinished(jobId: string, result: Result) {

@@ -461,7 +461,7 @@ impl Agents {
             Err(_) => return,
         };
         loop {
-            let event = match messages::recv::<_, AgentEvent>(&mut stream).await {
+            let event = match messages::recv_large::<_, AgentEvent>(&mut stream).await {
                 Ok(Some(event)) => event,
                 Ok(None) => return,
                 Err(e) => {
@@ -826,7 +826,7 @@ impl Agents {
             .map_err(|_| gone())?;
         let reply = tokio::time::timeout(
             UPDATE_ANSWER,
-            messages::recv::<_, nn_node::protocol::Reply>(&mut stream),
+            messages::recv_large::<_, nn_node::protocol::Reply>(&mut stream),
         )
         .await;
         match reply {
