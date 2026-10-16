@@ -238,7 +238,12 @@ impl Config {
     fn figment(path: &Path) -> Figment {
         Figment::from(Serialized::defaults(Config::default()))
             .merge(Toml::file(path))
-            .merge(Env::prefixed("NETHERNODE_").split("__").ignore(&["config"]))
+            // The command line's own variables aren't settings.
+            .merge(Env::prefixed("NETHERNODE_").split("__").ignore(&[
+                "config",
+                "join",
+                "join_code",
+            ]))
     }
 }
 
@@ -293,6 +298,9 @@ mod tests {
             jail.set_env("NETHERNODE_DOCKER__BACKEND_IP", "172.17.0.1");
             jail.set_env("NETHERNODE_DOCKER__HOST_DATA_DIR", "/srv/host/nn");
             jail.set_env("NETHERNODE_INSTALL_COUNT__ENABLED", "true");
+            // An agent's join details, given as variables.
+            jail.set_env("NETHERNODE_JOIN", "https://panel.example.com");
+            jail.set_env("NETHERNODE_JOIN_CODE", "nnj1.x");
             let config = Config::load(Path::new("nethernode.toml")).map_err(|e| *e)?;
             assert_eq!(config.docker.backend_ip.to_string(), "172.17.0.1");
             assert_eq!(

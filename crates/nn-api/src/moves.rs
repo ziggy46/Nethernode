@@ -205,7 +205,11 @@ async fn switch(
         ..server.clone()
     };
     // Its own job, so the restore's progress doesn't show as the move's.
-    match to.node.adopt(&sent, name, &avoid, &nn_store::new_id()).await {
+    match to
+        .node
+        .adopt(&sent, name, &avoid, &nn_store::new_id())
+        .await
+    {
         Ok(row) => {
             // This machine's orchestrator has already recorded it.
             if !to.node.is_local() {
