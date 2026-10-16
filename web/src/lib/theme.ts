@@ -1,6 +1,6 @@
 /**
  * The color theme. The choice (`system`, `dark` or `light`) is kept in this
- * browser and in the account (Settings › General preferences); `system`
+ * browser and in the account (Settings › Appearance); `system`
  * follows the device. public/theme.js applies it before the page paints, and
  * this module keeps it up to date afterwards.
  */

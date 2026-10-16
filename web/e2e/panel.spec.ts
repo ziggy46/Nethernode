@@ -53,7 +53,7 @@ test("every page loads without breaking the content security policy", async ({ p
 
 test("the domain from setup is in Settings and the DNS helper", async ({ page }) => {
   await signIn(page, OWNER.username, OWNER.password);
-  await page.goto("/settings");
+  await page.goto("/settings?section=domains");
   await expect(page.getByRole("listitem").filter({ hasText: "example.com" }).first()).toBeVisible();
   await page.getByLabel("Add a domain").fill("not a domain");
   await page.getByRole("button", { name: "Add domain" }).click();
@@ -154,6 +154,10 @@ test("Discord settings refuse a URL that isn't a Discord webhook", async ({ brow
   await page.getByLabel("Recovery code").fill(recoveryCodes[2] ?? "");
   await page.getByRole("button", { name: "Verify" }).click();
   await page.goto("/settings");
+  await page
+    .getByRole("navigation", { name: "Settings" })
+    .getByRole("link", { name: "Notifications" })
+    .click();
   await page.getByLabel("Webhook URL").fill("https://example.com/api/webhooks/1/abc");
   await page.getByRole("button", { name: "Save", exact: true }).first().click();
   await expect(page.getByText(/Paste a Discord webhook URL/)).toBeVisible();

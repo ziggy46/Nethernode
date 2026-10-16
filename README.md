@@ -113,7 +113,7 @@ backups, more machines, users, configuration, the API and the security model) li
 ## The install count
 
 The badge at the top counts installs that chose to be counted. It's **off by
-default**: an owner can turn it on in **Settings › Count this install**. Once a
+default**: an owner can turn it on in **Settings › Install count**. Once a
 day it then sends a random ID made on that machine and the version number,
 nothing else; turning it off deletes the ID. The counter is open source in
 [`counter/`](counter/README.md).

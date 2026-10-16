@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { Box, LogOut, UserRound } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Bell, Box, ChartNoAxesColumn, Globe, LogOut, Palette, UserRound } from "lucide-react";
 import type * as React from "react";
 import { lazy, Suspense } from "react";
 
@@ -11,8 +11,14 @@ import { Role } from "@/gen/nethernode/v1/auth_pb";
 import { healthQuery } from "@/lib/health";
 import { ROLE_LABELS, useCanManage, useCurrentUser } from "@/lib/session";
 import { useDocumentTitle } from "@/lib/use-document-title";
+import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/_app/settings")({ component: SettingsPage });
+/** One page of Settings per category, at `/settings?section=…`. */
+export const Route = createFileRoute("/_app/settings")({
+  validateSearch: (search: Record<string, unknown>): { section?: string } =>
+    typeof search.section === "string" ? { section: search.section } : {},
+  component: SettingsPage,
+});
 
 const AppearancePanel = lazy(() => import("@/features/appearance/appearance-panel"));
 const SecurityPanel = lazy(() => import("@/features/account/security-panel"));
@@ -24,6 +30,17 @@ const CurseForgeKey = lazy(() =>
   import("@/features/catalog/curseforge-key").then((m) => ({ default: m.CurseForgeKey })),
 );
 
+type Access = "everyone" | "admins" | "owners";
+
+const SECTIONS: { id: string; label: string; icon: React.ReactNode; access: Access }[] = [
+  { id: "account", label: "Account", icon: <UserRound />, access: "everyone" },
+  { id: "appearance", label: "Appearance", icon: <Palette />, access: "everyone" },
+  { id: "domains", label: "Domains", icon: <Globe />, access: "admins" },
+  { id: "notifications", label: "Notifications", icon: <Bell />, access: "admins" },
+  { id: "mods", label: "Mods and modpacks", icon: <Box />, access: "admins" },
+  { id: "install-count", label: "Install count", icon: <ChartNoAxesColumn />, access: "owners" },
+];
+
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
 
 function formatTime(ms: bigint | undefined): string {
@@ -31,11 +48,15 @@ function formatTime(ms: bigint | undefined): string {
 }
 
 function SettingsPage() {
-  useDocumentTitle("Settings");
   const user = useCurrentUser();
-  const signOut = useSignOut();
-  const health = useQuery(healthQuery);
   const canManage = useCanManage();
+  const health = useQuery(healthQuery);
+  const { section } = Route.useSearch();
+  const allowed = (access: Access) =>
+    access === "everyone" || (access === "admins" ? canManage : user.role === Role.OWNER);
+  const sections = SECTIONS.filter((s) => allowed(s.access));
+  const current = sections.find((s) => s.id === section) ?? sections[0];
+  useDocumentTitle(current && current.id !== "account" ? `${current.label} · Settings` : "Settings");
 
   return (
     <>
@@ -44,72 +65,121 @@ function SettingsPage() {
         title="Make it yours."
         description="Simple defaults, fewer things to worry about."
       />
-      <div className="flex max-w-[720px] flex-col gap-[18px]">
-        <Panel>
-          <PanelHeader title="Your account" icon={<UserRound />} />
-          <Row title="Username" description="Used to sign in.">
-            <span className="font-mono text-label">{user.username}</span>
-          </Row>
-          <Row title="Role" description="Owners have full control, including users and metrics.">
-            <span className="rounded-xs bg-surface-elevated px-1.5 py-px text-meta text-text-secondary">
-              {ROLE_LABELS[user.role]}
-            </span>
-          </Row>
-          <Row title="Member since" description="When this account was created.">
-            <span className="text-label text-text-secondary">{formatTime(user.createdAtMs)}</span>
-          </Row>
-          <Row title="Session" description="Sign out of NetherNode on this device." last>
-            <Button variant="subtle" onClick={() => void signOut()}>
-              <LogOut />
-              Sign out
-            </Button>
-          </Row>
-        </Panel>
-
-        <Suspense fallback={<div className="h-24 animate-pulse rounded-lg bg-surface-subtle" />}>
-          <AppearancePanel />
-        </Suspense>
-
-        <Suspense fallback={<div className="h-48 animate-pulse rounded-lg bg-surface-subtle" />}>
-          <SecurityPanel />
-        </Suspense>
-
-        {canManage && (
-          <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-surface-subtle" />}>
-            <DomainsPanel />
-          </Suspense>
-        )}
-
-        {canManage && (
-          <Suspense fallback={<div className="h-48 animate-pulse rounded-lg bg-surface-subtle" />}>
-            <DiscordPanel />
-          </Suspense>
-        )}
-
-        {canManage && (
-          <Panel>
-            <PanelHeader title="Modpacks and mods" icon={<Box />} />
-            <div className="py-[15px] first-of-type:pt-0 pb-0">
-              <p className="font-[550] text-label">CurseForge API key</p>
-              <p className="mt-[3px] mb-3 text-meta text-text-muted">
-                Lets NetherNode search CurseForge and install from it. It's stored encrypted and passed to
-                CurseForge modpack servers.
-              </p>
-              <Suspense fallback={<div className="h-9 animate-pulse rounded-md bg-surface-subtle" />}>
-                <CurseForgeKey />
-              </Suspense>
-            </div>
-          </Panel>
-        )}
-
-        {user.role === Role.OWNER && (
-          <Suspense fallback={<div className="h-28 animate-pulse rounded-lg bg-surface-subtle" />}>
-            <InstallCountPanel />
-          </Suspense>
-        )}
+      <div className="flex items-start gap-7 below-lg:flex-col below-lg:gap-4">
+        <nav
+          aria-label="Settings"
+          className="sticky top-5 flex w-[210px] shrink-0 flex-col gap-0.5 below-lg:static below-lg:w-full below-lg:flex-row below-lg:overflow-x-auto"
+        >
+          {sections.map((s) => {
+            const active = s.id === current?.id;
+            return (
+              <Link
+                key={s.id}
+                to="/settings"
+                search={{ section: s.id }}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "flex shrink-0 items-center gap-2.5 rounded-md px-3 py-2 text-nav transition-colors duration-(--nn-transition) [&_svg]:size-4",
+                  active
+                    ? "bg-surface-elevated text-text-primary"
+                    : "text-text-secondary hover:bg-surface-subtle hover:text-text-primary",
+                )}
+              >
+                {s.icon}
+                {s.label}
+              </Link>
+            );
+          })}
+        </nav>
+        <div className="flex w-full max-w-[720px] min-w-0 flex-col gap-[18px]">
+          <Section id={current?.id ?? "account"} />
+        </div>
       </div>
       <Footer version={health.data?.version} />
     </>
+  );
+}
+
+function Loading({ height }: { height: string }) {
+  return <div className={cn("animate-pulse rounded-lg bg-surface-subtle", height)} />;
+}
+
+function Section({ id }: { id: string }) {
+  switch (id) {
+    case "appearance":
+      return (
+        <Suspense fallback={<Loading height="h-24" />}>
+          <AppearancePanel />
+        </Suspense>
+      );
+    case "domains":
+      return (
+        <Suspense fallback={<Loading height="h-40" />}>
+          <DomainsPanel />
+        </Suspense>
+      );
+    case "notifications":
+      return (
+        <Suspense fallback={<Loading height="h-48" />}>
+          <DiscordPanel />
+        </Suspense>
+      );
+    case "mods":
+      return (
+        <Panel>
+          <PanelHeader title="Modpacks and mods" icon={<Box />} />
+          <p className="font-[550] text-label">CurseForge API key</p>
+          <p className="mt-[3px] mb-3 text-meta text-text-muted">
+            Lets NetherNode search CurseForge and install from it. It's stored encrypted and passed to
+            CurseForge modpack servers.
+          </p>
+          <Suspense fallback={<Loading height="h-9" />}>
+            <CurseForgeKey />
+          </Suspense>
+        </Panel>
+      );
+    case "install-count":
+      return (
+        <Suspense fallback={<Loading height="h-28" />}>
+          <InstallCountPanel />
+        </Suspense>
+      );
+    default:
+      return (
+        <>
+          <AccountPanel />
+          <Suspense fallback={<Loading height="h-48" />}>
+            <SecurityPanel />
+          </Suspense>
+        </>
+      );
+  }
+}
+
+function AccountPanel() {
+  const user = useCurrentUser();
+  const signOut = useSignOut();
+  return (
+    <Panel>
+      <PanelHeader title="Your account" icon={<UserRound />} />
+      <Row title="Username" description="Used to sign in.">
+        <span className="font-mono text-label">{user.username}</span>
+      </Row>
+      <Row title="Role" description="Owners have full control, including users and metrics.">
+        <span className="rounded-xs bg-surface-elevated px-1.5 py-px text-meta text-text-secondary">
+          {ROLE_LABELS[user.role]}
+        </span>
+      </Row>
+      <Row title="Member since" description="When this account was created.">
+        <span className="text-label text-text-secondary">{formatTime(user.createdAtMs)}</span>
+      </Row>
+      <Row title="Session" description="Sign out of NetherNode on this device." last>
+        <Button variant="subtle" onClick={() => void signOut()}>
+          <LogOut />
+          Sign out
+        </Button>
+      </Row>
+    </Panel>
   );
 }
 
