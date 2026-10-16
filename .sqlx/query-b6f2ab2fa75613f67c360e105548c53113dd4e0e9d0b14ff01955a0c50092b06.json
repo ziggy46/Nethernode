@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE servers SET rcon_password_enc = ?1, updated_at = ?2 WHERE id = ?3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "b6f2ab2fa75613f67c360e105548c53113dd4e0e9d0b14ff01955a0c50092b06"
+}

@@ -403,7 +403,7 @@ function RenameDialog({ node, onClose }: { node: Node; onClose: () => void }) {
 function RemoveDialog({ node, onClose }: { node: Node; onClose: () => void }) {
   const client = useQueryClient();
   const remove = useMutation({
-    mutationFn: () => nodeClient.deleteNode({ id: node.id }),
+    mutationFn: () => nodeClient.deleteNode({ id: node.id, forgetServers: node.serverCount > 0 }),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: nodesKey });
       toast.success(`${node.name} was removed.`);
@@ -415,8 +415,12 @@ function RemoveDialog({ node, onClose }: { node: Node; onClose: () => void }) {
       open
       onOpenChange={(o) => !o && onClose()}
       title={`Remove ${node.name}?`}
-      description="Its agent is disconnected and can't come back without a new join code. Nothing on that machine is deleted."
-      confirmLabel="Remove node"
+      description={
+        node.serverCount > 0
+          ? `Its agent is disconnected and can't come back without a new join code. The panel forgets its ${node.serverCount === 1 ? "server" : `${node.serverCount} servers`} and the backups kept there, stopping ${node.serverCount === 1 ? "it" : "them"} first if the machine is online. Their files stay on that machine. To keep a server, move it first.`
+          : "Its agent is disconnected and can't come back without a new join code. Nothing on that machine is deleted."
+      }
+      confirmLabel={node.serverCount > 0 ? "Remove and forget servers" : "Remove node"}
       pending={remove.isPending}
       error={remove.error ? errorMessage(remove.error) : undefined}
       onConfirm={() => remove.mutate()}

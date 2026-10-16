@@ -42,6 +42,8 @@ pub struct RemoteNode {
     id: String,
     name: Mutex<String>,
     session: Mutex<Option<Session>>,
+    /// The version of a connected agent the panel can't manage.
+    outdated: Mutex<Option<String>>,
     host: Mutex<Option<RemoteHost>>,
     cache: Mutex<HashMap<String, Cached>>,
 }
@@ -56,6 +58,7 @@ impl RemoteNode {
             id: id.to_owned(),
             name: Mutex::new(id.to_owned()),
             session: Mutex::default(),
+            outdated: Mutex::default(),
             host: Mutex::default(),
             cache: Mutex::default(),
         }
@@ -79,11 +82,25 @@ impl RemoteNode {
     /// The agent connected.
     pub fn attach(&self, session: Session) {
         *lock(&self.session) = Some(session);
+        *lock(&self.outdated) = None;
+    }
+
+    /// The agent connected, but runs `version`, which the panel can't
+    /// manage: it reports in, but takes no requests.
+    pub fn attach_outdated(&self, version: &str) {
+        *lock(&self.session) = None;
+        *lock(&self.outdated) = Some(version.to_owned());
+    }
+
+    /// The version of a connected agent that needs updating, if it does.
+    pub fn outdated(&self) -> Option<String> {
+        lock(&self.outdated).clone()
     }
 
     /// The agent left (if `session` is still the current one).
     pub fn detach(&self) {
         *lock(&self.session) = None;
+        *lock(&self.outdated) = None;
         lock(&self.cache).clear();
     }
 
@@ -148,8 +165,12 @@ impl RemoteNode {
         lock(&self.cache).get(id).and_then(|c| c.stats)
     }
 
-    fn offline(&self) -> NodeError {
-        NodeError::Offline(self.name())
+    pub(crate) fn offline(&self) -> NodeError {
+        if self.outdated().is_some() {
+            NodeError::NeedsUpdate(self.name())
+        } else {
+            NodeError::Offline(self.name())
+        }
     }
 
     async fn open(&self) -> Result<LinkStream> {
@@ -162,6 +183,37 @@ impl RemoteNode {
         let mut stream = self.open().await?;
         let reply = self.exchange(&mut stream, &request).await?;
         serde_json::from_value(reply).map_err(|e| {
+            NodeError::Remote(RemoteError {
+                kind: ErrorKind::Internal,
+                message: format!("the agent's reply didn't make sense: {e}"),
+            })
+        })
+    }
+
+    /// Sends a request, then whatever `body` writes after it, and reads the
+    /// reply. If the agent refuses partway, its reason wins.
+    pub(crate) async fn call_with_body<T: DeserializeOwned>(
+        &self,
+        request: Request,
+        body: impl AsyncFnOnce(&mut LinkStream) -> std::io::Result<()>,
+    ) -> Result<T> {
+        let mut stream = self.open().await?;
+        messages::send(&mut stream, &request)
+            .await
+            .map_err(|_| self.offline())?;
+        let sent = body(&mut stream).await;
+        let reply = tokio::time::timeout(
+            std::time::Duration::from_secs(if sent.is_ok() { 3600 } else { 5 }),
+            messages::recv::<_, Reply>(&mut stream),
+        )
+        .await;
+        let reply = match (reply, sent) {
+            (Ok(Ok(Some(reply))), _) => reply,
+            (_, Err(e)) => return Err(NodeError::File(nn_files::FileError::Io(e))),
+            _ => return Err(self.offline()),
+        };
+        let value = reply.map_err(NodeError::Remote)?;
+        serde_json::from_value(value).map_err(|e| {
             NodeError::Remote(RemoteError {
                 kind: ErrorKind::Internal,
                 message: format!("the agent's reply didn't make sense: {e}"),

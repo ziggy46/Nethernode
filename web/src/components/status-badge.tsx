@@ -64,11 +64,19 @@ const SERVER_STATUS: Record<ServerStatus, { tone: Tone; label: string }> = {
  * Server lifecycle badge, per 06-design-system §3.4. A server whose machine
  * is offline says so instead: its last known status may be stale.
  */
-export function ServerStatusBadge({ status, nodeOffline }: { status: ServerStatus; nodeOffline?: boolean }) {
+export function ServerStatusBadge({
+  status,
+  nodeOffline,
+  nodeUpdateNeeded,
+}: {
+  status: ServerStatus;
+  nodeOffline?: boolean;
+  nodeUpdateNeeded?: boolean;
+}) {
   if (nodeOffline) {
     return (
       <Badge tone="muted" icon={<CircleAlert className="size-3" aria-hidden />}>
-        Machine offline
+        {nodeUpdateNeeded ? "Machine needs update" : "Machine offline"}
       </Badge>
     );
   }

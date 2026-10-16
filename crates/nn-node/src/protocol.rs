@@ -148,6 +148,26 @@ pub enum Request {
         /// Archive name.
         name: String,
     },
+    /// Receive an archive from another machine, for a server moving here.
+    /// Its bytes follow the request.
+    ReceiveBackup {
+        /// Archive name.
+        name: String,
+        /// Bytes that follow.
+        len: u64,
+    },
+    /// Set up a server moving here from a received archive; the reply is
+    /// this machine's record of it.
+    Adopt {
+        /// The panel's record of the server, without secrets.
+        server: Box<Server>,
+        /// The received archive.
+        archive: String,
+        /// Ports other machines' servers use.
+        avoid_ports: Vec<i64>,
+        /// Job to report progress on.
+        job_id: String,
+    },
     /// The CurseForge API key, for CurseForge modpacks.
     SetCurseforgeKey {
         /// The key, or none.
@@ -208,9 +228,10 @@ impl From<&NodeError> for RemoteError {
                 OrchestratorError::Docker(_) => ErrorKind::Unavailable,
                 _ => ErrorKind::Internal,
             },
-            NodeError::Unavailable(_) | NodeError::NoDataFolder | NodeError::Offline(_) => {
-                ErrorKind::Unavailable
-            }
+            NodeError::Unavailable(_)
+            | NodeError::NoDataFolder
+            | NodeError::Offline(_)
+            | NodeError::NeedsUpdate(_) => ErrorKind::Unavailable,
             NodeError::Remote(r) => r.kind,
             NodeError::File(_) | NodeError::NotYet(_) => ErrorKind::Internal,
         };

@@ -203,7 +203,8 @@ impl Store {
     }
 
     /// Records (or refreshes) a server on another node, as its agent reported
-    /// it. Its secrets and management port stay with the agent.
+    /// it. Its secrets and management port stay with the agent, so any here
+    /// are cleared.
     pub async fn upsert_server_mirror(&self, server: &Server, node_id: &str) -> Result<()> {
         sqlx::query!(
             r#"INSERT INTO servers (id, name, slug, status, mc_version, loader, loader_version, image,
@@ -230,7 +231,8 @@ impl Store {
                    restart_on_crash = excluded.restart_on_crash,
                    use_aikar_flags = excluded.use_aikar_flags, motd = excluded.motd,
                    max_players = excluded.max_players, last_started_at = excluded.last_started_at,
-                   modpack_json = excluded.modpack_json, node_id = excluded.node_id"#,
+                   modpack_json = excluded.modpack_json, node_id = excluded.node_id,
+                   rcon_password_enc = NULL, mgmt_port = NULL, mgmt_secret_enc = NULL"#,
             server.id,
             server.name,
             server.slug,
@@ -480,6 +482,44 @@ impl Store {
         Ok(count > 0)
     }
 
+    /// The server using a slug, if any.
+    pub async fn slug_owner(&self, slug: &str) -> Result<Option<String>> {
+        Ok(
+            sqlx::query_scalar!(r#"SELECT id AS "id!" FROM servers WHERE slug = ?1"#, slug)
+                .fetch_optional(self.pool())
+                .await?,
+        )
+    }
+
+    /// Every host port assigned to a server other than `id`.
+    pub async fn ports_used_by_others(&self, id: &str) -> Result<Vec<i64>> {
+        let rows = sqlx::query!(
+            r#"SELECT internal_port AS "port!: i64" FROM servers WHERE id != ?1
+               UNION SELECT rcon_port AS "port!: i64" FROM servers
+                     WHERE id != ?1 AND rcon_port IS NOT NULL
+               UNION SELECT mgmt_port AS "port!: i64" FROM servers
+                     WHERE id != ?1 AND mgmt_port IS NOT NULL"#,
+            id
+        )
+        .fetch_all(self.pool())
+        .await?;
+        Ok(rows.into_iter().map(|r| r.port).collect())
+    }
+
+    /// Records a server's sealed RCON password.
+    pub async fn set_rcon_secret(&self, id: &str, rcon_password_enc: &str) -> Result<()> {
+        let now = now_ms();
+        sqlx::query!(
+            "UPDATE servers SET rcon_password_enc = ?1, updated_at = ?2 WHERE id = ?3",
+            rcon_password_enc,
+            now,
+            id,
+        )
+        .execute(self.pool())
+        .await?;
+        Ok(())
+    }
+
     /// Deletes a server row (routes and sessions cascade). Returns `false` if missing.
     pub async fn delete_server(&self, id: &str) -> Result<bool> {
         let result = sqlx::query!("DELETE FROM servers WHERE id = ?1", id)
@@ -563,6 +603,41 @@ mod tests {
         assert_eq!(store.list_servers().await.unwrap().len(), 2);
         // Ports stay unique across machines.
         assert!(store.used_ports().await.unwrap().contains(&25701));
+    }
+
+    #[tokio::test]
+    async fn a_server_moving_off_this_machine_loses_its_secrets_here() {
+        let store = test_store().await;
+        let server = store
+            .insert_server(test_server("mover", 25600))
+            .await
+            .unwrap();
+        store
+            .set_rcon_secret(&server.id, "sealed here")
+            .await
+            .unwrap();
+        store
+            .set_management(&server.id, 25602, "mgmt")
+            .await
+            .unwrap();
+        store
+            .insert_server(test_server("other", 25610))
+            .await
+            .unwrap();
+        assert_eq!(
+            store.slug_owner("mover").await.unwrap().as_deref(),
+            Some(server.id.as_str())
+        );
+        assert_eq!(store.slug_owner("nobody").await.unwrap(), None);
+        let others = store.ports_used_by_others(&server.id).await.unwrap();
+        assert!(others.contains(&25610) && !others.contains(&25600) && !others.contains(&25602));
+
+        let moved = store.find_server(&server.id).await.unwrap().unwrap();
+        store.upsert_server_mirror(&moved, "node-2").await.unwrap();
+        let now = store.find_server(&server.id).await.unwrap().unwrap();
+        assert_eq!(now.node_id, "node-2");
+        assert_eq!(now.rcon_password_enc, None);
+        assert_eq!((now.mgmt_port, now.mgmt_secret_enc), (None, None));
     }
 
     #[tokio::test]

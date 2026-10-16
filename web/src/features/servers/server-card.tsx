@@ -73,7 +73,11 @@ export function ServerCard({ server, now }: { server: Server; now: number }) {
         <WorldBanner theme={server.settings?.cardTheme ?? 0} />
         <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-(--world-fade) to-transparent" />
         <div className="absolute top-3 left-[13px]">
-          <ServerStatusBadge status={server.status} nodeOffline={server.nodeOffline} />
+          <ServerStatusBadge
+            status={server.status}
+            nodeOffline={server.nodeOffline}
+            nodeUpdateNeeded={server.nodeUpdateNeeded}
+          />
         </div>
         <Button
           asChild

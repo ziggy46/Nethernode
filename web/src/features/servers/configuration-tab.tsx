@@ -22,6 +22,7 @@ import { errorMessage, serverClient } from "@/lib/api";
 import { useCanManage } from "@/lib/session";
 
 import { LOADERS, loaderName } from "./format";
+import { MoveServer } from "./move-server";
 import { THEME_NAMES } from "./world-banner";
 
 const GameSettings = lazy(() => import("./game-settings"));
@@ -324,6 +325,7 @@ export function ConfigurationTab({ server }: { server: Server }) {
           <GameSettings server={server} />
         </Suspense>
       )}
+      {canManage && <MoveServer server={server} />}
       {canManage && <DangerZone server={server} />}
     </div>
   );

@@ -31,6 +31,7 @@ impl ServerRpc {
     /// The node `server` runs on, or a clear error when it can't manage
     /// servers right now.
     fn node(&self, server: &Server) -> Result<Node, ConnectError> {
+        crate::moves::not_moving(&self.state, &server.id)?;
         let node = self.state.nodes.for_server(server);
         match node.unavailable() {
             Some(e) => Err(node_error(e)),
@@ -84,6 +85,7 @@ impl ServerRpc {
     async fn to_proto(&self, server: Server, hostnames: &Hostnames) -> pb::Server {
         let node = self.state.nodes.for_server(&server);
         let node_offline = matches!(&node, Node::Remote(r) if !r.is_online());
+        let node_update_needed = matches!(&node, Node::Remote(r) if r.outdated().is_some());
         let node_name = hostnames
             .node_names
             .get(&server.node_id)
@@ -104,6 +106,7 @@ impl ServerRpc {
             created_at_ms: server.created_at,
             last_started_at_ms: server.last_started_at,
             node_offline,
+            node_update_needed,
             node_name,
             node_id: server.node_id,
             id: server.id,
@@ -292,7 +295,7 @@ pub(crate) fn node_error(err: NodeError) -> ConnectError {
     match err {
         NodeError::Unavailable(_) => ConnectError::failed_precondition(err.to_string()),
         NodeError::Orchestrator(e) => orchestrator_error(e),
-        NodeError::NoDataFolder | NodeError::Offline(_) => {
+        NodeError::NoDataFolder | NodeError::Offline(_) | NodeError::NeedsUpdate(_) => {
             ConnectError::unavailable(err.to_string())
         }
         NodeError::File(e) => crate::files::file_error(e),
@@ -630,6 +633,30 @@ impl pb::ServerService for ServerRpc {
         )
         .await;
         Response::ok(pb::DeleteServerResponse::default())
+    }
+
+    async fn move_server(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::MoveServerRequest>,
+    ) -> ServiceResult<pb::MoveServerResponse> {
+        let user = require(&ctx, Permission::ManageServers)?.clone();
+        let server = self.load(request.id).await?;
+        let (id, from) = (server.id.clone(), server.node_id.clone());
+        let job_id =
+            crate::moves::start_move(&self.state, server, request.node_id, &user.id).await?;
+        audit(
+            &self.state,
+            &user,
+            "server.move",
+            ("server", &id),
+            json!({ "from": from, "to": request.node_id }),
+        )
+        .await;
+        Response::ok(pb::MoveServerResponse {
+            job_id,
+            ..Default::default()
+        })
     }
 
     async fn start_server(

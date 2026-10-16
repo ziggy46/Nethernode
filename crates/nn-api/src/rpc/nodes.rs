@@ -325,32 +325,72 @@ impl pb::NodeService for NodeRpc {
                 "This machine can't be removed.",
             ));
         }
-        let servers = self
-            .state
-            .auth
-            .store()
-            .count_servers_on(&node.id)
+        let store = self.state.auth.store();
+        let servers: Vec<_> = store
+            .list_servers()
             .await
-            .map_err(store_error)?;
-        if servers > 0 {
+            .map_err(store_error)?
+            .into_iter()
+            .filter(|s| s.node_id == node.id)
+            .collect();
+        if !servers.is_empty() && !request.forget_servers {
             return Err(ConnectError::failed_precondition(format!(
-                "{} still has servers. Delete them first.",
+                "{} still has servers. Move or delete them first, or remove it anyway and forget them.",
                 node.name
             )));
         }
-        self.state
-            .auth
-            .store()
-            .delete_node(&node.id)
+        if servers.iter().any(|s| self.state.nodes.is_moving(&s.id)) {
+            return Err(ConnectError::failed_precondition(format!(
+                "A server is moving to or from {}. Try again once that's done.",
+                node.name
+            )));
+        }
+        // Nothing should keep running there unmanaged.
+        let machine = self.state.nodes.get(&node.id);
+        if machine.unavailable().is_none() {
+            let stops = servers
+                .iter()
+                .filter(|s| !matches!(s.status.as_str(), "stopped" | "crashed"))
+                .map(|s| machine.stop(&s.id, false));
+            let stopped = tokio::time::timeout(
+                std::time::Duration::from_secs(90),
+                futures_util::future::join_all(stops),
+            )
+            .await;
+            if stopped.is_err() {
+                tracing::warn!(node = %node.id, "some servers on a removed node didn't stop in time");
+            }
+        }
+        store.delete_node(&node.id).await.map_err(store_error)?;
+        self.state.agents.disconnect(&node.id);
+        for server in &servers {
+            store.delete_server(&server.id).await.map_err(store_error)?;
+            self.state
+                .events
+                .publish(nn_events::Event::ServerStatusChanged {
+                    server_id: server.id.clone(),
+                    status: "deleted".into(),
+                });
+        }
+        let backups = store
+            .delete_backups_on_node(&node.id)
             .await
             .map_err(store_error)?;
-        self.state.agents.disconnect(&node.id);
+        if !servers.is_empty()
+            && let Err(e) = self.state.proxy.reload().await
+        {
+            tracing::warn!(error = %e, "couldn't reload the proxy after removing a node");
+        }
         audit(
             &self.state,
             &user,
             "node.delete",
             ("node", &node.id),
-            json!({ "name": node.name }),
+            json!({
+                "name": node.name,
+                "forgot_servers": servers.iter().map(|s| &s.name).collect::<Vec<_>>(),
+                "forgot_backups": backups,
+            }),
         )
         .await;
         self.state.events.publish(nn_events::Event::NodeChanged {

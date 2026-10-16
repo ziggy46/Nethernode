@@ -171,6 +171,10 @@ impl ProxyHooks for StoreProxyHooks {
     fn wake<'a>(&'a self, server_id: &'a str) -> BoxFuture<'a, WakeOutcome> {
         Box::pin(async move {
             let node = match self.nodes.get() {
+                Some(nodes) if nodes.is_moving(server_id) => {
+                    tracing::info!(server = %server_id, "a player tried to wake a server that's moving");
+                    return WakeOutcome::Failed("the server is moving to another machine".into());
+                }
                 Some(nodes) => Some(nodes.for_server_id(server_id).await),
                 None => None,
             }

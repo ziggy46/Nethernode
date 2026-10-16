@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT internal_port AS \"port!: i64\" FROM servers WHERE id != ?1\n               UNION SELECT rcon_port AS \"port!: i64\" FROM servers\n                     WHERE id != ?1 AND rcon_port IS NOT NULL\n               UNION SELECT mgmt_port AS \"port!: i64\" FROM servers\n                     WHERE id != ?1 AND mgmt_port IS NOT NULL",
+  "describe": {
+    "columns": [
+      {
+        "name": "port!: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "internal_port"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "833e760b57e0e0a0b3586c9e17e9d1d6c262eb07ce3d895454d865f33016bf00"
+}

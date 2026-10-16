@@ -1031,6 +1031,111 @@ impl Orchestrator {
         Ok(())
     }
 
+    /// Takes over a server moved here from another machine: records it as
+    /// this machine's, keeping its ID, slug and settings, with a fresh RCON
+    /// password. It keeps its ports unless they're taken here or in
+    /// `avoid_ports` (other machines' servers). Its status is `installing`
+    /// until [`Self::finish_import`], once the caller has filled its folder.
+    pub async fn import(&self, server: &Server, avoid_ports: &[i64]) -> Result<Server> {
+        self.server_dir(&server.slug)?;
+        let _guard = self.create_lock.lock().await;
+        if let Some(owner) = self.store.slug_owner(&server.slug).await?
+            && owner != server.id
+        {
+            return Err(OrchestratorError::InvalidInput(format!(
+                "another server on this machine is already called {}",
+                server.slug
+            )));
+        }
+        let mut used = self.store.ports_used_by_others(&server.id).await?;
+        used.extend(avoid_ports.iter().copied());
+        let ip = self.config.backend_ip;
+        let usable = |port: i64| {
+            !used.contains(&port) && u16::try_from(port).is_ok_and(|p| ports::is_free(ip, p))
+        };
+        let (game, rcon) = match server.rcon_port {
+            Some(rcon) if usable(server.internal_port) && usable(rcon) => {
+                (server.internal_port, rcon)
+            }
+            _ => {
+                let range = self.config.port_range.clone();
+                let ports = ports::allocate(range.clone(), &used, 2, |p| ports::is_free(ip, p))
+                    .ok_or_else(|| {
+                        OrchestratorError::NoPorts(format!("{}–{}", range.start(), range.end()))
+                    })?;
+                (i64::from(ports[0]), i64::from(ports[1]))
+            }
+        };
+        let row = Server {
+            status: "installing".into(),
+            internal_port: game,
+            rcon_port: Some(rcon),
+            public_port: None,
+            container_id: None,
+            rcon_password_enc: None,
+            mgmt_port: None,
+            mgmt_secret_enc: None,
+            node_id: nn_store::LOCAL_NODE.into(),
+            updated_at: now_ms(),
+            ..server.clone()
+        };
+        // Written like a mirrored row (no secrets), then given its own.
+        self.store
+            .upsert_server_mirror(&row, nn_store::LOCAL_NODE)
+            .await?;
+        self.store
+            .set_rcon_secret(&row.id, &self.secrets.seal(&random_password()))
+            .await?;
+        self.events.publish(Event::ServerStatusChanged {
+            server_id: row.id.clone(),
+            status: "installing".into(),
+        });
+        self.load(&row.id).await
+    }
+
+    /// Sets up the container of a server [`Self::import`]ed here, once its
+    /// folder is in place. It ends up stopped.
+    pub async fn finish_import(self: &Arc<Self>, id: &str) -> Result<Server> {
+        let rt = self.runtime(id);
+        let _op = rt.op.lock().await;
+        self.install(id).await?;
+        self.set_status(id, "stopped").await;
+        self.load(id).await
+    }
+
+    /// Lets go of a server that now lives on another machine (or never
+    /// finished moving here): removes its container and folder on this
+    /// machine. Its record is left to the caller.
+    pub async fn release(self: &Arc<Self>, id: &str, slug: &str) -> Result<()> {
+        let dir = self.server_dir(slug)?;
+        let rt = self.runtime(id);
+        {
+            let _op = rt.op.lock().await;
+            rt.state().expected_exit = Some("stopped");
+            rt.state().stop_tasks();
+            let options = RemoveContainerOptionsBuilder::default().force(true).build();
+            if let Err(e) = self
+                .docker
+                .remove_container(&spec::container_name(slug), Some(options))
+                .await
+                && !is_not_found(&e)
+            {
+                return Err(e.into());
+            }
+        }
+        self.runtimes
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(id);
+        if dir.exists() {
+            tokio::task::spawn_blocking(move || std::fs::remove_dir_all(&dir))
+                .await
+                .map_err(std::io::Error::other)??;
+        }
+        tracing::info!(server = %id, "released a server that moved to another machine");
+        Ok(())
+    }
+
     /// A server's data directory, refusing anything outside `servers_dir`.
     fn server_dir(&self, slug: &str) -> Result<PathBuf> {
         if slug.is_empty()

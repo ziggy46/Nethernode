@@ -398,6 +398,9 @@ async fn handle(mut stream: LinkStream, node: Node) {
     if let Request::OpenBackup { name, offset } = &request {
         return send_backup(stream, &node, name, *offset).await;
     }
+    if let Request::ReceiveBackup { name, len } = &request {
+        return receive_archive(stream, &node, name, *len).await;
+    }
     let request = match request {
         Request::Folder { id, call } => return folder(stream, &node, &id, call).await,
         other => other,
@@ -462,11 +465,25 @@ async fn answer(node: &Node, request: Request) -> Reply {
             reply(Ok(size))
         }
         Request::DeleteBackup { name } => said(node.delete_backup(&name).await),
+        Request::Adopt {
+            server,
+            archive,
+            avoid_ports,
+            job_id,
+        } => {
+            let adopted = node.adopt(&server, &archive, &avoid_ports, &job_id).await;
+            if adopted.is_err() {
+                // Leave nothing half set up.
+                let _ = node.delete(&server.id, true).await;
+            }
+            said(adopted)
+        }
         Request::Logs { .. }
         | Request::Connect { .. }
         | Request::Folder { .. }
-        | Request::OpenBackup { .. } => {
-            unreachable!("handled by follow_logs, relay, folder, and send_backup")
+        | Request::OpenBackup { .. }
+        | Request::ReceiveBackup { .. } => {
+            unreachable!("handled by follow_logs, relay, folder, send_backup, and receive_archive")
         }
     }
 }
@@ -552,6 +569,15 @@ async fn send_backup(mut stream: LinkStream, node: &Node, name: &str, offset: u6
             let _ = messages::send(&mut stream, &reply::<()>(Err(failed))).await;
         }
     }
+}
+
+/// Receives an archive for a server moving here.
+async fn receive_archive(mut stream: LinkStream, node: &Node, name: &str, len: u64) {
+    let Node::Local(local) = node else {
+        return;
+    };
+    let result = local.receive_archive(name, &mut stream, len).await;
+    let _ = messages::send(&mut stream, &said(result)).await;
 }
 
 /// Largest file accepted in one write (a big mod, say).

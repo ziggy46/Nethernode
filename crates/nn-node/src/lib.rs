@@ -28,6 +28,7 @@ pub mod agent;
 mod backups;
 mod folder;
 pub mod jobs;
+mod moving;
 pub mod protocol;
 mod remote;
 
@@ -55,6 +56,11 @@ pub enum NodeError {
     /// The node's agent isn't connected.
     #[error("{0} is offline. Its servers can be managed again once its agent reconnects.")]
     Offline(String),
+    /// The node's agent runs a NetherNode version the panel can't manage.
+    #[error(
+        "{0} runs a different NetherNode version than the panel. Update it to manage its servers."
+    )]
+    NeedsUpdate(String),
     /// The agent tried and failed.
     #[error(transparent)]
     Remote(#[from] protocol::RemoteError),
@@ -185,7 +191,7 @@ impl Node {
     pub fn unavailable(&self) -> Option<NodeError> {
         match self {
             Self::Local(node) => node.orchestrator().err(),
-            Self::Remote(node) if !node.is_online() => Some(NodeError::Offline(node.name())),
+            Self::Remote(node) if !node.is_online() => Some(node.offline()),
             Self::Remote(node) => match node.host().map(|h| h.docker) {
                 Some(Err(reason)) => Some(NodeError::Unavailable(reason.into())),
                 _ => None,
@@ -340,7 +346,7 @@ impl Node {
             Self::Local(node) => Ok(node.orchestrator()?.host_info().await?),
             Self::Remote(node) => {
                 if !node.is_online() {
-                    return Err(NodeError::Offline(node.name()));
+                    return Err(node.offline());
                 }
                 match node.host().map(|h| h.docker) {
                     Some(Ok(info)) => Ok(info),
@@ -459,6 +465,22 @@ pub struct Nodes {
     local_node: Arc<LocalNode>,
     remotes: Arc<std::sync::Mutex<std::collections::HashMap<String, Arc<RemoteNode>>>>,
     store: Option<Store>,
+    moving: Arc<std::sync::Mutex<std::collections::HashSet<String>>>,
+}
+
+/// A server being moved between machines; the move ends when this drops.
+pub struct Moving {
+    id: String,
+    moving: Arc<std::sync::Mutex<std::collections::HashSet<String>>>,
+}
+
+impl Drop for Moving {
+    fn drop(&mut self) {
+        self.moving
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&self.id);
+    }
 }
 
 impl Nodes {
@@ -471,7 +493,27 @@ impl Nodes {
             local_node,
             remotes: Arc::default(),
             store,
+            moving: Arc::default(),
         }
+    }
+
+    /// Marks a server as moving between machines, unless it already is.
+    /// Meanwhile nothing else may change it, and agents' reports about it
+    /// are ignored.
+    pub fn begin_move(&self, id: &str) -> Option<Moving> {
+        let mut moving = self.moving.lock().unwrap_or_else(|e| e.into_inner());
+        moving.insert(id.to_owned()).then(|| Moving {
+            id: id.to_owned(),
+            moving: self.moving.clone(),
+        })
+    }
+
+    /// Whether a server is moving between machines.
+    pub fn is_moving(&self, id: &str) -> bool {
+        self.moving
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .contains(id)
     }
 
     /// This machine.

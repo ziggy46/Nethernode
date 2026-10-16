@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM backups WHERE node_id = ?1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "f33008a4b71118f7c226222226a1ad9d1adc5fc1af727ffcd688ac2ec65a4a97"
+}

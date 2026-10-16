@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file nethernode/v1/servers.proto.
  */
 export const file_nethernode_v1_servers: GenFile = /*@__PURE__*/
-  fileDesc("ChtuZXRoZXJub2RlL3YxL3NlcnZlcnMucHJvdG8SDW5ldGhlcm5vZGUudjEirQQKBlNlcnZlchIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHNsdWcYAyABKAkSKwoGc3RhdHVzGAQgASgOMhsubmV0aGVybm9kZS52MS5TZXJ2ZXJTdGF0dXMSEgoKbWNfdmVyc2lvbhgFIAEoCRIOCgZsb2FkZXIYBiABKAkSFQoNaW50ZXJuYWxfcG9ydBgHIAEoDRIYChBzbGVlcF93aGVuX2VtcHR5GAggASgIEi8KCHNldHRpbmdzGAkgASgLMh0ubmV0aGVybm9kZS52MS5TZXJ2ZXJTZXR0aW5ncxIVCg1jcmVhdGVkX2F0X21zGAogASgDEh8KEmxhc3Rfc3RhcnRlZF9hdF9tcxgLIAEoA0gAiAEBEhsKDnBsYXllcnNfb25saW5lGAwgASgNSAGIAQESGAoLcGxheWVyc19tYXgYDSABKA1IAogBARIRCglob3N0bmFtZXMYDiADKAkSGAoQcmVzdGFydF9yZXF1aXJlZBgPIAEoCBIsCgdtb2RwYWNrGBAgASgLMhYubmV0aGVybm9kZS52MS5Nb2RwYWNrSAOIAQESDwoHbm9kZV9pZBgRIAEoCRIRCglub2RlX25hbWUYEiABKAkSFAoMbm9kZV9vZmZsaW5lGBMgASgIQhUKE19sYXN0X3N0YXJ0ZWRfYXRfbXNCEQoPX3BsYXllcnNfb25saW5lQg4KDF9wbGF5ZXJzX21heEIKCghfbW9kcGFjayKsAwoOU2VydmVyU2V0dGluZ3MSDAoEbmFtZRgBIAEoCRISCgptY192ZXJzaW9uGAIgASgJEg4KBmxvYWRlchgDIAEoCRIWCg5sb2FkZXJfdmVyc2lvbhgEIAEoCRINCgVpbWFnZRgFIAEoCRIZCgxqYXZhX3ZlcnNpb24YBiABKA1IAIgBARIRCgltZW1vcnlfbWIYByABKA0SFgoJY3B1X2xpbWl0GAggASgBSAGIAQESEgoKYXV0b19zdGFydBgJIAEoCBIYChBzbGVlcF93aGVuX2VtcHR5GAogASgIEhkKDGlkbGVfbWludXRlcxgLIAEoDUgCiAEBEhgKEHJlc3RhcnRfb25fY3Jhc2gYDCABKAgSFwoPdXNlX2Fpa2FyX2ZsYWdzGA0gASgIEgwKBG1vdGQYDiABKAkSEwoLbWF4X3BsYXllcnMYDyABKA0SLAoKY2FyZF90aGVtZRgQIAEoDjIYLm5ldGhlcm5vZGUudjEuQ2FyZFRoZW1lQg8KDV9qYXZhX3ZlcnNpb25CDAoKX2NwdV9saW1pdEIPCg1faWRsZV9taW51dGVzIhQKEkxpc3RTZXJ2ZXJzUmVxdWVzdCI9ChNMaXN0U2VydmVyc1Jlc3BvbnNlEiYKB3NlcnZlcnMYASADKAsyFS5uZXRoZXJub2RlLnYxLlNlcnZlciIeChBHZXRTZXJ2ZXJSZXF1ZXN0EgoKAmlkGAEgASgJIjoKEUdldFNlcnZlclJlc3BvbnNlEiUKBnNlcnZlchgBIAEoCzIVLm5ldGhlcm5vZGUudjEuU2VydmVyIq0CChNDcmVhdGVTZXJ2ZXJSZXF1ZXN0EgwKBG5hbWUYASABKAkSDgoGbG9hZGVyGAIgASgJEhIKCm1jX3ZlcnNpb24YAyABKAkSFgoObG9hZGVyX3ZlcnNpb24YBCABKAkSEQoJbWVtb3J5X21iGAUgASgNEiwKCmNhcmRfdGhlbWUYBiABKA4yGC5uZXRoZXJub2RlLnYxLkNhcmRUaGVtZRIVCg1ldWxhX2FjY2VwdGVkGAcgASgIEhgKEHNsZWVwX3doZW5fZW1wdHkYCCABKAgSGgoSc3RhcnRfYWZ0ZXJfY3JlYXRlGAkgASgIEi0KB21vZHBhY2sYCiABKAsyHC5uZXRoZXJub2RlLnYxLk1vZHBhY2tTb3VyY2USDwoHbm9kZV9pZBgLIAEoCSI9ChRDcmVhdGVTZXJ2ZXJSZXNwb25zZRIlCgZzZXJ2ZXIYASABKAsyFS5uZXRoZXJub2RlLnYxLlNlcnZlciJSChNVcGRhdGVTZXJ2ZXJSZXF1ZXN0EgoKAmlkGAEgASgJEi8KCHNldHRpbmdzGAIgASgLMh0ubmV0aGVybm9kZS52MS5TZXJ2ZXJTZXR0aW5ncyI9ChRVcGRhdGVTZXJ2ZXJSZXNwb25zZRIlCgZzZXJ2ZXIYASABKAsyFS5uZXRoZXJub2RlLnYxLlNlcnZlciI2ChNEZWxldGVTZXJ2ZXJSZXF1ZXN0EgoKAmlkGAEgASgJEhMKC2RlbGV0ZV9kYXRhGAIgASgIIhYKFERlbGV0ZVNlcnZlclJlc3BvbnNlIiAKElN0YXJ0U2VydmVyUmVxdWVzdBIKCgJpZBgBIAEoCSIVChNTdGFydFNlcnZlclJlc3BvbnNlIh8KEVN0b3BTZXJ2ZXJSZXF1ZXN0EgoKAmlkGAEgASgJIhQKElN0b3BTZXJ2ZXJSZXNwb25zZSIiChRSZXN0YXJ0U2VydmVyUmVxdWVzdBIKCgJpZBgBIAEoCSIXChVSZXN0YXJ0U2VydmVyUmVzcG9uc2UiHwoRS2lsbFNlcnZlclJlcXVlc3QSCgoCaWQYASABKAkiFAoSS2lsbFNlcnZlclJlc3BvbnNlIo4BCgpTdGF0U2FtcGxlEg0KBWF0X21zGAEgASgDEhMKC2NwdV9wZXJjZW50GAIgASgBEhQKDG1lbW9yeV9ieXRlcxgDIAEoBBIaChJtZW1vcnlfbGltaXRfYnl0ZXMYBCABKAQSFAoMbmV0X3J4X2J5dGVzGAUgASgEEhQKDG5ldF90eF9ieXRlcxgGIAEoBCIjChVHZXRTZXJ2ZXJTdGF0c1JlcXVlc3QSCgoCaWQYASABKAkiRAoWR2V0U2VydmVyU3RhdHNSZXNwb25zZRIqCgdzYW1wbGVzGAEgAygLMhkubmV0aGVybm9kZS52MS5TdGF0U2FtcGxlIhQKEkdldEhvc3RJbmZvUmVxdWVzdCKMAgoTR2V0SG9zdEluZm9SZXNwb25zZRIYChBkb2NrZXJfYXZhaWxhYmxlGAEgASgIEg0KBWVycm9yGAIgASgJEhAKCGhvc3RuYW1lGAMgASgJEhgKEG9wZXJhdGluZ19zeXN0ZW0YBCABKAkSFgoOZG9ja2VyX3ZlcnNpb24YBSABKAkSDAoEY3B1cxgGIAEoDRIUCgxtZW1vcnlfYnl0ZXMYByABKAQSHQoQZGlza190b3RhbF9ieXRlcxgIIAEoBEgAiAEBEhwKD2Rpc2tfZnJlZV9ieXRlcxgJIAEoBEgBiAEBQhMKEV9kaXNrX3RvdGFsX2J5dGVzQhIKEF9kaXNrX2ZyZWVfYnl0ZXMiKAoaR2V0U2VydmVyUHJvcGVydGllc1JlcXVlc3QSCgoCaWQYASABKAkicQobR2V0U2VydmVyUHJvcGVydGllc1Jlc3BvbnNlEg4KBmV4aXN0cxgBIAEoCBIxCgpwcm9wZXJ0aWVzGAIgAygLMh0ubmV0aGVybm9kZS52MS5TZXJ2ZXJQcm9wZXJ0eRIPCgd2ZXJzaW9uGAMgASgJIvABCg5TZXJ2ZXJQcm9wZXJ0eRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAkSDQoFbGFiZWwYAyABKAkSDAoEaGVscBgEIAEoCRINCgVncm91cBgFIAEoCRIpCgR0eXBlGAYgASgOMhsubmV0aGVybm9kZS52MS5Qcm9wZXJ0eVR5cGUSDwoHb3B0aW9ucxgHIAMoCRIQCgNtaW4YCCABKANIAIgBARIQCgNtYXgYCSABKANIAYgBARIWCg5tYW5hZ2VkX3JlYXNvbhgKIAEoCRIOCgZzZWNyZXQYCyABKAhCBgoEX21pbkIGCgRfbWF4IrUBCh1VcGRhdGVTZXJ2ZXJQcm9wZXJ0aWVzUmVxdWVzdBIKCgJpZBgBIAEoCRJICgZ2YWx1ZXMYAiADKAsyOC5uZXRoZXJub2RlLnYxLlVwZGF0ZVNlcnZlclByb3BlcnRpZXNSZXF1ZXN0LlZhbHVlc0VudHJ5Eg8KB3ZlcnNpb24YAyABKAkaLQoLVmFsdWVzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASJgCh5VcGRhdGVTZXJ2ZXJQcm9wZXJ0aWVzUmVzcG9uc2USPgoKcHJvcGVydGllcxgBIAEoCzIqLm5ldGhlcm5vZGUudjEuR2V0U2VydmVyUHJvcGVydGllc1Jlc3BvbnNlKvABCgxTZXJ2ZXJTdGF0dXMSHQoZU0VSVkVSX1NUQVRVU19VTlNQRUNJRklFRBAAEhwKGFNFUlZFUl9TVEFUVVNfSU5TVEFMTElORxABEhkKFVNFUlZFUl9TVEFUVVNfU1RPUFBFRBACEhoKFlNFUlZFUl9TVEFUVVNfU1RBUlRJTkcQAxIZChVTRVJWRVJfU1RBVFVTX1JVTk5JTkcQBBIaChZTRVJWRVJfU1RBVFVTX1NUT1BQSU5HEAUSGgoWU0VSVkVSX1NUQVRVU19TTEVFUElORxAGEhkKFVNFUlZFUl9TVEFUVVNfQ1JBU0hFRBAHKoABCglDYXJkVGhlbWUSGgoWQ0FSRF9USEVNRV9VTlNQRUNJRklFRBAAEhUKEUNBUkRfVEhFTUVfTkVUSEVSEAESGAoUQ0FSRF9USEVNRV9PVkVSV09STEQQAhISCg5DQVJEX1RIRU1FX0VORBADEhIKDkNBUkRfVEhFTUVfU0tZEAQqjgEKDFByb3BlcnR5VHlwZRIdChlQUk9QRVJUWV9UWVBFX1VOU1BFQ0lGSUVEEAASFgoSUFJPUEVSVFlfVFlQRV9CT09MEAESFQoRUFJPUEVSVFlfVFlQRV9JTlQQAhIYChRQUk9QRVJUWV9UWVBFX0NIT0lDRRADEhYKElBST1BFUlRZX1RZUEVfVEVYVBAEMssJCg1TZXJ2ZXJTZXJ2aWNlElkKC0xpc3RTZXJ2ZXJzEiEubmV0aGVybm9kZS52MS5MaXN0U2VydmVyc1JlcXVlc3QaIi5uZXRoZXJub2RlLnYxLkxpc3RTZXJ2ZXJzUmVzcG9uc2UiA5ACARJTCglHZXRTZXJ2ZXISHy5uZXRoZXJub2RlLnYxLkdldFNlcnZlclJlcXVlc3QaIC5uZXRoZXJub2RlLnYxLkdldFNlcnZlclJlc3BvbnNlIgOQAgESVwoMQ3JlYXRlU2VydmVyEiIubmV0aGVybm9kZS52MS5DcmVhdGVTZXJ2ZXJSZXF1ZXN0GiMubmV0aGVybm9kZS52MS5DcmVhdGVTZXJ2ZXJSZXNwb25zZRJXCgxVcGRhdGVTZXJ2ZXISIi5uZXRoZXJub2RlLnYxLlVwZGF0ZVNlcnZlclJlcXVlc3QaIy5uZXRoZXJub2RlLnYxLlVwZGF0ZVNlcnZlclJlc3BvbnNlElcKDERlbGV0ZVNlcnZlchIiLm5ldGhlcm5vZGUudjEuRGVsZXRlU2VydmVyUmVxdWVzdBojLm5ldGhlcm5vZGUudjEuRGVsZXRlU2VydmVyUmVzcG9uc2USVAoLU3RhcnRTZXJ2ZXISIS5uZXRoZXJub2RlLnYxLlN0YXJ0U2VydmVyUmVxdWVzdBoiLm5ldGhlcm5vZGUudjEuU3RhcnRTZXJ2ZXJSZXNwb25zZRJRCgpTdG9wU2VydmVyEiAubmV0aGVybm9kZS52MS5TdG9wU2VydmVyUmVxdWVzdBohLm5ldGhlcm5vZGUudjEuU3RvcFNlcnZlclJlc3BvbnNlEloKDVJlc3RhcnRTZXJ2ZXISIy5uZXRoZXJub2RlLnYxLlJlc3RhcnRTZXJ2ZXJSZXF1ZXN0GiQubmV0aGVybm9kZS52MS5SZXN0YXJ0U2VydmVyUmVzcG9uc2USUQoKS2lsbFNlcnZlchIgLm5ldGhlcm5vZGUudjEuS2lsbFNlcnZlclJlcXVlc3QaIS5uZXRoZXJub2RlLnYxLktpbGxTZXJ2ZXJSZXNwb25zZRJiCg5HZXRTZXJ2ZXJTdGF0cxIkLm5ldGhlcm5vZGUudjEuR2V0U2VydmVyU3RhdHNSZXF1ZXN0GiUubmV0aGVybm9kZS52MS5HZXRTZXJ2ZXJTdGF0c1Jlc3BvbnNlIgOQAgESWQoLR2V0SG9zdEluZm8SIS5uZXRoZXJub2RlLnYxLkdldEhvc3RJbmZvUmVxdWVzdBoiLm5ldGhlcm5vZGUudjEuR2V0SG9zdEluZm9SZXNwb25zZSIDkAIBEnEKE0dldFNlcnZlclByb3BlcnRpZXMSKS5uZXRoZXJub2RlLnYxLkdldFNlcnZlclByb3BlcnRpZXNSZXF1ZXN0GioubmV0aGVybm9kZS52MS5HZXRTZXJ2ZXJQcm9wZXJ0aWVzUmVzcG9uc2UiA5ACARJ1ChZVcGRhdGVTZXJ2ZXJQcm9wZXJ0aWVzEiwubmV0aGVybm9kZS52MS5VcGRhdGVTZXJ2ZXJQcm9wZXJ0aWVzUmVxdWVzdBotLm5ldGhlcm5vZGUudjEuVXBkYXRlU2VydmVyUHJvcGVydGllc1Jlc3BvbnNlYgZwcm90bzM", [file_nethernode_v1_catalog]);
+  fileDesc("ChtuZXRoZXJub2RlL3YxL3NlcnZlcnMucHJvdG8SDW5ldGhlcm5vZGUudjEiyQQKBlNlcnZlchIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHNsdWcYAyABKAkSKwoGc3RhdHVzGAQgASgOMhsubmV0aGVybm9kZS52MS5TZXJ2ZXJTdGF0dXMSEgoKbWNfdmVyc2lvbhgFIAEoCRIOCgZsb2FkZXIYBiABKAkSFQoNaW50ZXJuYWxfcG9ydBgHIAEoDRIYChBzbGVlcF93aGVuX2VtcHR5GAggASgIEi8KCHNldHRpbmdzGAkgASgLMh0ubmV0aGVybm9kZS52MS5TZXJ2ZXJTZXR0aW5ncxIVCg1jcmVhdGVkX2F0X21zGAogASgDEh8KEmxhc3Rfc3RhcnRlZF9hdF9tcxgLIAEoA0gAiAEBEhsKDnBsYXllcnNfb25saW5lGAwgASgNSAGIAQESGAoLcGxheWVyc19tYXgYDSABKA1IAogBARIRCglob3N0bmFtZXMYDiADKAkSGAoQcmVzdGFydF9yZXF1aXJlZBgPIAEoCBIsCgdtb2RwYWNrGBAgASgLMhYubmV0aGVybm9kZS52MS5Nb2RwYWNrSAOIAQESDwoHbm9kZV9pZBgRIAEoCRIRCglub2RlX25hbWUYEiABKAkSFAoMbm9kZV9vZmZsaW5lGBMgASgIEhoKEm5vZGVfdXBkYXRlX25lZWRlZBgUIAEoCEIVChNfbGFzdF9zdGFydGVkX2F0X21zQhEKD19wbGF5ZXJzX29ubGluZUIOCgxfcGxheWVyc19tYXhCCgoIX21vZHBhY2sirAMKDlNlcnZlclNldHRpbmdzEgwKBG5hbWUYASABKAkSEgoKbWNfdmVyc2lvbhgCIAEoCRIOCgZsb2FkZXIYAyABKAkSFgoObG9hZGVyX3ZlcnNpb24YBCABKAkSDQoFaW1hZ2UYBSABKAkSGQoMamF2YV92ZXJzaW9uGAYgASgNSACIAQESEQoJbWVtb3J5X21iGAcgASgNEhYKCWNwdV9saW1pdBgIIAEoAUgBiAEBEhIKCmF1dG9fc3RhcnQYCSABKAgSGAoQc2xlZXBfd2hlbl9lbXB0eRgKIAEoCBIZCgxpZGxlX21pbnV0ZXMYCyABKA1IAogBARIYChByZXN0YXJ0X29uX2NyYXNoGAwgASgIEhcKD3VzZV9haWthcl9mbGFncxgNIAEoCBIMCgRtb3RkGA4gASgJEhMKC21heF9wbGF5ZXJzGA8gASgNEiwKCmNhcmRfdGhlbWUYECABKA4yGC5uZXRoZXJub2RlLnYxLkNhcmRUaGVtZUIPCg1famF2YV92ZXJzaW9uQgwKCl9jcHVfbGltaXRCDwoNX2lkbGVfbWludXRlcyIUChJMaXN0U2VydmVyc1JlcXVlc3QiPQoTTGlzdFNlcnZlcnNSZXNwb25zZRImCgdzZXJ2ZXJzGAEgAygLMhUubmV0aGVybm9kZS52MS5TZXJ2ZXIiHgoQR2V0U2VydmVyUmVxdWVzdBIKCgJpZBgBIAEoCSI6ChFHZXRTZXJ2ZXJSZXNwb25zZRIlCgZzZXJ2ZXIYASABKAsyFS5uZXRoZXJub2RlLnYxLlNlcnZlciKtAgoTQ3JlYXRlU2VydmVyUmVxdWVzdBIMCgRuYW1lGAEgASgJEg4KBmxvYWRlchgCIAEoCRISCgptY192ZXJzaW9uGAMgASgJEhYKDmxvYWRlcl92ZXJzaW9uGAQgASgJEhEKCW1lbW9yeV9tYhgFIAEoDRIsCgpjYXJkX3RoZW1lGAYgASgOMhgubmV0aGVybm9kZS52MS5DYXJkVGhlbWUSFQoNZXVsYV9hY2NlcHRlZBgHIAEoCBIYChBzbGVlcF93aGVuX2VtcHR5GAggASgIEhoKEnN0YXJ0X2FmdGVyX2NyZWF0ZRgJIAEoCBItCgdtb2RwYWNrGAogASgLMhwubmV0aGVybm9kZS52MS5Nb2RwYWNrU291cmNlEg8KB25vZGVfaWQYCyABKAkiPQoUQ3JlYXRlU2VydmVyUmVzcG9uc2USJQoGc2VydmVyGAEgASgLMhUubmV0aGVybm9kZS52MS5TZXJ2ZXIiUgoTVXBkYXRlU2VydmVyUmVxdWVzdBIKCgJpZBgBIAEoCRIvCghzZXR0aW5ncxgCIAEoCzIdLm5ldGhlcm5vZGUudjEuU2VydmVyU2V0dGluZ3MiPQoUVXBkYXRlU2VydmVyUmVzcG9uc2USJQoGc2VydmVyGAEgASgLMhUubmV0aGVybm9kZS52MS5TZXJ2ZXIiNgoTRGVsZXRlU2VydmVyUmVxdWVzdBIKCgJpZBgBIAEoCRITCgtkZWxldGVfZGF0YRgCIAEoCCIWChREZWxldGVTZXJ2ZXJSZXNwb25zZSIwChFNb3ZlU2VydmVyUmVxdWVzdBIKCgJpZBgBIAEoCRIPCgdub2RlX2lkGAIgASgJIiQKEk1vdmVTZXJ2ZXJSZXNwb25zZRIOCgZqb2JfaWQYASABKAkiIAoSU3RhcnRTZXJ2ZXJSZXF1ZXN0EgoKAmlkGAEgASgJIhUKE1N0YXJ0U2VydmVyUmVzcG9uc2UiHwoRU3RvcFNlcnZlclJlcXVlc3QSCgoCaWQYASABKAkiFAoSU3RvcFNlcnZlclJlc3BvbnNlIiIKFFJlc3RhcnRTZXJ2ZXJSZXF1ZXN0EgoKAmlkGAEgASgJIhcKFVJlc3RhcnRTZXJ2ZXJSZXNwb25zZSIfChFLaWxsU2VydmVyUmVxdWVzdBIKCgJpZBgBIAEoCSIUChJLaWxsU2VydmVyUmVzcG9uc2UijgEKClN0YXRTYW1wbGUSDQoFYXRfbXMYASABKAMSEwoLY3B1X3BlcmNlbnQYAiABKAESFAoMbWVtb3J5X2J5dGVzGAMgASgEEhoKEm1lbW9yeV9saW1pdF9ieXRlcxgEIAEoBBIUCgxuZXRfcnhfYnl0ZXMYBSABKAQSFAoMbmV0X3R4X2J5dGVzGAYgASgEIiMKFUdldFNlcnZlclN0YXRzUmVxdWVzdBIKCgJpZBgBIAEoCSJEChZHZXRTZXJ2ZXJTdGF0c1Jlc3BvbnNlEioKB3NhbXBsZXMYASADKAsyGS5uZXRoZXJub2RlLnYxLlN0YXRTYW1wbGUiFAoSR2V0SG9zdEluZm9SZXF1ZXN0IowCChNHZXRIb3N0SW5mb1Jlc3BvbnNlEhgKEGRvY2tlcl9hdmFpbGFibGUYASABKAgSDQoFZXJyb3IYAiABKAkSEAoIaG9zdG5hbWUYAyABKAkSGAoQb3BlcmF0aW5nX3N5c3RlbRgEIAEoCRIWCg5kb2NrZXJfdmVyc2lvbhgFIAEoCRIMCgRjcHVzGAYgASgNEhQKDG1lbW9yeV9ieXRlcxgHIAEoBBIdChBkaXNrX3RvdGFsX2J5dGVzGAggASgESACIAQESHAoPZGlza19mcmVlX2J5dGVzGAkgASgESAGIAQFCEwoRX2Rpc2tfdG90YWxfYnl0ZXNCEgoQX2Rpc2tfZnJlZV9ieXRlcyIoChpHZXRTZXJ2ZXJQcm9wZXJ0aWVzUmVxdWVzdBIKCgJpZBgBIAEoCSJxChtHZXRTZXJ2ZXJQcm9wZXJ0aWVzUmVzcG9uc2USDgoGZXhpc3RzGAEgASgIEjEKCnByb3BlcnRpZXMYAiADKAsyHS5uZXRoZXJub2RlLnYxLlNlcnZlclByb3BlcnR5Eg8KB3ZlcnNpb24YAyABKAki8AEKDlNlcnZlclByb3BlcnR5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCRINCgVsYWJlbBgDIAEoCRIMCgRoZWxwGAQgASgJEg0KBWdyb3VwGAUgASgJEikKBHR5cGUYBiABKA4yGy5uZXRoZXJub2RlLnYxLlByb3BlcnR5VHlwZRIPCgdvcHRpb25zGAcgAygJEhAKA21pbhgIIAEoA0gAiAEBEhAKA21heBgJIAEoA0gBiAEBEhYKDm1hbmFnZWRfcmVhc29uGAogASgJEg4KBnNlY3JldBgLIAEoCEIGCgRfbWluQgYKBF9tYXgitQEKHVVwZGF0ZVNlcnZlclByb3BlcnRpZXNSZXF1ZXN0EgoKAmlkGAEgASgJEkgKBnZhbHVlcxgCIAMoCzI4Lm5ldGhlcm5vZGUudjEuVXBkYXRlU2VydmVyUHJvcGVydGllc1JlcXVlc3QuVmFsdWVzRW50cnkSDwoHdmVyc2lvbhgDIAEoCRotCgtWYWx1ZXNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBImAKHlVwZGF0ZVNlcnZlclByb3BlcnRpZXNSZXNwb25zZRI+Cgpwcm9wZXJ0aWVzGAEgASgLMioubmV0aGVybm9kZS52MS5HZXRTZXJ2ZXJQcm9wZXJ0aWVzUmVzcG9uc2Uq8AEKDFNlcnZlclN0YXR1cxIdChlTRVJWRVJfU1RBVFVTX1VOU1BFQ0lGSUVEEAASHAoYU0VSVkVSX1NUQVRVU19JTlNUQUxMSU5HEAESGQoVU0VSVkVSX1NUQVRVU19TVE9QUEVEEAISGgoWU0VSVkVSX1NUQVRVU19TVEFSVElORxADEhkKFVNFUlZFUl9TVEFUVVNfUlVOTklORxAEEhoKFlNFUlZFUl9TVEFUVVNfU1RPUFBJTkcQBRIaChZTRVJWRVJfU1RBVFVTX1NMRUVQSU5HEAYSGQoVU0VSVkVSX1NUQVRVU19DUkFTSEVEEAcqgAEKCUNhcmRUaGVtZRIaChZDQVJEX1RIRU1FX1VOU1BFQ0lGSUVEEAASFQoRQ0FSRF9USEVNRV9ORVRIRVIQARIYChRDQVJEX1RIRU1FX09WRVJXT1JMRBACEhIKDkNBUkRfVEhFTUVfRU5EEAMSEgoOQ0FSRF9USEVNRV9TS1kQBCqOAQoMUHJvcGVydHlUeXBlEh0KGVBST1BFUlRZX1RZUEVfVU5TUEVDSUZJRUQQABIWChJQUk9QRVJUWV9UWVBFX0JPT0wQARIVChFQUk9QRVJUWV9UWVBFX0lOVBACEhgKFFBST1BFUlRZX1RZUEVfQ0hPSUNFEAMSFgoSUFJPUEVSVFlfVFlQRV9URVhUEAQyngoKDVNlcnZlclNlcnZpY2USWQoLTGlzdFNlcnZlcnMSIS5uZXRoZXJub2RlLnYxLkxpc3RTZXJ2ZXJzUmVxdWVzdBoiLm5ldGhlcm5vZGUudjEuTGlzdFNlcnZlcnNSZXNwb25zZSIDkAIBElMKCUdldFNlcnZlchIfLm5ldGhlcm5vZGUudjEuR2V0U2VydmVyUmVxdWVzdBogLm5ldGhlcm5vZGUudjEuR2V0U2VydmVyUmVzcG9uc2UiA5ACARJXCgxDcmVhdGVTZXJ2ZXISIi5uZXRoZXJub2RlLnYxLkNyZWF0ZVNlcnZlclJlcXVlc3QaIy5uZXRoZXJub2RlLnYxLkNyZWF0ZVNlcnZlclJlc3BvbnNlElcKDFVwZGF0ZVNlcnZlchIiLm5ldGhlcm5vZGUudjEuVXBkYXRlU2VydmVyUmVxdWVzdBojLm5ldGhlcm5vZGUudjEuVXBkYXRlU2VydmVyUmVzcG9uc2USVwoMRGVsZXRlU2VydmVyEiIubmV0aGVybm9kZS52MS5EZWxldGVTZXJ2ZXJSZXF1ZXN0GiMubmV0aGVybm9kZS52MS5EZWxldGVTZXJ2ZXJSZXNwb25zZRJRCgpNb3ZlU2VydmVyEiAubmV0aGVybm9kZS52MS5Nb3ZlU2VydmVyUmVxdWVzdBohLm5ldGhlcm5vZGUudjEuTW92ZVNlcnZlclJlc3BvbnNlElQKC1N0YXJ0U2VydmVyEiEubmV0aGVybm9kZS52MS5TdGFydFNlcnZlclJlcXVlc3QaIi5uZXRoZXJub2RlLnYxLlN0YXJ0U2VydmVyUmVzcG9uc2USUQoKU3RvcFNlcnZlchIgLm5ldGhlcm5vZGUudjEuU3RvcFNlcnZlclJlcXVlc3QaIS5uZXRoZXJub2RlLnYxLlN0b3BTZXJ2ZXJSZXNwb25zZRJaCg1SZXN0YXJ0U2VydmVyEiMubmV0aGVybm9kZS52MS5SZXN0YXJ0U2VydmVyUmVxdWVzdBokLm5ldGhlcm5vZGUudjEuUmVzdGFydFNlcnZlclJlc3BvbnNlElEKCktpbGxTZXJ2ZXISIC5uZXRoZXJub2RlLnYxLktpbGxTZXJ2ZXJSZXF1ZXN0GiEubmV0aGVybm9kZS52MS5LaWxsU2VydmVyUmVzcG9uc2USYgoOR2V0U2VydmVyU3RhdHMSJC5uZXRoZXJub2RlLnYxLkdldFNlcnZlclN0YXRzUmVxdWVzdBolLm5ldGhlcm5vZGUudjEuR2V0U2VydmVyU3RhdHNSZXNwb25zZSIDkAIBElkKC0dldEhvc3RJbmZvEiEubmV0aGVybm9kZS52MS5HZXRIb3N0SW5mb1JlcXVlc3QaIi5uZXRoZXJub2RlLnYxLkdldEhvc3RJbmZvUmVzcG9uc2UiA5ACARJxChNHZXRTZXJ2ZXJQcm9wZXJ0aWVzEikubmV0aGVybm9kZS52MS5HZXRTZXJ2ZXJQcm9wZXJ0aWVzUmVxdWVzdBoqLm5ldGhlcm5vZGUudjEuR2V0U2VydmVyUHJvcGVydGllc1Jlc3BvbnNlIgOQAgESdQoWVXBkYXRlU2VydmVyUHJvcGVydGllcxIsLm5ldGhlcm5vZGUudjEuVXBkYXRlU2VydmVyUHJvcGVydGllc1JlcXVlc3QaLS5uZXRoZXJub2RlLnYxLlVwZGF0ZVNlcnZlclByb3BlcnRpZXNSZXNwb25zZWIGcHJvdG8z", [file_nethernode_v1_catalog]);
 
 /**
  * A managed Minecraft server.
@@ -140,6 +140,14 @@ export type Server = Message<"nethernode.v1.Server"> & {
    * @generated from field: bool node_offline = 19;
    */
   nodeOffline: boolean;
+
+  /**
+   * Its node's agent is connected but runs a different NetherNode version,
+   * so it can't be managed until it's updated (node_offline is also set).
+   *
+   * @generated from field: bool node_update_needed = 20;
+   */
+  nodeUpdateNeeded: boolean;
 };
 
 /**
@@ -490,6 +498,47 @@ export const DeleteServerResponseSchema: GenMessage<DeleteServerResponse> = /*@_
   messageDesc(file_nethernode_v1_servers, 11);
 
 /**
+ * @generated from message nethernode.v1.MoveServerRequest
+ */
+export type MoveServerRequest = Message<"nethernode.v1.MoveServerRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * The machine to move it to.
+   *
+   * @generated from field: string node_id = 2;
+   */
+  nodeId: string;
+};
+
+/**
+ * Describes the message nethernode.v1.MoveServerRequest.
+ * Use `create(MoveServerRequestSchema)` to create a new message.
+ */
+export const MoveServerRequestSchema: GenMessage<MoveServerRequest> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 12);
+
+/**
+ * @generated from message nethernode.v1.MoveServerResponse
+ */
+export type MoveServerResponse = Message<"nethernode.v1.MoveServerResponse"> & {
+  /**
+   * @generated from field: string job_id = 1;
+   */
+  jobId: string;
+};
+
+/**
+ * Describes the message nethernode.v1.MoveServerResponse.
+ * Use `create(MoveServerResponseSchema)` to create a new message.
+ */
+export const MoveServerResponseSchema: GenMessage<MoveServerResponse> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 13);
+
+/**
  * @generated from message nethernode.v1.StartServerRequest
  */
 export type StartServerRequest = Message<"nethernode.v1.StartServerRequest"> & {
@@ -504,7 +553,7 @@ export type StartServerRequest = Message<"nethernode.v1.StartServerRequest"> & {
  * Use `create(StartServerRequestSchema)` to create a new message.
  */
 export const StartServerRequestSchema: GenMessage<StartServerRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 12);
+  messageDesc(file_nethernode_v1_servers, 14);
 
 /**
  * @generated from message nethernode.v1.StartServerResponse
@@ -517,7 +566,7 @@ export type StartServerResponse = Message<"nethernode.v1.StartServerResponse"> &
  * Use `create(StartServerResponseSchema)` to create a new message.
  */
 export const StartServerResponseSchema: GenMessage<StartServerResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 13);
+  messageDesc(file_nethernode_v1_servers, 15);
 
 /**
  * @generated from message nethernode.v1.StopServerRequest
@@ -534,7 +583,7 @@ export type StopServerRequest = Message<"nethernode.v1.StopServerRequest"> & {
  * Use `create(StopServerRequestSchema)` to create a new message.
  */
 export const StopServerRequestSchema: GenMessage<StopServerRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 14);
+  messageDesc(file_nethernode_v1_servers, 16);
 
 /**
  * @generated from message nethernode.v1.StopServerResponse
@@ -547,7 +596,7 @@ export type StopServerResponse = Message<"nethernode.v1.StopServerResponse"> & {
  * Use `create(StopServerResponseSchema)` to create a new message.
  */
 export const StopServerResponseSchema: GenMessage<StopServerResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 15);
+  messageDesc(file_nethernode_v1_servers, 17);
 
 /**
  * @generated from message nethernode.v1.RestartServerRequest
@@ -564,7 +613,7 @@ export type RestartServerRequest = Message<"nethernode.v1.RestartServerRequest">
  * Use `create(RestartServerRequestSchema)` to create a new message.
  */
 export const RestartServerRequestSchema: GenMessage<RestartServerRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 16);
+  messageDesc(file_nethernode_v1_servers, 18);
 
 /**
  * @generated from message nethernode.v1.RestartServerResponse
@@ -577,7 +626,7 @@ export type RestartServerResponse = Message<"nethernode.v1.RestartServerResponse
  * Use `create(RestartServerResponseSchema)` to create a new message.
  */
 export const RestartServerResponseSchema: GenMessage<RestartServerResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 17);
+  messageDesc(file_nethernode_v1_servers, 19);
 
 /**
  * @generated from message nethernode.v1.KillServerRequest
@@ -594,7 +643,7 @@ export type KillServerRequest = Message<"nethernode.v1.KillServerRequest"> & {
  * Use `create(KillServerRequestSchema)` to create a new message.
  */
 export const KillServerRequestSchema: GenMessage<KillServerRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 18);
+  messageDesc(file_nethernode_v1_servers, 20);
 
 /**
  * @generated from message nethernode.v1.KillServerResponse
@@ -607,7 +656,7 @@ export type KillServerResponse = Message<"nethernode.v1.KillServerResponse"> & {
  * Use `create(KillServerResponseSchema)` to create a new message.
  */
 export const KillServerResponseSchema: GenMessage<KillServerResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 19);
+  messageDesc(file_nethernode_v1_servers, 21);
 
 /**
  * One resource sample.
@@ -655,7 +704,7 @@ export type StatSample = Message<"nethernode.v1.StatSample"> & {
  * Use `create(StatSampleSchema)` to create a new message.
  */
 export const StatSampleSchema: GenMessage<StatSample> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 20);
+  messageDesc(file_nethernode_v1_servers, 22);
 
 /**
  * @generated from message nethernode.v1.GetServerStatsRequest
@@ -672,7 +721,7 @@ export type GetServerStatsRequest = Message<"nethernode.v1.GetServerStatsRequest
  * Use `create(GetServerStatsRequestSchema)` to create a new message.
  */
 export const GetServerStatsRequestSchema: GenMessage<GetServerStatsRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 21);
+  messageDesc(file_nethernode_v1_servers, 23);
 
 /**
  * @generated from message nethernode.v1.GetServerStatsResponse
@@ -691,7 +740,7 @@ export type GetServerStatsResponse = Message<"nethernode.v1.GetServerStatsRespon
  * Use `create(GetServerStatsResponseSchema)` to create a new message.
  */
 export const GetServerStatsResponseSchema: GenMessage<GetServerStatsResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 22);
+  messageDesc(file_nethernode_v1_servers, 24);
 
 /**
  * @generated from message nethernode.v1.GetHostInfoRequest
@@ -704,7 +753,7 @@ export type GetHostInfoRequest = Message<"nethernode.v1.GetHostInfoRequest"> & {
  * Use `create(GetHostInfoRequestSchema)` to create a new message.
  */
 export const GetHostInfoRequestSchema: GenMessage<GetHostInfoRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 23);
+  messageDesc(file_nethernode_v1_servers, 25);
 
 /**
  * @generated from message nethernode.v1.GetHostInfoResponse
@@ -766,7 +815,7 @@ export type GetHostInfoResponse = Message<"nethernode.v1.GetHostInfoResponse"> &
  * Use `create(GetHostInfoResponseSchema)` to create a new message.
  */
 export const GetHostInfoResponseSchema: GenMessage<GetHostInfoResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 24);
+  messageDesc(file_nethernode_v1_servers, 26);
 
 /**
  * @generated from message nethernode.v1.GetServerPropertiesRequest
@@ -783,7 +832,7 @@ export type GetServerPropertiesRequest = Message<"nethernode.v1.GetServerPropert
  * Use `create(GetServerPropertiesRequestSchema)` to create a new message.
  */
 export const GetServerPropertiesRequestSchema: GenMessage<GetServerPropertiesRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 25);
+  messageDesc(file_nethernode_v1_servers, 27);
 
 /**
  * @generated from message nethernode.v1.GetServerPropertiesResponse
@@ -817,7 +866,7 @@ export type GetServerPropertiesResponse = Message<"nethernode.v1.GetServerProper
  * Use `create(GetServerPropertiesResponseSchema)` to create a new message.
  */
 export const GetServerPropertiesResponseSchema: GenMessage<GetServerPropertiesResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 26);
+  messageDesc(file_nethernode_v1_servers, 28);
 
 /**
  * @generated from message nethernode.v1.ServerProperty
@@ -897,7 +946,7 @@ export type ServerProperty = Message<"nethernode.v1.ServerProperty"> & {
  * Use `create(ServerPropertySchema)` to create a new message.
  */
 export const ServerPropertySchema: GenMessage<ServerProperty> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 27);
+  messageDesc(file_nethernode_v1_servers, 29);
 
 /**
  * @generated from message nethernode.v1.UpdateServerPropertiesRequest
@@ -928,7 +977,7 @@ export type UpdateServerPropertiesRequest = Message<"nethernode.v1.UpdateServerP
  * Use `create(UpdateServerPropertiesRequestSchema)` to create a new message.
  */
 export const UpdateServerPropertiesRequestSchema: GenMessage<UpdateServerPropertiesRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 28);
+  messageDesc(file_nethernode_v1_servers, 30);
 
 /**
  * @generated from message nethernode.v1.UpdateServerPropertiesResponse
@@ -945,7 +994,7 @@ export type UpdateServerPropertiesResponse = Message<"nethernode.v1.UpdateServer
  * Use `create(UpdateServerPropertiesResponseSchema)` to create a new message.
  */
 export const UpdateServerPropertiesResponseSchema: GenMessage<UpdateServerPropertiesResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 29);
+  messageDesc(file_nethernode_v1_servers, 31);
 
 /**
  * A server's lifecycle state.
@@ -1133,6 +1182,19 @@ export const ServerService: GenService<{
     methodKind: "unary";
     input: typeof DeleteServerRequestSchema;
     output: typeof DeleteServerResponseSchema;
+  },
+  /**
+   * Moves a stopped server to another machine, in the background: its
+   * folder is archived (the archive stays as a backup on the old machine),
+   * set up on the new one, then removed from the old one. Progress and the
+   * outcome arrive as file_job events for the returned job.
+   *
+   * @generated from rpc nethernode.v1.ServerService.MoveServer
+   */
+  moveServer: {
+    methodKind: "unary";
+    input: typeof MoveServerRequestSchema;
+    output: typeof MoveServerResponseSchema;
   },
   /**
    * @generated from rpc nethernode.v1.ServerService.StartServer

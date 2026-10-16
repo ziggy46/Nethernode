@@ -19,7 +19,10 @@ service NodeService {
   rpc RenameNode(RenameNodeRequest) returns (RenameNodeResponse);
 
   // Removes a node and disconnects its agent, which can't come back
-  // without a new join code. Not this machine.
+  // without a new join code. Not this machine. A node with servers needs
+  // forget_servers: the panel then forgets them (stopping them first if
+  // the agent is connected) and the backups kept there; their files stay
+  // on that machine.
   rpc DeleteNode(DeleteNodeRequest) returns (DeleteNodeResponse);
 }
 
@@ -113,6 +116,7 @@ message RenameNodeResponse {
 
 message DeleteNodeRequest {
   string id = 1;
+  bool forget_servers = 2;
 }
 
 message DeleteNodeResponse {}

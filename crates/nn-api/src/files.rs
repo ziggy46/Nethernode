@@ -22,6 +22,7 @@ pub(crate) async fn open(
         .await
         .map_err(store_error)?
         .ok_or_else(|| ConnectError::not_found("server not found"))?;
+    crate::moves::not_moving(state, &server.id)?;
     let folder = state
         .nodes
         .for_server(&server)

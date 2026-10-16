@@ -24,6 +24,11 @@ service ServerService {
   rpc UpdateServer(UpdateServerRequest) returns (UpdateServerResponse);
   // Deletes a server, optionally including its world and files.
   rpc DeleteServer(DeleteServerRequest) returns (DeleteServerResponse);
+  // Moves a stopped server to another machine, in the background: its
+  // folder is archived (the archive stays as a backup on the old machine),
+  // set up on the new one, then removed from the old one. Progress and the
+  // outcome arrive as file_job events for the returned job.
+  rpc MoveServer(MoveServerRequest) returns (MoveServerResponse);
 
   rpc StartServer(StartServerRequest) returns (StartServerResponse);
   // Saves the world and stops gracefully (up to 60 s, then forced).
@@ -106,6 +111,9 @@ message Server {
   string node_name = 18;
   // Its node's agent isn't connected, so it can't be managed right now.
   bool node_offline = 19;
+  // Its node's agent is connected but runs a different NetherNode version,
+  // so it can't be managed until it's updated (node_offline is also set).
+  bool node_update_needed = 20;
 }
 
 // Settings an admin can change after creation.
@@ -188,6 +196,16 @@ message DeleteServerRequest {
 }
 
 message DeleteServerResponse {}
+
+message MoveServerRequest {
+  string id = 1;
+  // The machine to move it to.
+  string node_id = 2;
+}
+
+message MoveServerResponse {
+  string job_id = 1;
+}
 
 message StartServerRequest {
   string id = 1;

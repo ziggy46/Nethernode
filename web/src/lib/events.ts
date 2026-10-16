@@ -96,7 +96,11 @@ function applyData(client: QueryClient, event: DataEvent) {
       jobFinished(event.job_id, { message: event.message, failed: event.failed });
       void client.invalidateQueries({ queryKey: ["files", event.server_id] });
       void client.invalidateQueries({ queryKey: ["mods", event.server_id] });
-      if (event.kind === "backup" || event.kind === "restore") {
+      if (event.kind === "move") {
+        for (const key of [["servers"], ["nodes"], ["proxy", "routes"]])
+          void client.invalidateQueries({ queryKey: key });
+      }
+      if (event.kind === "backup" || event.kind === "restore" || event.kind === "move") {
         void client.invalidateQueries({ queryKey: ["backups"] });
         void client.invalidateQueries({ queryKey: ["schedules"] });
         void client.invalidateQueries({ queryKey: ["activity"] });

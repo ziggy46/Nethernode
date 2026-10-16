@@ -41,7 +41,7 @@ impl Kind {
     }
 }
 
-fn finished(
+pub(crate) fn finished(
     state: &AppState,
     server_id: &str,
     job_id: &str,
@@ -69,6 +69,7 @@ pub(crate) async fn start_backup(
     kind: Kind,
     user_id: Option<&str>,
 ) -> Result<(String, String), ConnectError> {
+    crate::moves::not_moving(state, &server.id)?;
     let (backup_id, name) = begin(state, server, kind, user_id).await?;
     let job_id = nn_store::new_id();
     let (state2, server2, job2, backup2) = (
@@ -114,7 +115,7 @@ async fn run(
 }
 
 /// Records how making an archive went.
-async fn record(
+pub(crate) async fn record(
     state: &AppState,
     server: &Server,
     backup_id: &str,
@@ -156,7 +157,7 @@ async fn record(
 
 /// Checks space and records a backup about to be made. Returns its ID and
 /// archive name.
-async fn begin(
+pub(crate) async fn begin(
     state: &AppState,
     server: &Server,
     kind: Kind,
@@ -202,10 +203,15 @@ pub(crate) async fn start_restore(
     user_id: &str,
     start_after: bool,
 ) -> Result<String, ConnectError> {
+    crate::moves::not_moving(state, &server.id)?;
     if backup.node_id != server.node_id {
-        return Err(ConnectError::failed_precondition(
-            "This backup is on another machine than the server now runs on.",
-        ));
+        let machine = match state.auth.store().find_node(&backup.node_id).await {
+            Ok(Some(node)) => node.name,
+            _ => "a machine that was removed".to_owned(),
+        };
+        return Err(ConnectError::failed_precondition(format!(
+            "This backup is on {machine}, but the server now runs on another machine. Download it instead."
+        )));
     }
     let node = state.nodes.for_server(&server);
     if !node.has_backup(&backup.file_name).await {

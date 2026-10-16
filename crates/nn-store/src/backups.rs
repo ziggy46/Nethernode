@@ -183,6 +183,14 @@ impl Store {
         Ok(result.rows_affected() == 1)
     }
 
+    /// Forgets the records of backups kept on a node. Returns how many.
+    pub async fn delete_backups_on_node(&self, node_id: &str) -> Result<u64> {
+        let result = sqlx::query!("DELETE FROM backups WHERE node_id = ?1", node_id)
+            .execute(self.pool())
+            .await?;
+        Ok(result.rows_affected())
+    }
+
     /// Marks backups left `creating` by a shutdown as failed. Returns their
     /// file names, to clean up.
     pub async fn fail_unfinished_backups(&self) -> Result<Vec<String>> {

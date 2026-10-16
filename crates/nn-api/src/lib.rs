@@ -39,6 +39,7 @@ mod files;
 mod files_http;
 pub mod install_count;
 mod middleware;
+mod moves;
 pub mod notify;
 mod observability;
 pub mod players;

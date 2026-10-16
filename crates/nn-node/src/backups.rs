@@ -43,11 +43,11 @@ fn checked(name: &str) -> Option<&str> {
 }
 
 impl LocalNode {
-    fn backups_dir(&self) -> Option<PathBuf> {
+    pub(crate) fn backups_dir(&self) -> Option<PathBuf> {
         Some(self.servers_dir.as_ref()?.parent()?.join("backups"))
     }
 
-    fn archive_path(&self, name: &str) -> Option<PathBuf> {
+    pub(crate) fn archive_path(&self, name: &str) -> Option<PathBuf> {
         Some(self.backups_dir()?.join(checked(name)?))
     }
 
@@ -136,7 +136,12 @@ impl LocalNode {
     /// Extracts archive `source` beside the server's folder and swaps it
     /// in, carrying over the folders backups leave out so they aren't
     /// downloaded again. Returns the files restored.
-    async fn swap_in(&self, server: &Server, source: &Path, job_id: &str) -> Result<u64, String> {
+    pub(crate) async fn swap_in(
+        &self,
+        server: &Server,
+        source: &Path,
+        job_id: &str,
+    ) -> Result<u64, String> {
         let servers_dir = self
             .servers_dir
             .clone()

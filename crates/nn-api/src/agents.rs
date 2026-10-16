@@ -272,6 +272,8 @@ impl Agents {
         // An agent on another version reports in but runs nothing.
         if compatible {
             remote.attach(session.clone());
+        } else {
+            remote.attach_outdated(&version);
         }
         let _ = store
             .node_seen(&node.id, &version, None, nn_store::now_ms())
@@ -315,7 +317,9 @@ impl Agents {
                                 session.close();
                             });
                         }
-                        Ok(Ok(Some(StreamKind::Events))) if compatible => {
+                        // Even from an agent that needs updating, so its
+                        // servers' status stays honest.
+                        Ok(Ok(Some(StreamKind::Events))) => {
                             let (agents, store, node_id, remote) = (
                                 agents.clone(),
                                 store.clone(),
@@ -474,16 +478,8 @@ impl Agents {
         mine: &mut std::collections::HashSet<String>,
         server: nn_store::Server,
     ) {
-        // Never a server that belongs somewhere else.
-        if !mine.contains(&server.id) {
-            match store.find_server(&server.id).await {
-                Ok(None) => {}
-                Ok(Some(existing)) if existing.node_id == node_id => {}
-                _ => {
-                    tracing::warn!(node = %node_id, server = %server.id, "an agent reported a server that isn't its own; ignored");
-                    return;
-                }
-            }
+        if !self.owns(store, node_id, mine, &server.id, true).await {
+            return;
         }
         match store.upsert_server_mirror(&server, node_id).await {
             Ok(()) => {
@@ -502,9 +498,10 @@ impl Agents {
         mine: &mut std::collections::HashSet<String>,
         id: &str,
     ) {
-        if !mine.remove(id) {
+        if !mine.contains(id) || !self.owns(store, node_id, mine, id, false).await {
             return;
         }
+        mine.remove(id);
         match store.delete_server(id).await {
             Ok(_) => {
                 self.events.publish(Event::ServerStatusChanged {
@@ -516,6 +513,37 @@ impl Agents {
                 tracing::warn!(node = %node_id, server = %id, error = %e, "couldn't forget a server an agent deleted");
             }
         }
+    }
+
+    /// Whether the panel says server `id` is on `node_id` (or, if `new`,
+    /// isn't anywhere yet), so the agent may speak for it. Servers moving
+    /// between machines belong to the move. Checked against the database
+    /// every time, since servers move.
+    async fn owns(
+        &self,
+        store: &Store,
+        node_id: &str,
+        mine: &mut std::collections::HashSet<String>,
+        id: &str,
+        new: bool,
+    ) -> bool {
+        if self.nodes.is_moving(id) {
+            tracing::debug!(node = %node_id, server = %id, "ignored a report about a server that's moving");
+            return false;
+        }
+        let owned = match store.find_server(id).await {
+            Ok(None) => new,
+            Ok(Some(existing)) => existing.node_id == node_id,
+            Err(e) => {
+                tracing::warn!(error = %e, "couldn't check which machine a server is on");
+                false
+            }
+        };
+        if !owned {
+            mine.remove(id);
+            tracing::info!(node = %node_id, server = %id, "an agent reported a server that isn't its own; ignored");
+        }
+        owned
     }
 
     fn publish(&self, node_id: &str, online: bool) {
