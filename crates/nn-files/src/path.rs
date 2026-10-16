@@ -22,6 +22,21 @@ const MAX_COMPONENT: usize = 255;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct RelPath(String);
 
+/// Sent as its text; read back through [`RelPath::parse`], so a path from
+/// elsewhere is checked like any other.
+impl serde::Serialize for RelPath {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> std::result::Result<S::Ok, S::Error> {
+        s.serialize_str(&self.0)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for RelPath {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> std::result::Result<Self, D::Error> {
+        let text = String::deserialize(d)?;
+        RelPath::parse(&text).map_err(serde::de::Error::custom)
+    }
+}
+
 impl RelPath {
     /// The server's root folder.
     pub fn root() -> Self {

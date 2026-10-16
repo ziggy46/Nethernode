@@ -138,6 +138,18 @@ impl LocalNode {
         ))
     }
 
+    /// Where uploads for this machine's servers are put together.
+    pub(crate) fn upload_dir(&self) -> Option<PathBuf> {
+        let dir = self
+            .servers_dir
+            .as_ref()?
+            .parent()?
+            .join("tmp")
+            .join("uploads");
+        std::fs::create_dir_all(&dir).ok()?;
+        Some(dir)
+    }
+
     /// Work to do just before any server on this machine starts.
     pub fn set_before_start(&self, hook: Arc<dyn BeforeStart>) {
         if let Some(orchestrator) = &self.orchestrator {
@@ -355,9 +367,10 @@ impl Node {
     /// The server's folder. Fails if it doesn't exist yet (servers create it
     /// on their first start).
     pub async fn folder(&self, server: &Server) -> Result<Folder> {
-        self.as_local("Files of servers on other machines can't be opened from the panel yet.")?
-            .open_folder(server)
-            .await
+        match self {
+            Self::Local(node) => node.open_folder(server).await,
+            Self::Remote(node) => Ok(Folder::remote(server.id.clone(), node.clone())),
+        }
     }
 
     // ----- console and protocols -----

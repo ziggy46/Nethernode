@@ -11,7 +11,7 @@ use crate::path::{RelPath, validate_name};
 use crate::sandbox::{ServerFiles, temp_name};
 
 /// What to do when the name an upload wants is already taken.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum OnConflict {
     /// Keep both: the upload becomes `name (1).ext`.
     Rename,
@@ -43,7 +43,7 @@ impl OnConflict {
 }
 
 /// Where an adopted file ended up.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum Adopted {
     /// Moved into place at this path.
     Placed(RelPath),

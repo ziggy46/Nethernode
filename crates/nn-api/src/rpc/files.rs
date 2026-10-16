@@ -284,7 +284,10 @@ impl pb::FileService for FileRpc {
         let overwrite = request.overwrite;
         let (server, files) = open(&self.state, request.server_id).await?;
         let details = json!({ "archive": archive.as_str(), "destination": dest.as_str() });
-        let job_id = files.extract(archive, dest, overwrite);
+        let job_id = files
+            .extract(archive, dest, overwrite)
+            .await
+            .map_err(file_error)?;
         self.record(&user, "file.extract", &server.id, details)
             .await;
         Response::ok(pb::ExtractArchiveResponse {
@@ -310,7 +313,7 @@ impl pb::FileService for FileRpc {
             "paths": sources.iter().map(RelPath::as_str).collect::<Vec<_>>(),
             "destination": dest.as_str(),
         });
-        let job_id = files.compress(sources, dest);
+        let job_id = files.compress(sources, dest).await.map_err(file_error)?;
         self.record(&user, "file.compress", &server.id, details)
             .await;
         Response::ok(pb::CompressFilesResponse {

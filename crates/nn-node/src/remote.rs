@@ -10,8 +10,16 @@ use nn_orchestrator::{HostInfo, Players, StatSample};
 use serde::de::DeserializeOwned;
 use tokio::sync::broadcast;
 
-use crate::protocol::{ErrorKind, LogLine, RemoteError, Reply, Request};
+use crate::protocol::{ErrorKind, FolderOp, FolderReply, LogLine, RemoteError, Reply, Request};
 use crate::{LogSubscription, NodeError, Result};
+
+/// Bytes sent after a folder request.
+pub(crate) enum Body<'a> {
+    None,
+    Bytes(&'a [u8]),
+    /// A file on this machine, of this length.
+    File(&'a std::path::Path, u64),
+}
 
 /// What the agent last reported about its machine.
 #[derive(Debug, Clone)]
@@ -189,6 +197,46 @@ impl RemoteNode {
                 other => std::io::Error::other(other.to_string()),
             })?;
         Ok(Box::new(stream))
+    }
+
+    /// Runs a folder operation, sending `body` after the request. Returns
+    /// the reply and the stream, for operations that send bytes back.
+    pub(crate) async fn folder(
+        &self,
+        id: &str,
+        call: FolderOp,
+        body: Body<'_>,
+    ) -> Result<(LinkStream, serde_json::Value), nn_files::FileError> {
+        use tokio::io::AsyncWriteExt;
+        let offline =
+            |_| nn_files::FileError::Io(std::io::Error::other(self.offline().to_string()));
+        let mut stream = self.open().await.map_err(offline)?;
+        let request = Request::Folder {
+            id: id.to_owned(),
+            call,
+        };
+        messages::send(&mut stream, &request).await?;
+        match body {
+            Body::None => {}
+            Body::Bytes(bytes) => stream.write_all(bytes).await?,
+            Body::File(path, len) => {
+                let file = tokio::fs::File::open(path).await?;
+                let sent =
+                    tokio::io::copy(&mut tokio::io::AsyncReadExt::take(file, len), &mut stream)
+                        .await?;
+                if sent != len {
+                    return Err(nn_files::FileError::Io(std::io::Error::other(
+                        "the upload changed while it was being sent",
+                    )));
+                }
+            }
+        }
+        stream.flush().await?;
+        let reply: FolderReply = messages::recv(&mut stream).await?.ok_or_else(|| {
+            nn_files::FileError::Io(std::io::Error::other(self.offline().to_string()))
+        })?;
+        let value = reply.map_err(nn_files::FileError::from)?;
+        Ok((stream, value))
     }
 
     /// Follows a server's console.

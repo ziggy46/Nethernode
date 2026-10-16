@@ -98,7 +98,9 @@ async fn finish(state: &AppState, upload: &Upload) -> Result<(), String> {
         && let Adopted::Placed(archive) = adopted
         && archive.as_str().to_ascii_lowercase().ends_with(".zip")
     {
-        files.extract(archive.clone(), dir.clone(), false);
+        if let Err(e) = files.extract(archive.clone(), dir.clone(), false).await {
+            tracing::warn!(upload = %upload.id, error = %e, "couldn't start extracting an upload");
+        }
         let entry = NewAuditEntry {
             user_id: Some(&upload.user_id),
             action: "file.extract",

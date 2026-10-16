@@ -30,7 +30,7 @@ pub enum EntryKind {
 }
 
 /// One item in a folder listing.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Entry {
     /// File or folder name.
     pub name: String,
@@ -56,7 +56,7 @@ pub struct FileContent {
 }
 
 /// What [`ServerFiles::write`] expects to find at the path.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum Expect {
     /// Nothing; fail if the file exists.
     New,
@@ -67,7 +67,7 @@ pub enum Expect {
 }
 
 /// Results of a copy.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct CopyReport {
     /// Files copied.
     pub files: u64,

@@ -5,6 +5,7 @@
 //! agent keeps one more stream open for [`AgentEvent`]s.
 
 use nn_events::Event;
+use nn_files::{Expect, FileError, OnConflict, RelPath};
 use nn_orchestrator::{CreateServer, OrchestratorError};
 use nn_store::{Server, ServerSettings};
 use serde::{Deserialize, Serialize};
@@ -97,6 +98,15 @@ pub enum Request {
     Connect {
         /// Server ID.
         id: String,
+    },
+    /// Something in a server's folder; the reply is a [`FolderReply`]. Some
+    /// operations send or receive the file's bytes, raw, right after their
+    /// request or reply (see [`FolderOp`]).
+    Folder {
+        /// Server ID.
+        id: String,
+        /// What to do.
+        call: FolderOp,
     },
     /// The CurseForge API key, for CurseForge modpacks.
     SetCurseforgeKey {
@@ -196,4 +206,265 @@ pub enum AgentEvent {
         /// The event.
         event: Event,
     },
+}
+
+/// Operations on a server's folder.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "op", rename_all = "snake_case")]
+pub enum FolderOp {
+    /// A folder's entries.
+    List {
+        /// The folder.
+        path: RelPath,
+    },
+    /// One entry.
+    Stat {
+        /// The entry.
+        path: RelPath,
+    },
+    /// A whole file, up to `limit` bytes: a [`FileHeader`] reply, then
+    /// its bytes.
+    Read {
+        /// The file.
+        path: RelPath,
+        /// Largest size to read.
+        limit: u64,
+    },
+    /// Writes a file: `len` bytes follow the request. Replies with the new
+    /// version.
+    Write {
+        /// The file.
+        path: RelPath,
+        /// What must be there now.
+        expect: Expect,
+        /// How many bytes follow.
+        len: u64,
+    },
+    /// Makes a folder.
+    Mkdir {
+        /// The folder.
+        path: RelPath,
+    },
+    /// Moves or renames.
+    Rename {
+        /// From.
+        from: RelPath,
+        /// To.
+        to: RelPath,
+    },
+    /// Copies.
+    Copy {
+        /// From.
+        from: RelPath,
+        /// To.
+        to: RelPath,
+    },
+    /// Moves files to the trash, clearing out older trash first.
+    Delete {
+        /// What to delete.
+        paths: Vec<RelPath>,
+        /// How long trash is kept.
+        retention_secs: u64,
+    },
+    /// What's in the trash.
+    Trash {
+        /// How long trash is kept.
+        retention_secs: u64,
+    },
+    /// Puts a trashed item back.
+    Restore {
+        /// Trash item ID.
+        id: String,
+    },
+    /// Deletes trash for good: one item, or all of it.
+    Purge {
+        /// Trash item ID, or none for all.
+        id: Option<String>,
+    },
+    /// A file's SHA-1.
+    Sha1 {
+        /// The file.
+        path: RelPath,
+    },
+    /// What a mod jar says about itself.
+    ModInfo {
+        /// The jar.
+        path: RelPath,
+    },
+    /// A mod jar's icon: a reply with its length (or none), then its bytes.
+    ModIcon {
+        /// The jar.
+        path: RelPath,
+    },
+    /// Extracts an archive as a job; the reply is the job ID.
+    Extract {
+        /// The archive.
+        archive: RelPath,
+        /// Where to.
+        dest: RelPath,
+        /// Replace files that exist.
+        overwrite: bool,
+    },
+    /// Compresses files into a zip as a job; the reply is the job ID.
+    Compress {
+        /// What to compress.
+        sources: Vec<RelPath>,
+        /// The zip.
+        dest: RelPath,
+    },
+    /// Streams a file from `offset`: a reply with its size, then its bytes
+    /// to the end.
+    OpenRead {
+        /// The file.
+        path: RelPath,
+        /// Where to start.
+        offset: u64,
+    },
+    /// Places an uploaded file: `len` bytes follow the request. Replies
+    /// with where it went.
+    Adopt {
+        /// The folder.
+        dir: RelPath,
+        /// The file name.
+        name: String,
+        /// What to do if the name is taken.
+        on_conflict: OnConflict,
+        /// How many bytes follow.
+        len: u64,
+    },
+}
+
+/// The reply to a [`Request::Folder`].
+pub type FolderReply = Result<serde_json::Value, FileFailure>;
+
+/// A file's details, sent before its bytes.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileHeader {
+    /// How many bytes follow.
+    pub len: u64,
+    /// Whether it's text.
+    pub is_text: bool,
+    /// Its version, for writing it back.
+    pub version: String,
+    /// Last change, in Unix milliseconds.
+    pub modified_ms: i64,
+}
+
+/// A [`FileError`] on its way between machines.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum FileFailure {
+    /// Nothing at the path.
+    NotFound {
+        /// The path.
+        path: String,
+    },
+    /// Something already at the path.
+    AlreadyExists {
+        /// The path.
+        path: String,
+    },
+    /// Changed since it was read.
+    Conflict,
+    /// A folder where a file was expected.
+    IsDirectory {
+        /// The path.
+        path: String,
+    },
+    /// A file where a folder was expected.
+    NotDirectory {
+        /// The path.
+        path: String,
+    },
+    /// Over a limit.
+    TooLarge {
+        /// What.
+        what: String,
+        /// The limit.
+        limit: String,
+    },
+    /// Not allowed.
+    PermissionDenied {
+        /// The path.
+        path: String,
+    },
+    /// Anything else that's the request's fault.
+    Invalid {
+        /// Why.
+        message: String,
+    },
+    /// Anything else.
+    Io {
+        /// What happened.
+        message: String,
+    },
+}
+
+impl From<&FileError> for FileFailure {
+    fn from(e: &FileError) -> Self {
+        match e {
+            FileError::NotFound(path) => Self::NotFound { path: path.clone() },
+            FileError::AlreadyExists(path) => Self::AlreadyExists { path: path.clone() },
+            FileError::Conflict => Self::Conflict,
+            FileError::IsDirectory(path) => Self::IsDirectory { path: path.clone() },
+            FileError::NotDirectory(path) => Self::NotDirectory { path: path.clone() },
+            FileError::TooLarge { what, limit } => Self::TooLarge {
+                what: what.clone(),
+                limit: limit.clone(),
+            },
+            FileError::PermissionDenied(path) => Self::PermissionDenied { path: path.clone() },
+            FileError::InvalidPath(_) | FileError::Invalid(_) => Self::Invalid {
+                message: e.to_string(),
+            },
+            FileError::Io(_) => Self::Io {
+                message: e.to_string(),
+            },
+        }
+    }
+}
+
+impl From<FileFailure> for FileError {
+    fn from(f: FileFailure) -> Self {
+        match f {
+            FileFailure::NotFound { path } => Self::NotFound(path),
+            FileFailure::AlreadyExists { path } => Self::AlreadyExists(path),
+            FileFailure::Conflict => Self::Conflict,
+            FileFailure::IsDirectory { path } => Self::IsDirectory(path),
+            FileFailure::NotDirectory { path } => Self::NotDirectory(path),
+            FileFailure::TooLarge { what, limit } => Self::TooLarge { what, limit },
+            FileFailure::PermissionDenied { path } => Self::PermissionDenied(path),
+            FileFailure::Invalid { message } => Self::Invalid(message),
+            FileFailure::Io { message } => Self::Io(std::io::Error::other(message)),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn paths_from_the_other_side_are_checked_like_any_other() {
+        let ok: FolderOp = serde_json::from_str(r#"{"op":"stat","path":"world/level.dat"}"#).unwrap();
+        assert!(matches!(ok, FolderOp::Stat { path } if path.as_str() == "world/level.dat"));
+        for bad in ["../etc/passwd", "/etc/passwd", "world/../../x"] {
+            let json = format!(r#"{{"op":"stat","path":"{bad}"}}"#);
+            assert!(serde_json::from_str::<FolderOp>(&json).is_err(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn file_errors_survive_the_trip() {
+        for e in [
+            FileError::NotFound("a.txt".into()),
+            FileError::Conflict,
+            FileError::TooLarge {
+                what: "a.txt".into(),
+                limit: "5 MB".into(),
+            },
+        ] {
+            let back: FileError = FileFailure::from(&e).into();
+            assert_eq!(back.to_string(), e.to_string());
+        }
+    }
 }

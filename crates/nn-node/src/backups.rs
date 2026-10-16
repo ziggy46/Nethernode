@@ -205,7 +205,10 @@ impl LocalNode {
         &self,
         server: &Server,
     ) -> Result<std::sync::Arc<ServerFiles>, crate::NodeError> {
-        Ok(self.open_folder(server).await?.into_local_files())
+        self.open_folder(server)
+            .await?
+            .into_local_files()
+            .ok_or(crate::NodeError::NotYet(NOT_YET))
     }
 }
 

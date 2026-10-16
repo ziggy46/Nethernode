@@ -26,7 +26,11 @@ use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 
 use crate::Node;
-use crate::protocol::{AgentEvent, LogLine, RemoteError, Reply, Request};
+use crate::protocol::{
+    AgentEvent, FileFailure, FileHeader, FolderOp, FolderReply, LogLine, RemoteError, Reply,
+    Request,
+};
+use nn_files::FileError;
 
 const STATE_FILE: &str = "agent.json";
 /// Wait after the panel turns a joined agent away before asking again.
@@ -391,6 +395,10 @@ async fn handle(mut stream: LinkStream, node: Node) {
     if let Request::Connect { id } = &request {
         return relay(stream, &node, id).await;
     }
+    let request = match request {
+        Request::Folder { id, call } => return folder(stream, &node, &id, call).await,
+        other => other,
+    };
     let reply = answer(&node, request).await;
     let _ = messages::send(&mut stream, &reply).await;
 }
@@ -432,8 +440,8 @@ async fn answer(node: &Node, request: Request) -> Reply {
             node.set_curseforge_key(key);
             reply(Ok(()))
         }
-        Request::Logs { .. } | Request::Connect { .. } => {
-            unreachable!("handled by follow_logs and relay")
+        Request::Logs { .. } | Request::Connect { .. } | Request::Folder { .. } => {
+            unreachable!("handled by follow_logs, relay, and folder")
         }
     }
 }
@@ -474,6 +482,166 @@ async fn relay(mut stream: LinkStream, node: &Node, id: &str) {
         return;
     }
     let _ = tokio::io::copy_bidirectional(&mut stream, &mut server).await;
+}
+
+/// Largest file accepted in one write (a big mod, say).
+const MAX_WRITE: u64 = 512 * 1024 * 1024;
+
+/// Answers a folder request against this machine's copy of the server.
+async fn folder(mut stream: LinkStream, node: &Node, id: &str, call: FolderOp) {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let fail = |e: &FileError| -> FolderReply { Err(FileFailure::from(e)) };
+    let Node::Local(local) = node else {
+        return;
+    };
+    let opened = match local.orchestrator() {
+        Ok(o) => match o.server(id).await {
+            Ok(server) => local.open_folder(&server).await,
+            Err(e) => Err(e.into()),
+        },
+        Err(e) => Err(e),
+    };
+    let folder = match opened {
+        Ok(folder) => folder,
+        Err(e) => {
+            let e = match e {
+                crate::NodeError::File(f) => f,
+                other => FileError::Invalid(other.to_string()),
+            };
+            let _ = messages::send(&mut stream, &fail(&e)).await;
+            return;
+        }
+    };
+    fn ok<T: Serialize>(result: Result<T, FileError>) -> FolderReply {
+        result
+            .map(|v| serde_json::to_value(v).unwrap_or(serde_json::Value::Null))
+            .map_err(|e| FileFailure::from(&e))
+    }
+    let reply = match call {
+        FolderOp::List { path } => ok(folder.list(&path).await),
+        FolderOp::Stat { path } => ok(folder.stat(&path).await),
+        FolderOp::Read { path, limit } => match folder.read(&path, limit).await {
+            Ok(content) => {
+                let header = FileHeader {
+                    len: content.data.len() as u64,
+                    is_text: content.is_text,
+                    version: content.version,
+                    modified_ms: content.modified_ms,
+                };
+                if messages::send(&mut stream, &ok(Ok(header))).await.is_ok() {
+                    let _ = stream.write_all(&content.data).await;
+                    let _ = stream.flush().await;
+                }
+                return;
+            }
+            Err(e) => fail(&e),
+        },
+        FolderOp::Write { path, expect, len } => {
+            if len > MAX_WRITE {
+                fail(&FileError::TooLarge {
+                    what: path.to_string(),
+                    limit: "512 MB".into(),
+                })
+            } else {
+                let mut data = vec![0u8; usize::try_from(len).unwrap_or(0)];
+                if stream.read_exact(&mut data).await.is_err() {
+                    return;
+                }
+                ok(folder.write(&path, data, expect).await)
+            }
+        }
+        FolderOp::Mkdir { path } => ok(folder.mkdir(&path).await),
+        FolderOp::Rename { from, to } => ok(folder.rename(&from, &to).await),
+        FolderOp::Copy { from, to } => ok(folder.copy(&from, &to).await),
+        FolderOp::Delete {
+            paths,
+            retention_secs,
+        } => ok(folder
+            .delete(paths, Duration::from_secs(retention_secs))
+            .await),
+        FolderOp::Trash { retention_secs } => {
+            ok(folder.trash(Duration::from_secs(retention_secs)).await)
+        }
+        FolderOp::Restore { id } => ok(folder.restore(&id).await),
+        FolderOp::Purge { id } => ok(folder.purge(id.as_deref()).await),
+        FolderOp::Sha1 { path } => ok(folder.sha1(&path).await),
+        FolderOp::ModInfo { path } => ok(folder.mod_info(&path).await),
+        FolderOp::ModIcon { path } => match folder.mod_icon(&path).await {
+            Ok(Some(icon)) => {
+                if messages::send(&mut stream, &ok(Ok(Some(icon.len() as u64))))
+                    .await
+                    .is_ok()
+                {
+                    let _ = stream.write_all(&icon).await;
+                    let _ = stream.flush().await;
+                }
+                return;
+            }
+            Ok(None) => ok(Ok(None::<u64>)),
+            Err(e) => fail(&e),
+        },
+        FolderOp::Extract {
+            archive,
+            dest,
+            overwrite,
+        } => ok(folder.extract(archive, dest, overwrite).await),
+        FolderOp::Compress { sources, dest } => ok(folder.compress(sources, dest).await),
+        FolderOp::OpenRead { path, offset } => match folder.open_read(&path).await {
+            Ok(reader) => {
+                let size = reader.size();
+                match reader.from_offset(offset).await {
+                    Ok(mut bytes) => {
+                        if messages::send(&mut stream, &ok(Ok(size))).await.is_ok() {
+                            let _ = tokio::io::copy(&mut bytes, &mut stream).await;
+                            let _ = stream.shutdown().await;
+                        }
+                        return;
+                    }
+                    Err(e) => fail(&FileError::Io(e)),
+                }
+            }
+            Err(e) => fail(&e),
+        },
+        FolderOp::Adopt {
+            dir,
+            name,
+            on_conflict,
+            len,
+        } => {
+            // Received into this machine's upload folder, then placed.
+            let tmp = match local.upload_dir() {
+                Some(dir) => dir.join(format!("{}.part", nn_store::new_id())),
+                None => {
+                    let _ = messages::send(
+                        &mut stream,
+                        &fail(&FileError::Invalid(
+                            "the data folder isn't available".into(),
+                        )),
+                    )
+                    .await;
+                    return;
+                }
+            };
+            let received = async {
+                let mut file = tokio::fs::File::create(&tmp).await?;
+                let copied = tokio::io::copy(&mut (&mut stream).take(len), &mut file).await?;
+                file.sync_all().await?;
+                if copied == len {
+                    Ok(())
+                } else {
+                    Err(std::io::Error::other("the upload was cut short"))
+                }
+            }
+            .await;
+            let reply = match received {
+                Ok(()) => ok(folder.adopt(tmp.clone(), &dir, &name, on_conflict).await),
+                Err(e) => fail(&FileError::Io(e)),
+            };
+            let _ = tokio::fs::remove_file(&tmp).await;
+            reply
+        }
+    };
+    let _ = messages::send(&mut stream, &reply).await;
 }
 
 /// Sends a server's console backlog, then each new line.
