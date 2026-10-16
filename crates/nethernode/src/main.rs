@@ -255,6 +255,8 @@ async fn agent(config: Config, join: Option<String>, code: Option<String>) -> Re
         version = env!("CARGO_PKG_VERSION"),
         "NetherNode agent starting"
     );
+    // Partial archives and half-swapped restores from before a crash.
+    node.local().recover_backups(&[]).await;
     tokio::select! {
         result = nn_node::agent::run(args, node.local().clone()) => {
             result.map_err(|e| anyhow::anyhow!(e))

@@ -202,7 +202,12 @@ pub(crate) async fn start_restore(
     user_id: &str,
     start_after: bool,
 ) -> Result<String, ConnectError> {
-    let node = state.nodes.for_server(&server).clone();
+    if backup.node_id != server.node_id {
+        return Err(ConnectError::failed_precondition(
+            "This backup is on another machine than the server now runs on.",
+        ));
+    }
+    let node = state.nodes.for_server(&server);
     if !node.has_backup(&backup.file_name).await {
         return Err(ConnectError::not_found("the backup's file is missing"));
     }
@@ -255,13 +260,8 @@ pub(crate) async fn start_restore(
 }
 
 /// The node holding a backup's archive.
-// TODO(multi-node step 6): record the node with the backup, since a
-// backup outlives its server.
 pub(crate) async fn node_of(state: &AppState, backup: &Backup) -> nn_node::Node {
-    state
-        .nodes
-        .for_server_id(backup.server_id.as_deref().unwrap_or_default())
-        .await
+    state.nodes.get(&backup.node_id)
 }
 
 /// Deletes a backup's file and record.

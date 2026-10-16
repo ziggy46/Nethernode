@@ -239,6 +239,17 @@ impl RemoteNode {
         Ok((stream, value))
     }
 
+    /// Streams backup archive `name` from `offset`.
+    pub(crate) async fn open_backup(&self, name: &str, offset: u64) -> Result<LinkStream> {
+        let mut stream = self.open().await?;
+        let request = Request::OpenBackup {
+            name: name.to_owned(),
+            offset,
+        };
+        self.exchange(&mut stream, &request).await?;
+        Ok(stream)
+    }
+
     /// Follows a server's console.
     pub(crate) async fn logs(&self, id: &str) -> Result<LogSubscription> {
         let mut stream = self.open().await?;

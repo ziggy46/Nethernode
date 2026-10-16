@@ -31,6 +31,8 @@ pub struct Backup {
     pub created_at: i64,
     /// Unix ms.
     pub finished_at: Option<i64>,
+    /// The node holding the archive ([`crate::LOCAL_NODE`] for this machine).
+    pub node_id: String,
 }
 
 /// A scheduled action.
@@ -98,8 +100,10 @@ impl Store {
         let id = new_id();
         let now = now_ms();
         sqlx::query!(
-            "INSERT INTO backups (id, server_id, server_name, file_name, kind, status, created_by, created_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, 'creating', ?6, ?7)",
+            "INSERT INTO backups (id, server_id, server_name, file_name, kind, status, created_by,
+                                  created_at, node_id)
+             VALUES (?1, ?2, ?3, ?4, ?5, 'creating', ?6, ?7,
+                     COALESCE((SELECT node_id FROM servers WHERE id = ?2), 'local'))",
             id,
             server_id,
             server_name,
@@ -147,7 +151,7 @@ impl Store {
         let rows = sqlx::query_as!(
             Backup,
             r#"SELECT id AS "id!", server_id, server_name, file_name, size_bytes, files, raw_bytes, kind,
-                      status, message, created_by, created_at, finished_at
+                      status, message, created_by, created_at, finished_at, node_id
                FROM backups WHERE ?1 IS NULL OR server_id = ?1
                ORDER BY created_at DESC"#,
             server_id,
@@ -162,7 +166,7 @@ impl Store {
         let row = sqlx::query_as!(
             Backup,
             r#"SELECT id AS "id!", server_id, server_name, file_name, size_bytes, files, raw_bytes, kind,
-                      status, message, created_by, created_at, finished_at
+                      status, message, created_by, created_at, finished_at, node_id
                FROM backups WHERE id = ?1"#,
             id,
         )

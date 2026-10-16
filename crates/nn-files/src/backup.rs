@@ -37,7 +37,7 @@ pub const REGENERATED: &[&str] = &[
 const LEVEL: i32 = 3;
 
 /// What a backup holds.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct BackupReport {
     /// Files archived.
     pub files: u64,

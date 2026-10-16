@@ -443,6 +443,10 @@ enum ReaderKind {
         server_id: String,
         path: RelPath,
     },
+    RemoteBackup {
+        node: Arc<RemoteNode>,
+        name: String,
+    },
 }
 
 impl FileReader {
@@ -451,6 +455,17 @@ impl FileReader {
         Self {
             size,
             kind: ReaderKind::Local(tokio::fs::File::from_std(file)),
+        }
+    }
+
+    /// A backup archive on another machine.
+    pub(crate) fn remote_backup(node: Arc<RemoteNode>, name: &str, size: u64) -> Self {
+        Self {
+            size,
+            kind: ReaderKind::RemoteBackup {
+                node,
+                name: name.to_owned(),
+            },
         }
     }
 
@@ -479,6 +494,13 @@ impl FileReader {
                 };
                 let (stream, _) = node
                     .folder(&server_id, op, Body::None)
+                    .await
+                    .map_err(|e| std::io::Error::other(e.to_string()))?;
+                Ok(Box::pin(stream))
+            }
+            ReaderKind::RemoteBackup { node, name } => {
+                let stream = node
+                    .open_backup(&name, start)
                     .await
                     .map_err(|e| std::io::Error::other(e.to_string()))?;
                 Ok(Box::pin(stream))

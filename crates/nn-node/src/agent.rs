@@ -395,6 +395,9 @@ async fn handle(mut stream: LinkStream, node: Node) {
     if let Request::Connect { id } = &request {
         return relay(stream, &node, id).await;
     }
+    if let Request::OpenBackup { name, offset } = &request {
+        return send_backup(stream, &node, name, *offset).await;
+    }
     let request = match request {
         Request::Folder { id, call } => return folder(stream, &node, &id, call).await,
         other => other,
@@ -440,8 +443,30 @@ async fn answer(node: &Node, request: Request) -> Reply {
             node.set_curseforge_key(key);
             reply(Ok(()))
         }
-        Request::Logs { .. } | Request::Connect { .. } | Request::Folder { .. } => {
-            unreachable!("handled by follow_logs, relay, and folder")
+        Request::BackupsFreeSpace => said(node.backups_free_space().await),
+        Request::Backup { id, name, job_id } => match server_row(node, &id).await {
+            Ok(server) => said(node.backup(&server, &name, &job_id).await),
+            Err(e) => reply::<()>(Err(e)),
+        },
+        Request::Restore {
+            id,
+            source,
+            pre_restore,
+            job_id,
+        } => match server_row(node, &id).await {
+            Ok(server) => said(node.restore(&server, &source, &pre_restore, &job_id).await),
+            Err(e) => reply::<()>(Err(e)),
+        },
+        Request::BackupSize { name } => {
+            let size = node.open_backup(&name).await.map(|reader| reader.size());
+            reply(Ok(size))
+        }
+        Request::DeleteBackup { name } => said(node.delete_backup(&name).await),
+        Request::Logs { .. }
+        | Request::Connect { .. }
+        | Request::Folder { .. }
+        | Request::OpenBackup { .. } => {
+            unreachable!("handled by follow_logs, relay, folder, and send_backup")
         }
     }
 }
@@ -482,6 +507,51 @@ async fn relay(mut stream: LinkStream, node: &Node, id: &str) {
         return;
     }
     let _ = tokio::io::copy_bidirectional(&mut stream, &mut server).await;
+}
+
+/// A reply from an operation that fails with a message.
+fn said<T: Serialize>(result: Result<T, String>) -> Reply {
+    reply(result.map_err(|message| {
+        crate::NodeError::Remote(RemoteError {
+            kind: crate::protocol::ErrorKind::Internal,
+            message,
+        })
+    }))
+}
+
+/// This machine's record of a server.
+async fn server_row(node: &Node, id: &str) -> crate::Result<Server> {
+    match node {
+        Node::Local(local) => Ok(local.orchestrator()?.server(id).await?),
+        Node::Remote(_) => Err(crate::NodeError::NotYet(
+            "agents only serve their own servers",
+        )),
+    }
+}
+
+/// Sends a backup archive from `offset`.
+async fn send_backup(mut stream: LinkStream, node: &Node, name: &str, offset: u64) {
+    let Some(reader) = node.open_backup(name).await else {
+        let missing = crate::NodeError::Remote(RemoteError {
+            kind: crate::protocol::ErrorKind::NotFound,
+            message: "the backup's file is missing".into(),
+        });
+        let _ = messages::send(&mut stream, &reply::<()>(Err(missing))).await;
+        return;
+    };
+    let size = reader.size();
+    match reader.from_offset(offset).await {
+        Ok(mut bytes) => {
+            if messages::send(&mut stream, &reply(Ok(size))).await.is_ok() {
+                let _ = tokio::io::copy(&mut bytes, &mut stream).await;
+                let _ = tokio::io::AsyncWriteExt::shutdown(&mut stream).await;
+            }
+        }
+        Err(e) => {
+            let failed = crate::NodeError::File(FileError::Io(e));
+            let _ = messages::send(&mut stream, &reply::<()>(Err(failed))).await;
+        }
+    }
 }
 
 /// Largest file accepted in one write (a big mod, say).

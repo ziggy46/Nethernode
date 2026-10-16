@@ -108,6 +108,46 @@ pub enum Request {
         /// What to do.
         call: FolderOp,
     },
+    /// Free space where backups go.
+    BackupsFreeSpace,
+    /// Archive a server as `name`, reporting progress on job `job_id`.
+    Backup {
+        /// Server ID.
+        id: String,
+        /// Archive name.
+        name: String,
+        /// Job ID for progress events.
+        job_id: String,
+    },
+    /// Restore archive `source` over a stopped server, after archiving
+    /// what's there as `pre_restore`.
+    Restore {
+        /// Server ID.
+        id: String,
+        /// Archive to restore.
+        source: String,
+        /// Name for the copy of what's there now.
+        pre_restore: String,
+        /// Job ID for progress events.
+        job_id: String,
+    },
+    /// An archive's size, or none if it isn't there.
+    BackupSize {
+        /// Archive name.
+        name: String,
+    },
+    /// Streams an archive from `offset`: a reply, then its bytes.
+    OpenBackup {
+        /// Archive name.
+        name: String,
+        /// Where to start.
+        offset: u64,
+    },
+    /// Delete an archive.
+    DeleteBackup {
+        /// Archive name.
+        name: String,
+    },
     /// The CurseForge API key, for CurseForge modpacks.
     SetCurseforgeKey {
         /// The key, or none.
@@ -445,7 +485,8 @@ mod tests {
 
     #[test]
     fn paths_from_the_other_side_are_checked_like_any_other() {
-        let ok: FolderOp = serde_json::from_str(r#"{"op":"stat","path":"world/level.dat"}"#).unwrap();
+        let ok: FolderOp =
+            serde_json::from_str(r#"{"op":"stat","path":"world/level.dat"}"#).unwrap();
         assert!(matches!(ok, FolderOp::Stat { path } if path.as_str() == "world/level.dat"));
         for bad in ["../etc/passwd", "/etc/passwd", "world/../../x"] {
             let json = format!(r#"{{"op":"stat","path":"{bad}"}}"#);

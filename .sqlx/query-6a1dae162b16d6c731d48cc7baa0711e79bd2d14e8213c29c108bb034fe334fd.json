@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!\", server_id, server_name, file_name, size_bytes, files, raw_bytes, kind,\n                      status, message, created_by, created_at, finished_at\n               FROM backups WHERE id = ?1",
+  "query": "SELECT id AS \"id!\", server_id, server_name, file_name, size_bytes, files, raw_bytes, kind,\n                      status, message, created_by, created_at, finished_at, node_id\n               FROM backups WHERE id = ?1",
   "describe": {
     "columns": [
       {
@@ -145,6 +145,17 @@
             "name": "finished_at"
           }
         }
+      },
+      {
+        "name": "node_id",
+        "ordinal": 13,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "backups",
+            "name": "node_id"
+          }
+        }
       }
     ],
     "parameters": {
@@ -163,8 +174,9 @@
       true,
       true,
       false,
-      true
+      true,
+      false
     ]
   },
-  "hash": "7571182afe6353a67cd6a93176c8e8b3e715fadf23e522504bfb27885637e714"
+  "hash": "6a1dae162b16d6c731d48cc7baa0711e79bd2d14e8213c29c108bb034fe334fd"
 }

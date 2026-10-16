@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO backups (id, server_id, server_name, file_name, kind, status, created_by,\n                                  created_at, node_id)\n             VALUES (?1, ?2, ?3, ?4, ?5, 'creating', ?6, ?7,\n                     COALESCE((SELECT node_id FROM servers WHERE id = ?2), 'local'))",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": []
+  },
+  "hash": "e3df66f0bcf2d2ad72339ccc57a29cecca790dc6afecd3e51edab43977099263"
+}

@@ -94,13 +94,17 @@ impl pb::BackupService for BackupRpc {
             .into_iter()
             .map(|u| (u.id, u.username))
             .collect();
+        // Free space where this server's backups go (its machine's disk).
+        let node = match request.server_id {
+            Some(id) => self.state.nodes.for_server_id(id).await,
+            None => self.state.nodes.local().clone(),
+        };
         Response::ok(pb::ListBackupsResponse {
             backups: backups
                 .into_iter()
                 .map(|b| proto_backup(b, &users))
                 .collect(),
-            // TODO(multi-node step 6): per node.
-            free_bytes: self.state.nodes.local().disk_space().map(|(_, free)| free),
+            free_bytes: node.disk_space().map(|(_, free)| free),
             ..Default::default()
         })
     }

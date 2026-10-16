@@ -12,13 +12,14 @@ use nn_files::{FileError, Limits, ServerFiles};
 use nn_store::Server;
 
 use crate::jobs::Progress;
+use crate::protocol::Request;
 use crate::{FileReader, LocalNode, Node};
 
 /// Why a server on another machine has no backups (yet).
 const NOT_YET: &str = "Backups of servers on other machines aren't available yet.";
 
 /// A finished archive: its size on disk, and what's in it.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct Archive {
     /// Bytes on disk.
     pub size: u64,
@@ -27,7 +28,7 @@ pub struct Archive {
 }
 
 /// How a restore went.
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Restored {
     /// The copy of what was there before.
     pub pre_restore: Result<Archive, String>,
@@ -216,6 +217,12 @@ impl Node {
     /// Free space where backups go, making the folder if needed. `None` if
     /// the system can't say.
     pub async fn backups_free_space(&self) -> Result<Option<u64>, String> {
+        if let Node::Remote(remote) = self {
+            return remote
+                .call(Request::BackupsFreeSpace)
+                .await
+                .map_err(|e| e.to_string());
+        }
         let dir = self
             .as_local(NOT_YET)
             .map_err(|e| e.to_string())?
@@ -234,6 +241,14 @@ impl Node {
         name: &str,
         job_id: &str,
     ) -> Result<Archive, String> {
+        if let Node::Remote(remote) = self {
+            let request = Request::Backup {
+                id: server.id.clone(),
+                name: name.to_owned(),
+                job_id: job_id.to_owned(),
+            };
+            return remote.call(request).await.map_err(|e| e.to_string());
+        }
         let local = self.as_local(NOT_YET).map_err(|e| e.to_string())?;
         local
             .locked(server, async |current| {
@@ -251,6 +266,15 @@ impl Node {
         pre_restore: &str,
         job_id: &str,
     ) -> Result<Restored, String> {
+        if let Node::Remote(remote) = self {
+            let request = Request::Restore {
+                id: server.id.clone(),
+                source: source.to_owned(),
+                pre_restore: pre_restore.to_owned(),
+                job_id: job_id.to_owned(),
+            };
+            return remote.call(request).await.map_err(|e| e.to_string());
+        }
         let local = self.as_local(NOT_YET).map_err(|e| e.to_string())?;
         let source = local
             .archive_path(source)
@@ -283,6 +307,15 @@ impl Node {
 
     /// Whether archive `name` is on this node.
     pub async fn has_backup(&self, name: &str) -> bool {
+        if let Node::Remote(remote) = self {
+            let size: Option<u64> = remote
+                .call(Request::BackupSize {
+                    name: name.to_owned(),
+                })
+                .await
+                .unwrap_or(None);
+            return size.is_some();
+        }
         let Ok(local) = self.as_local(NOT_YET) else {
             return false;
         };
@@ -294,6 +327,15 @@ impl Node {
 
     /// Archive `name`, to download.
     pub async fn open_backup(&self, name: &str) -> Option<FileReader> {
+        if let Node::Remote(remote) = self {
+            let size: u64 = remote
+                .call::<Option<u64>>(Request::BackupSize {
+                    name: name.to_owned(),
+                })
+                .await
+                .ok()??;
+            return Some(FileReader::remote_backup(remote.clone(), name, size));
+        }
         let path = self.as_local(NOT_YET).ok()?.archive_path(name)?;
         tokio::task::spawn_blocking(move || {
             let file = std::fs::File::open(&path)?;
@@ -307,6 +349,12 @@ impl Node {
 
     /// Deletes archive `name`. Gone already counts as deleted.
     pub async fn delete_backup(&self, name: &str) -> Result<(), String> {
+        if let Node::Remote(remote) = self {
+            let request = Request::DeleteBackup {
+                name: name.to_owned(),
+            };
+            return remote.call(request).await.map_err(|e| e.to_string());
+        }
         let local = self.as_local(NOT_YET).map_err(|e| e.to_string())?;
         let Some(path) = local.archive_path(name) else {
             return Ok(());
