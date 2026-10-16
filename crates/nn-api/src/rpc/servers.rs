@@ -138,7 +138,9 @@ impl ServerRpc {
         }
         input.slug = Some(slug);
         input.avoid_ports = store.used_ports().await.map_err(store_error)?;
-        let server = node.create(input).await.map_err(node_error)?;
+        let mut server = node.create(input).await.map_err(node_error)?;
+        // The agent's own records call its machine "local".
+        server.node_id = node_id.to_owned();
         store
             .upsert_server_mirror(&server, node_id)
             .await
@@ -566,11 +568,12 @@ impl pb::ServerService for ServerRpc {
             .map(settings_from_proto)
             .ok_or_else(|| ConnectError::invalid_argument("settings are required"))?;
         settings.modpack_json = current.modpack_json;
-        let (server, _) = node
+        let (mut server, _) = node
             .update(request.id, settings)
             .await
             .map_err(node_error)?;
         if !node.is_local() {
+            server.node_id = current.node_id.clone();
             self.state
                 .auth
                 .store()
