@@ -7,7 +7,7 @@ A fast, self-hosted panel that runs your servers in Docker and routes every play
 
 <p align="center">
   <a href="counter/README.md"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fnethernode-installs.pages.dev%2Fbadge.json" alt="Active installs (opt-in)"></a>
-  <img src="https://img.shields.io/badge/version-0.1-f2701c" alt="Version 0.1">
+  <img src="https://img.shields.io/badge/version-0.2-f2701c" alt="Version 0.2">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
 </p>
 
@@ -94,7 +94,7 @@ server. To let friends join from outside your network, point a hostname at the
 machine (or forward port 25565 on your router) and add a route on the
 **Proxy & routes** page; it lists the DNS records each route needs.
 
-Images are tagged `latest` and by version (`0.1.0`, `0.1`); `edge` follows
+Images are tagged `latest` and by version (`0.2.0`, `0.2`); `edge` follows
 the main branch. NetherNode can also run as a plain binary from the releases
 page.
 
