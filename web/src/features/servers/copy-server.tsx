@@ -213,7 +213,7 @@ function TemplateDialog({
           <DialogTitle>Save {server.name} as a template</DialogTitle>
           <DialogDescription>
             Keeps a copy of its software, mods, plugins, configuration and settings, without the world. New
-            servers can start from it: choose it under New server.
+            servers can start from it: it appears when you click Create server.
           </DialogDescription>
         </DialogHeader>
         {save.isError && <ErrorAlert>{errorMessage(save.error)}</ErrorAlert>}

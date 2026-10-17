@@ -215,117 +215,123 @@ export function CreateServerDialog({
     else create.mutate();
   };
 
-  return (
-    <>
-      <FromTemplateDialog template={template} onClose={() => setTemplate(null)} />
-      <Dialog
-        open={open}
-        onOpenChange={(o) => {
-          if (!o) create.reset();
-          onOpenChange(o);
+  // A template replaces the steps with its own short form. (Pages mount
+  // this dialog only while it's open, so it stays open meanwhile.)
+  if (template) {
+    return (
+      <FromTemplateDialog
+        template={template}
+        onClose={() => {
+          setTemplate(null);
+          onOpenChange(false);
         }}
-      >
-        <DialogContent className="flex w-[620px] flex-col">
-          <DialogHeader>
-            <DialogTitle>A new world awaits.</DialogTitle>
-            <DialogDescription>Choose the basics. Your next server starts here.</DialogDescription>
-          </DialogHeader>
-          <ol className="mb-5 flex gap-1.5" aria-label="Steps">
-            {STEPS.map((name, i) => (
-              <li key={name} className="flex-1">
-                <button
-                  type="button"
-                  disabled={i > step}
-                  onClick={() => setStep(i)}
-                  aria-current={i === step ? "step" : undefined}
-                  className="w-full text-left disabled:cursor-default"
+      />
+    );
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) create.reset();
+        onOpenChange(o);
+      }}
+    >
+      <DialogContent className="flex w-[620px] flex-col">
+        <DialogHeader>
+          <DialogTitle>A new world awaits.</DialogTitle>
+          <DialogDescription>Choose the basics. Your next server starts here.</DialogDescription>
+        </DialogHeader>
+        <ol className="mb-5 flex gap-1.5" aria-label="Steps">
+          {STEPS.map((name, i) => (
+            <li key={name} className="flex-1">
+              <button
+                type="button"
+                disabled={i > step}
+                onClick={() => setStep(i)}
+                aria-current={i === step ? "step" : undefined}
+                className="w-full text-left disabled:cursor-default"
+              >
+                <span
+                  className={cn("block h-1 rounded-full", i <= step ? "bg-primary" : "bg-surface-subtle")}
+                  aria-hidden
+                />
+                <span
+                  className={cn(
+                    "mt-1.5 block text-meta",
+                    i === step ? "text-text-primary" : "text-text-muted",
+                  )}
                 >
-                  <span
-                    className={cn("block h-1 rounded-full", i <= step ? "bg-primary" : "bg-surface-subtle")}
-                    aria-hidden
-                  />
-                  <span
-                    className={cn(
-                      "mt-1.5 block text-meta",
-                      i === step ? "text-text-primary" : "text-text-muted",
-                    )}
-                  >
-                    {i + 1}. {name}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ol>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              next();
-            }}
-            noValidate
-          >
-            {create.isError && <ErrorAlert>{errorMessage(create.error)}</ErrorAlert>}
-            <div className="min-h-[300px]">
-              {step === 0 && (
+                  {i + 1}. {name}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ol>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            next();
+          }}
+          noValidate
+        >
+          {create.isError && <ErrorAlert>{errorMessage(create.error)}</ErrorAlert>}
+          <div className="min-h-[300px]">
+            {step === 0 && (
+              <>
+                <SoftwareStep draft={draft} update={update} />
+                <TemplatePicker onUse={setTemplate} />
+              </>
+            )}
+            {step === 1 &&
+              (isPack ? (
+                <ModpackStep draft={draft} update={update} />
+              ) : (
+                <VersionStep draft={draft} update={update} />
+              ))}
+            {step === 2 && (
+              <ResourcesStep
+                draft={draft}
+                update={update}
+                machines={machines}
+                hostMemory={
+                  Number(
+                    (draft.nodeId === "local" ? host.data?.memoryBytes : machine?.host?.memoryBytes) ?? 0,
+                  ) || undefined
+                }
+              />
+            )}
+            {step === 3 && <NetworkStep draft={draft} update={update} canManageProxy={canManageProxy} />}
+            {step === 4 && <ReviewStep draft={draft} update={update} summary={summary} />}
+          </div>
+          <DialogFooter className="items-center">
+            <p className="mr-auto text-meta text-text-muted" aria-live="polite">
+              {problem && step > 0 ? problem : `NetherNode ${health.data?.version ?? ""}`.trim()}
+            </p>
+            {step > 0 ? (
+              <Button onClick={() => setStep(step - 1)}>
+                <ArrowLeft />
+                Back
+              </Button>
+            ) : (
+              <Button onClick={() => onOpenChange(false)}>Cancel</Button>
+            )}
+            <Button type="submit" variant="primary" disabled={!!problem || create.isPending}>
+              {step < STEPS.length - 1 ? (
                 <>
-                  <SoftwareStep draft={draft} update={update} />
-                  <TemplatePicker
-                    onUse={(t) => {
-                      onOpenChange(false);
-                      setTemplate(t);
-                    }}
-                  />
+                  Next
+                  <ArrowRight />
+                </>
+              ) : (
+                <>
+                  <Plus />
+                  {create.isPending ? "Creating…" : "Create server"}
                 </>
               )}
-              {step === 1 &&
-                (isPack ? (
-                  <ModpackStep draft={draft} update={update} />
-                ) : (
-                  <VersionStep draft={draft} update={update} />
-                ))}
-              {step === 2 && (
-                <ResourcesStep
-                  draft={draft}
-                  update={update}
-                  machines={machines}
-                  hostMemory={
-                    Number(
-                      (draft.nodeId === "local" ? host.data?.memoryBytes : machine?.host?.memoryBytes) ?? 0,
-                    ) || undefined
-                  }
-                />
-              )}
-              {step === 3 && <NetworkStep draft={draft} update={update} canManageProxy={canManageProxy} />}
-              {step === 4 && <ReviewStep draft={draft} update={update} summary={summary} />}
-            </div>
-            <DialogFooter className="items-center">
-              <p className="mr-auto text-meta text-text-muted" aria-live="polite">
-                {problem && step > 0 ? problem : `NetherNode ${health.data?.version ?? ""}`.trim()}
-              </p>
-              {step > 0 ? (
-                <Button onClick={() => setStep(step - 1)}>
-                  <ArrowLeft />
-                  Back
-                </Button>
-              ) : (
-                <Button onClick={() => onOpenChange(false)}>Cancel</Button>
-              )}
-              <Button type="submit" variant="primary" disabled={!!problem || create.isPending}>
-                {step < STEPS.length - 1 ? (
-                  <>
-                    Next
-                    <ArrowRight />
-                  </>
-                ) : (
-                  <>
-                    <Plus />
-                    {create.isPending ? "Creating…" : "Create server"}
-                  </>
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </>
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -26,7 +26,7 @@ export const templatesQuery = {
   queryFn: async () => (await serverClient.listServerTemplates({})).templates,
 };
 
-/** Saved templates, on the first step of New server. */
+/** Saved templates, on the first step of Create server. */
 export function TemplatePicker({ onUse }: { onUse: (template: ServerTemplate) => void }) {
   const queryClient = useQueryClient();
   const templates = useQuery(templatesQuery).data ?? [];
