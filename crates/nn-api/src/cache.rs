@@ -152,10 +152,12 @@ fn remove_older(dir: &Path, age: Duration, which: fn(&Path) -> bool) -> u64 {
         let path = entry.path();
         match entry.file_type() {
             Ok(t) if t.is_dir() => freed += remove_older(&path, age, which),
-            Ok(t) if t.is_file() => {
-                if which(&path) && !nn_catalog::items::modified_within(&path, age) {
-                    freed += remove(&path);
-                }
+            Ok(t)
+                if t.is_file()
+                    && which(&path)
+                    && !nn_catalog::items::modified_within(&path, age) =>
+            {
+                freed += remove(&path);
             }
             _ => {}
         }

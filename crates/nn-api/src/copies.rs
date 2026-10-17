@@ -93,6 +93,14 @@ fn progress(state: &AppState, server_id: &str, job_id: &str, kind: &str, percent
     });
 }
 
+/// The job a step's progress is reported under.
+struct Job<'a> {
+    state: &'a AppState,
+    server_id: &'a str,
+    id: &'a str,
+    kind: &'static str,
+}
+
 /// The server's world folders: `level-name` from `server.properties`
 /// (`world` if unset), with the Nether and End folders some servers keep
 /// beside it.
@@ -147,10 +155,7 @@ async fn carry(
     from_id: &str,
     to: &Target,
     name: &str,
-    state: &AppState,
-    server_id: &str,
-    job_id: &str,
-    kind: &str,
+    job: &Job<'_>,
 ) -> Result<(), String> {
     if from_id == to.id {
         return Ok(());
@@ -165,7 +170,7 @@ async fn carry(
         .receive_archive(name, bytes, size)
         .await
         .map_err(|e| format!("couldn't copy it to {}: {e}", to.name))?;
-    progress(state, server_id, job_id, kind, 60);
+    progress(job.state, job.server_id, job.id, job.kind, 60);
     Ok(())
 }
 
@@ -261,17 +266,13 @@ async fn copy(
         .map_err(|e| format!("Couldn't copy {}: {e}", source.name))?;
     progress(state, &source.id, job_id, COPY, 30);
     let result = async {
-        carry(
-            from,
-            &source.node_id,
-            to,
-            &archive,
+        let job = Job {
             state,
-            &source.id,
-            job_id,
-            COPY,
-        )
-        .await?;
+            server_id: &source.id,
+            id: job_id,
+            kind: COPY,
+        };
+        carry(from, &source.node_id, to, &archive, &job).await?;
         set_up(state, fresh_row(source, name, &to.id), to, &archive).await
     }
     .await;
@@ -337,17 +338,13 @@ async fn save_template(
         name: "this machine".into(),
         node: state.nodes.local().clone(),
     };
-    let carried = carry(
-        from,
-        &source.node_id,
-        &panel,
-        &archive,
+    let job = Job {
         state,
-        &source.id,
-        job_id,
-        TEMPLATE,
-    )
-    .await;
+        server_id: &source.id,
+        id: job_id,
+        kind: TEMPLATE,
+    };
+    let carried = carry(from, &source.node_id, &panel, &archive, &job).await;
     if source.node_id != nn_store::LOCAL_NODE {
         let _ = from.delete_backup(&archive).await;
     }
