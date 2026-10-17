@@ -31,6 +31,7 @@ use tower_http::trace::TraceLayer;
 
 pub mod agents;
 pub mod backups;
+pub mod cache;
 mod console;
 pub mod content;
 mod cookies;

@@ -11,6 +11,7 @@
 //! IDs) and keeps a copy of it in its cache.
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -48,7 +49,8 @@ type Index = Arc<HashMap<String, ModFile>>;
 #[derive(Default)]
 pub(crate) struct ModFiles {
     index: Mutex<HashMap<String, (Instant, Index)>>,
-    jars: Mutex<HashMap<String, nn_catalog::items::Jar>>,
+    /// Open copies, and when each was last used.
+    jars: Mutex<HashMap<String, (Instant, nn_catalog::items::Jar)>>,
     building: tokio::sync::Mutex<()>,
 }
 
@@ -119,12 +121,13 @@ impl ModFiles {
                 server.id, file.path, file.size, file.modified_ms
             ))[..16],
         );
-        if let Some(jar) = self
+        if let Some((used, jar)) = self
             .jars
             .lock()
             .unwrap_or_else(|e| e.into_inner())
-            .get(&key)
+            .get_mut(&key)
         {
+            *used = Instant::now();
             return Some(jar.clone());
         }
         if file.size > MAX_MOD_FILE {
@@ -168,8 +171,40 @@ impl ModFiles {
         self.jars
             .lock()
             .unwrap_or_else(|e| e.into_inner())
-            .insert(key, jar.clone());
+            .insert(key, (Instant::now(), jar.clone()));
         Some(jar)
+    }
+
+    /// Copies in `dir` not used for `unused` (going by when they were
+    /// copied, if not opened since NetherNode started). They're forgotten
+    /// here; the caller deletes them.
+    pub(crate) fn prunable(&self, dir: &std::path::Path, unused: Duration) -> Vec<PathBuf> {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return Vec::new();
+        };
+        let mut jars = self.jars.lock().unwrap_or_else(|e| e.into_inner());
+        let mut out = Vec::new();
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let Some(key) = path.file_stem().and_then(|s| s.to_str()).map(str::to_owned) else {
+                continue;
+            };
+            let recent = match jars.get(&key) {
+                Some((used, _)) => used.elapsed() < unused,
+                None => nn_catalog::items::modified_within(&path, unused),
+            };
+            if !recent {
+                jars.remove(&key);
+                out.push(path);
+            }
+        }
+        out
+    }
+
+    /// Forgets every copy and mod list.
+    pub(crate) fn forget_all(&self) {
+        self.jars.lock().unwrap_or_else(|e| e.into_inner()).clear();
+        self.index.lock().unwrap_or_else(|e| e.into_inner()).clear();
     }
 }
 

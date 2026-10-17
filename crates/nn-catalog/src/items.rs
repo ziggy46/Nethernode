@@ -7,10 +7,11 @@
 //! shown as a cube from their top and side textures, like the game's
 //! inventory does; odd shapes (stairs, chests) get the closest cube.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant, SystemTime};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -91,7 +92,8 @@ pub async fn mod_texture(jar: Jar, namespace: &str, path: &str) -> Result<Vec<u8
 /// Minecraft clients downloaded for their textures, by version.
 pub struct ItemTextures {
     dir: PathBuf,
-    jars: Mutex<HashMap<String, Jar>>,
+    /// Open clients, and when each was last used.
+    jars: Mutex<HashMap<String, (Instant, Jar)>>,
     fetching: tokio::sync::Mutex<()>,
 }
 
@@ -178,22 +180,69 @@ impl ItemTextures {
         self.jars
             .lock()
             .unwrap_or_else(|e| e.into_inner())
-            .insert(version, jar.clone());
+            .insert(version, (Instant::now(), jar.clone()));
         Ok(jar)
     }
 
     fn cached(&self, version: &str) -> Option<Jar> {
-        self.jars
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .get(version)
-            .cloned()
+        let mut jars = self.jars.lock().unwrap_or_else(|e| e.into_inner());
+        let (used, jar) = jars.get_mut(version)?;
+        *used = Instant::now();
+        Some(jar.clone())
     }
+
+    /// The folder clients are kept in.
+    pub fn dir(&self) -> &Path {
+        &self.dir
+    }
+
+    /// Folders of clients that can go: not a version in `keep`, and not
+    /// used for `unused` (going by when it was downloaded, if it hasn't
+    /// been opened since NetherNode started). They're forgotten here; the
+    /// caller deletes them.
+    pub fn prunable(&self, keep: &HashSet<String>, unused: Duration) -> Vec<PathBuf> {
+        let Ok(entries) = std::fs::read_dir(&self.dir) else {
+            return Vec::new();
+        };
+        let mut jars = self.jars.lock().unwrap_or_else(|e| e.into_inner());
+        let mut out = Vec::new();
+        for entry in entries.flatten() {
+            let Ok(version) = entry.file_name().into_string() else {
+                continue;
+            };
+            if keep.contains(&version) {
+                continue;
+            }
+            let recent = match jars.get(&version) {
+                Some((used, _)) => used.elapsed() < unused,
+                None => modified_within(&entry.path().join("client.jar"), unused),
+            };
+            if !recent {
+                jars.remove(&version);
+                out.push(entry.path());
+            }
+        }
+        out
+    }
+
+    /// Forgets every client, so they're downloaded again when needed.
+    pub fn forget_all(&self) {
+        self.jars.lock().unwrap_or_else(|e| e.into_inner()).clear();
+    }
+}
+
+/// Whether `path` was modified within `window` (false if it's missing).
+pub fn modified_within(path: &Path, window: Duration) -> bool {
+    std::fs::metadata(path)
+        .and_then(|m| m.modified())
+        .ok()
+        .and_then(|t| SystemTime::now().duration_since(t).ok())
+        .is_some_and(|age| age < window)
 }
 
 impl Catalog {
     /// A concrete version: `LATEST` and `SNAPSHOT` become the newest of each.
-    async fn release_id(&self, version: &str) -> Result<String, Error> {
+    pub async fn release_id(&self, version: &str) -> Result<String, Error> {
         #[derive(Deserialize)]
         struct Latest {
             release: String,
@@ -535,6 +584,27 @@ mod tests {
     use std::io::Write;
 
     use super::*;
+
+    #[test]
+    fn unused_clients_of_versions_no_server_runs_can_go() {
+        let dir = tempfile::tempdir().unwrap();
+        let textures = ItemTextures::new(dir.path().to_owned());
+        let old = SystemTime::now() - Duration::from_secs(30 * 24 * 3600);
+        for version in ["1.20.1", "1.21.1", "1.21.4"] {
+            std::fs::create_dir(dir.path().join(version)).unwrap();
+            let file = std::fs::File::create(dir.path().join(version).join("client.jar")).unwrap();
+            if version != "1.21.4" {
+                file.set_modified(old).unwrap();
+            }
+        }
+        let keep = HashSet::from(["1.21.1".to_owned()]);
+        let week = Duration::from_secs(7 * 24 * 3600);
+        assert_eq!(
+            textures.prunable(&keep, week),
+            [dir.path().join("1.20.1")],
+            "1.21.1 is in use and 1.21.4 is new"
+        );
+    }
 
     /// A tiny "client jar" with a few textures, models, and item definitions.
     fn jar(dir: &Path) -> zip::ZipArchive<std::fs::File> {

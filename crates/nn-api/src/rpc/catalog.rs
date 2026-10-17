@@ -260,4 +260,47 @@ impl pb::CatalogService for CatalogRpc {
         .await;
         Response::ok(pb::SetCurseForgeKeyResponse::default())
     }
+
+    async fn get_cache_usage(
+        &self,
+        ctx: RequestContext,
+        _request: ServiceRequest<'_, pb::GetCacheUsageRequest>,
+    ) -> ServiceResult<pb::GetCacheUsageResponse> {
+        require(&ctx, Permission::ManageSettings)?;
+        let parts = crate::cache::usage(&self.state)
+            .await
+            .into_iter()
+            .map(|u| pb::CacheUsage {
+                kind: u.kind.to_owned(),
+                bytes: u.bytes,
+                files: u.files,
+                ..Default::default()
+            })
+            .collect();
+        Response::ok(pb::GetCacheUsageResponse {
+            parts,
+            ..Default::default()
+        })
+    }
+
+    async fn clear_cache(
+        &self,
+        ctx: RequestContext,
+        _request: ServiceRequest<'_, pb::ClearCacheRequest>,
+    ) -> ServiceResult<pb::ClearCacheResponse> {
+        let user = require(&ctx, Permission::ManageSettings)?.clone();
+        let freed = crate::cache::clear(&self.state).await;
+        audit(
+            &self.state,
+            &user,
+            "settings.cache_clear",
+            ("settings", "cache"),
+            json!({ "freed_bytes": freed }),
+        )
+        .await;
+        Response::ok(pb::ClearCacheResponse {
+            freed_bytes: freed,
+            ..Default::default()
+        })
+    }
 }

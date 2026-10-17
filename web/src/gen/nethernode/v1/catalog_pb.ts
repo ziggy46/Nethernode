@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file nethernode/v1/catalog.proto.
  */
 export const file_nethernode_v1_catalog: GenFile = /*@__PURE__*/
-  fileDesc("ChtuZXRoZXJub2RlL3YxL2NhdGFsb2cucHJvdG8SDW5ldGhlcm5vZGUudjEiPgoJTWNWZXJzaW9uEgoKAmlkGAEgASgJEhAKCHNuYXBzaG90GAIgASgIEhMKC3JlbGVhc2VkX21zGAMgASgDIkUKDUxvYWRlclZlcnNpb24SDwoHdmVyc2lvbhgBIAEoCRIOCgZzdGFibGUYAiABKAgSEwoLcmVjb21tZW5kZWQYAyABKAgihgIKB1Byb2plY3QSKQoIcGxhdGZvcm0YASABKA4yFy5uZXRoZXJub2RlLnYxLlBsYXRmb3JtEgoKAmlkGAIgASgJEgwKBHNsdWcYAyABKAkSDQoFdGl0bGUYBCABKAkSDwoHc3VtbWFyeRgFIAEoCRIOCgZhdXRob3IYBiABKAkSEAoIaWNvbl91cmwYByABKAkSEQoJZG93bmxvYWRzGAggASgEEg8KB2xvYWRlcnMYCSADKAkSFQoNZ2FtZV92ZXJzaW9ucxgKIAMoCRIQCghwYWdlX3VybBgLIAEoCRITCgtzZXJ2ZXJfc2lkZRgMIAEoCRISCgp1cGRhdGVkX21zGA0gASgDIt4BCg5Qcm9qZWN0VmVyc2lvbhIKCgJpZBgBIAEoCRISCgpwcm9qZWN0X2lkGAIgASgJEgwKBG5hbWUYAyABKAkSFgoOdmVyc2lvbl9udW1iZXIYBCABKAkSFQoNZ2FtZV92ZXJzaW9ucxgFIAMoCRIPCgdsb2FkZXJzGAYgAygJEg8KB2NoYW5uZWwYByABKAkSFAoMcHVibGlzaGVkX21zGAggASgDEhAKCGZpbGVuYW1lGAkgASgJEgwKBHNpemUYCiABKAQSFwoPbWFudWFsX2Rvd25sb2FkGAsgASgIIsMBCgdNb2RwYWNrEikKCHBsYXRmb3JtGAEgASgOMhcubmV0aGVybm9kZS52MS5QbGF0Zm9ybRISCgpwcm9qZWN0X2lkGAIgASgJEgwKBHNsdWcYAyABKAkSDQoFdGl0bGUYBCABKAkSEgoKdmVyc2lvbl9pZBgFIAEoCRIUCgx2ZXJzaW9uX25hbWUYBiABKAkSDgoGbG9hZGVyGAcgASgJEhAKCGljb25fdXJsGAggASgJEhAKCHBhZ2VfdXJsGAkgASgJIl8KDU1vZHBhY2tTb3VyY2USKQoIcGxhdGZvcm0YASABKA4yFy5uZXRoZXJub2RlLnYxLlBsYXRmb3JtEg8KB3Byb2plY3QYAiABKAkSEgoKdmVyc2lvbl9pZBgDIAEoCSJCChVMaXN0TWNWZXJzaW9uc1JlcXVlc3QSDgoGbG9hZGVyGAEgASgJEhkKEWluY2x1ZGVfc25hcHNob3RzGAIgASgIIkQKFkxpc3RNY1ZlcnNpb25zUmVzcG9uc2USKgoIdmVyc2lvbnMYASADKAsyGC5uZXRoZXJub2RlLnYxLk1jVmVyc2lvbiI/ChlMaXN0TG9hZGVyVmVyc2lvbnNSZXF1ZXN0Eg4KBmxvYWRlchgBIAEoCRISCgptY192ZXJzaW9uGAIgASgJIkwKGkxpc3RMb2FkZXJWZXJzaW9uc1Jlc3BvbnNlEi4KCHZlcnNpb25zGAEgAygLMhwubmV0aGVybm9kZS52MS5Mb2FkZXJWZXJzaW9uIr4BChVTZWFyY2hQcm9qZWN0c1JlcXVlc3QSKQoIcGxhdGZvcm0YASABKA4yFy5uZXRoZXJub2RlLnYxLlBsYXRmb3JtEigKBGtpbmQYAiABKA4yGi5uZXRoZXJub2RlLnYxLlByb2plY3RLaW5kEg0KBXF1ZXJ5GAMgASgJEhIKCm1jX3ZlcnNpb24YBCABKAkSDgoGbG9hZGVyGAUgASgJEg4KBm9mZnNldBgGIAEoDRINCgVsaW1pdBgHIAEoDSJRChZTZWFyY2hQcm9qZWN0c1Jlc3BvbnNlEigKCHByb2plY3RzGAEgAygLMhYubmV0aGVybm9kZS52MS5Qcm9qZWN0Eg0KBXRvdGFsGAIgASgEIn8KGkxpc3RQcm9qZWN0VmVyc2lvbnNSZXF1ZXN0EikKCHBsYXRmb3JtGAEgASgOMhcubmV0aGVybm9kZS52MS5QbGF0Zm9ybRISCgpwcm9qZWN0X2lkGAIgASgJEhIKCm1jX3ZlcnNpb24YAyABKAkSDgoGbG9hZGVyGAQgASgJIk4KG0xpc3RQcm9qZWN0VmVyc2lvbnNSZXNwb25zZRIvCgh2ZXJzaW9ucxgBIAMoCzIdLm5ldGhlcm5vZGUudjEuUHJvamVjdFZlcnNpb24iHAoaR2V0Q3Vyc2VGb3JnZVN0YXR1c1JlcXVlc3QiMQobR2V0Q3Vyc2VGb3JnZVN0YXR1c1Jlc3BvbnNlEhIKCmNvbmZpZ3VyZWQYASABKAgiJgoXU2V0Q3Vyc2VGb3JnZUtleVJlcXVlc3QSCwoDa2V5GAEgASgJIhoKGFNldEN1cnNlRm9yZ2VLZXlSZXNwb25zZSpUCghQbGF0Zm9ybRIYChRQTEFURk9STV9VTlNQRUNJRklFRBAAEhUKEVBMQVRGT1JNX01PRFJJTlRIEAESFwoTUExBVEZPUk1fQ1VSU0VGT1JHRRACKlsKC1Byb2plY3RLaW5kEhwKGFBST0pFQ1RfS0lORF9VTlNQRUNJRklFRBAAEhgKFFBST0pFQ1RfS0lORF9NT0RQQUNLEAESFAoQUFJPSkVDVF9LSU5EX01PRBACMpMFCg5DYXRhbG9nU2VydmljZRJiCg5MaXN0TWNWZXJzaW9ucxIkLm5ldGhlcm5vZGUudjEuTGlzdE1jVmVyc2lvbnNSZXF1ZXN0GiUubmV0aGVybm9kZS52MS5MaXN0TWNWZXJzaW9uc1Jlc3BvbnNlIgOQAgESbgoSTGlzdExvYWRlclZlcnNpb25zEigubmV0aGVybm9kZS52MS5MaXN0TG9hZGVyVmVyc2lvbnNSZXF1ZXN0GikubmV0aGVybm9kZS52MS5MaXN0TG9hZGVyVmVyc2lvbnNSZXNwb25zZSIDkAIBEmIKDlNlYXJjaFByb2plY3RzEiQubmV0aGVybm9kZS52MS5TZWFyY2hQcm9qZWN0c1JlcXVlc3QaJS5uZXRoZXJub2RlLnYxLlNlYXJjaFByb2plY3RzUmVzcG9uc2UiA5ACARJxChNMaXN0UHJvamVjdFZlcnNpb25zEikubmV0aGVybm9kZS52MS5MaXN0UHJvamVjdFZlcnNpb25zUmVxdWVzdBoqLm5ldGhlcm5vZGUudjEuTGlzdFByb2plY3RWZXJzaW9uc1Jlc3BvbnNlIgOQAgEScQoTR2V0Q3Vyc2VGb3JnZVN0YXR1cxIpLm5ldGhlcm5vZGUudjEuR2V0Q3Vyc2VGb3JnZVN0YXR1c1JlcXVlc3QaKi5uZXRoZXJub2RlLnYxLkdldEN1cnNlRm9yZ2VTdGF0dXNSZXNwb25zZSIDkAIBEmMKEFNldEN1cnNlRm9yZ2VLZXkSJi5uZXRoZXJub2RlLnYxLlNldEN1cnNlRm9yZ2VLZXlSZXF1ZXN0GicubmV0aGVybm9kZS52MS5TZXRDdXJzZUZvcmdlS2V5UmVzcG9uc2ViBnByb3RvMw");
+  fileDesc("ChtuZXRoZXJub2RlL3YxL2NhdGFsb2cucHJvdG8SDW5ldGhlcm5vZGUudjEiPgoJTWNWZXJzaW9uEgoKAmlkGAEgASgJEhAKCHNuYXBzaG90GAIgASgIEhMKC3JlbGVhc2VkX21zGAMgASgDIkUKDUxvYWRlclZlcnNpb24SDwoHdmVyc2lvbhgBIAEoCRIOCgZzdGFibGUYAiABKAgSEwoLcmVjb21tZW5kZWQYAyABKAgihgIKB1Byb2plY3QSKQoIcGxhdGZvcm0YASABKA4yFy5uZXRoZXJub2RlLnYxLlBsYXRmb3JtEgoKAmlkGAIgASgJEgwKBHNsdWcYAyABKAkSDQoFdGl0bGUYBCABKAkSDwoHc3VtbWFyeRgFIAEoCRIOCgZhdXRob3IYBiABKAkSEAoIaWNvbl91cmwYByABKAkSEQoJZG93bmxvYWRzGAggASgEEg8KB2xvYWRlcnMYCSADKAkSFQoNZ2FtZV92ZXJzaW9ucxgKIAMoCRIQCghwYWdlX3VybBgLIAEoCRITCgtzZXJ2ZXJfc2lkZRgMIAEoCRISCgp1cGRhdGVkX21zGA0gASgDIt4BCg5Qcm9qZWN0VmVyc2lvbhIKCgJpZBgBIAEoCRISCgpwcm9qZWN0X2lkGAIgASgJEgwKBG5hbWUYAyABKAkSFgoOdmVyc2lvbl9udW1iZXIYBCABKAkSFQoNZ2FtZV92ZXJzaW9ucxgFIAMoCRIPCgdsb2FkZXJzGAYgAygJEg8KB2NoYW5uZWwYByABKAkSFAoMcHVibGlzaGVkX21zGAggASgDEhAKCGZpbGVuYW1lGAkgASgJEgwKBHNpemUYCiABKAQSFwoPbWFudWFsX2Rvd25sb2FkGAsgASgIIsMBCgdNb2RwYWNrEikKCHBsYXRmb3JtGAEgASgOMhcubmV0aGVybm9kZS52MS5QbGF0Zm9ybRISCgpwcm9qZWN0X2lkGAIgASgJEgwKBHNsdWcYAyABKAkSDQoFdGl0bGUYBCABKAkSEgoKdmVyc2lvbl9pZBgFIAEoCRIUCgx2ZXJzaW9uX25hbWUYBiABKAkSDgoGbG9hZGVyGAcgASgJEhAKCGljb25fdXJsGAggASgJEhAKCHBhZ2VfdXJsGAkgASgJIl8KDU1vZHBhY2tTb3VyY2USKQoIcGxhdGZvcm0YASABKA4yFy5uZXRoZXJub2RlLnYxLlBsYXRmb3JtEg8KB3Byb2plY3QYAiABKAkSEgoKdmVyc2lvbl9pZBgDIAEoCSJCChVMaXN0TWNWZXJzaW9uc1JlcXVlc3QSDgoGbG9hZGVyGAEgASgJEhkKEWluY2x1ZGVfc25hcHNob3RzGAIgASgIIkQKFkxpc3RNY1ZlcnNpb25zUmVzcG9uc2USKgoIdmVyc2lvbnMYASADKAsyGC5uZXRoZXJub2RlLnYxLk1jVmVyc2lvbiI/ChlMaXN0TG9hZGVyVmVyc2lvbnNSZXF1ZXN0Eg4KBmxvYWRlchgBIAEoCRISCgptY192ZXJzaW9uGAIgASgJIkwKGkxpc3RMb2FkZXJWZXJzaW9uc1Jlc3BvbnNlEi4KCHZlcnNpb25zGAEgAygLMhwubmV0aGVybm9kZS52MS5Mb2FkZXJWZXJzaW9uIr4BChVTZWFyY2hQcm9qZWN0c1JlcXVlc3QSKQoIcGxhdGZvcm0YASABKA4yFy5uZXRoZXJub2RlLnYxLlBsYXRmb3JtEigKBGtpbmQYAiABKA4yGi5uZXRoZXJub2RlLnYxLlByb2plY3RLaW5kEg0KBXF1ZXJ5GAMgASgJEhIKCm1jX3ZlcnNpb24YBCABKAkSDgoGbG9hZGVyGAUgASgJEg4KBm9mZnNldBgGIAEoDRINCgVsaW1pdBgHIAEoDSJRChZTZWFyY2hQcm9qZWN0c1Jlc3BvbnNlEigKCHByb2plY3RzGAEgAygLMhYubmV0aGVybm9kZS52MS5Qcm9qZWN0Eg0KBXRvdGFsGAIgASgEIn8KGkxpc3RQcm9qZWN0VmVyc2lvbnNSZXF1ZXN0EikKCHBsYXRmb3JtGAEgASgOMhcubmV0aGVybm9kZS52MS5QbGF0Zm9ybRISCgpwcm9qZWN0X2lkGAIgASgJEhIKCm1jX3ZlcnNpb24YAyABKAkSDgoGbG9hZGVyGAQgASgJIk4KG0xpc3RQcm9qZWN0VmVyc2lvbnNSZXNwb25zZRIvCgh2ZXJzaW9ucxgBIAMoCzIdLm5ldGhlcm5vZGUudjEuUHJvamVjdFZlcnNpb24iHAoaR2V0Q3Vyc2VGb3JnZVN0YXR1c1JlcXVlc3QiMQobR2V0Q3Vyc2VGb3JnZVN0YXR1c1Jlc3BvbnNlEhIKCmNvbmZpZ3VyZWQYASABKAgiJgoXU2V0Q3Vyc2VGb3JnZUtleVJlcXVlc3QSCwoDa2V5GAEgASgJIhoKGFNldEN1cnNlRm9yZ2VLZXlSZXNwb25zZSIWChRHZXRDYWNoZVVzYWdlUmVxdWVzdCI4CgpDYWNoZVVzYWdlEgwKBGtpbmQYASABKAkSDQoFYnl0ZXMYAiABKAQSDQoFZmlsZXMYAyABKAQiQQoVR2V0Q2FjaGVVc2FnZVJlc3BvbnNlEigKBXBhcnRzGAEgAygLMhkubmV0aGVybm9kZS52MS5DYWNoZVVzYWdlIhMKEUNsZWFyQ2FjaGVSZXF1ZXN0IikKEkNsZWFyQ2FjaGVSZXNwb25zZRITCgtmcmVlZF9ieXRlcxgBIAEoBCpUCghQbGF0Zm9ybRIYChRQTEFURk9STV9VTlNQRUNJRklFRBAAEhUKEVBMQVRGT1JNX01PRFJJTlRIEAESFwoTUExBVEZPUk1fQ1VSU0VGT1JHRRACKlsKC1Byb2plY3RLaW5kEhwKGFBST0pFQ1RfS0lORF9VTlNQRUNJRklFRBAAEhgKFFBST0pFQ1RfS0lORF9NT0RQQUNLEAESFAoQUFJPSkVDVF9LSU5EX01PRBACMscGCg5DYXRhbG9nU2VydmljZRJiCg5MaXN0TWNWZXJzaW9ucxIkLm5ldGhlcm5vZGUudjEuTGlzdE1jVmVyc2lvbnNSZXF1ZXN0GiUubmV0aGVybm9kZS52MS5MaXN0TWNWZXJzaW9uc1Jlc3BvbnNlIgOQAgESbgoSTGlzdExvYWRlclZlcnNpb25zEigubmV0aGVybm9kZS52MS5MaXN0TG9hZGVyVmVyc2lvbnNSZXF1ZXN0GikubmV0aGVybm9kZS52MS5MaXN0TG9hZGVyVmVyc2lvbnNSZXNwb25zZSIDkAIBEmIKDlNlYXJjaFByb2plY3RzEiQubmV0aGVybm9kZS52MS5TZWFyY2hQcm9qZWN0c1JlcXVlc3QaJS5uZXRoZXJub2RlLnYxLlNlYXJjaFByb2plY3RzUmVzcG9uc2UiA5ACARJxChNMaXN0UHJvamVjdFZlcnNpb25zEikubmV0aGVybm9kZS52MS5MaXN0UHJvamVjdFZlcnNpb25zUmVxdWVzdBoqLm5ldGhlcm5vZGUudjEuTGlzdFByb2plY3RWZXJzaW9uc1Jlc3BvbnNlIgOQAgEScQoTR2V0Q3Vyc2VGb3JnZVN0YXR1cxIpLm5ldGhlcm5vZGUudjEuR2V0Q3Vyc2VGb3JnZVN0YXR1c1JlcXVlc3QaKi5uZXRoZXJub2RlLnYxLkdldEN1cnNlRm9yZ2VTdGF0dXNSZXNwb25zZSIDkAIBEmMKEFNldEN1cnNlRm9yZ2VLZXkSJi5uZXRoZXJub2RlLnYxLlNldEN1cnNlRm9yZ2VLZXlSZXF1ZXN0GicubmV0aGVybm9kZS52MS5TZXRDdXJzZUZvcmdlS2V5UmVzcG9uc2USXwoNR2V0Q2FjaGVVc2FnZRIjLm5ldGhlcm5vZGUudjEuR2V0Q2FjaGVVc2FnZVJlcXVlc3QaJC5uZXRoZXJub2RlLnYxLkdldENhY2hlVXNhZ2VSZXNwb25zZSIDkAIBElEKCkNsZWFyQ2FjaGUSIC5uZXRoZXJub2RlLnYxLkNsZWFyQ2FjaGVSZXF1ZXN0GiEubmV0aGVybm9kZS52MS5DbGVhckNhY2hlUmVzcG9uc2ViBnByb3RvMw");
 
 /**
  * @generated from message nethernode.v1.McVersion
@@ -596,6 +596,98 @@ export const SetCurseForgeKeyResponseSchema: GenMessage<SetCurseForgeKeyResponse
   messageDesc(file_nethernode_v1_catalog, 17);
 
 /**
+ * @generated from message nethernode.v1.GetCacheUsageRequest
+ */
+export type GetCacheUsageRequest = Message<"nethernode.v1.GetCacheUsageRequest"> & {
+};
+
+/**
+ * Describes the message nethernode.v1.GetCacheUsageRequest.
+ * Use `create(GetCacheUsageRequestSchema)` to create a new message.
+ */
+export const GetCacheUsageRequestSchema: GenMessage<GetCacheUsageRequest> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_catalog, 18);
+
+/**
+ * One part of the download cache.
+ *
+ * @generated from message nethernode.v1.CacheUsage
+ */
+export type CacheUsage = Message<"nethernode.v1.CacheUsage"> & {
+  /**
+   * "minecraft" (game files), "mods" (mod file copies), "icons" (project
+   * icons), or "heads" (player faces).
+   *
+   * @generated from field: string kind = 1;
+   */
+  kind: string;
+
+  /**
+   * @generated from field: uint64 bytes = 2;
+   */
+  bytes: bigint;
+
+  /**
+   * @generated from field: uint64 files = 3;
+   */
+  files: bigint;
+};
+
+/**
+ * Describes the message nethernode.v1.CacheUsage.
+ * Use `create(CacheUsageSchema)` to create a new message.
+ */
+export const CacheUsageSchema: GenMessage<CacheUsage> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_catalog, 19);
+
+/**
+ * @generated from message nethernode.v1.GetCacheUsageResponse
+ */
+export type GetCacheUsageResponse = Message<"nethernode.v1.GetCacheUsageResponse"> & {
+  /**
+   * @generated from field: repeated nethernode.v1.CacheUsage parts = 1;
+   */
+  parts: CacheUsage[];
+};
+
+/**
+ * Describes the message nethernode.v1.GetCacheUsageResponse.
+ * Use `create(GetCacheUsageResponseSchema)` to create a new message.
+ */
+export const GetCacheUsageResponseSchema: GenMessage<GetCacheUsageResponse> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_catalog, 20);
+
+/**
+ * @generated from message nethernode.v1.ClearCacheRequest
+ */
+export type ClearCacheRequest = Message<"nethernode.v1.ClearCacheRequest"> & {
+};
+
+/**
+ * Describes the message nethernode.v1.ClearCacheRequest.
+ * Use `create(ClearCacheRequestSchema)` to create a new message.
+ */
+export const ClearCacheRequestSchema: GenMessage<ClearCacheRequest> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_catalog, 21);
+
+/**
+ * @generated from message nethernode.v1.ClearCacheResponse
+ */
+export type ClearCacheResponse = Message<"nethernode.v1.ClearCacheResponse"> & {
+  /**
+   * @generated from field: uint64 freed_bytes = 1;
+   */
+  freedBytes: bigint;
+};
+
+/**
+ * Describes the message nethernode.v1.ClearCacheResponse.
+ * Use `create(ClearCacheResponseSchema)` to create a new message.
+ */
+export const ClearCacheResponseSchema: GenMessage<ClearCacheResponse> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_catalog, 22);
+
+/**
  * @generated from enum nethernode.v1.Platform
  */
 export enum Platform {
@@ -715,6 +807,29 @@ export const CatalogService: GenService<{
     methodKind: "unary";
     input: typeof SetCurseForgeKeyRequestSchema;
     output: typeof SetCurseForgeKeyResponseSchema;
+  },
+  /**
+   * Space the panel's downloads take: Minecraft game files and copies of
+   * mod files (to draw items), project icons, and player faces.
+   * Administrators only.
+   *
+   * @generated from rpc nethernode.v1.CatalogService.GetCacheUsage
+   */
+  getCacheUsage: {
+    methodKind: "unary";
+    input: typeof GetCacheUsageRequestSchema;
+    output: typeof GetCacheUsageResponseSchema;
+  },
+  /**
+   * Deletes the panel's downloads; they're fetched again when needed.
+   * Administrators only.
+   *
+   * @generated from rpc nethernode.v1.CatalogService.ClearCache
+   */
+  clearCache: {
+    methodKind: "unary";
+    input: typeof ClearCacheRequestSchema;
+    output: typeof ClearCacheResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_nethernode_v1_catalog, 0);

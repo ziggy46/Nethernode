@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Bell, Box, ChartNoAxesColumn, Globe, LogOut, Palette, UserRound } from "lucide-react";
+import { Bell, Box, ChartNoAxesColumn, Globe, HardDrive, LogOut, Palette, UserRound } from "lucide-react";
 import type * as React from "react";
 import { lazy, Suspense } from "react";
 
@@ -24,6 +24,7 @@ const DiscordPanel = lazy(() => import("@/features/notifications/discord-panel")
 const UpdateCheckPanel = lazy(() => import("@/features/notifications/update-check-panel"));
 const DomainsPanel = lazy(() => import("@/features/domains/domains-panel"));
 const InstallCountPanel = lazy(() => import("@/features/install-count/install-count-panel"));
+const CachePanel = lazy(() => import("@/features/storage/cache-panel"));
 
 const CurseForgeKey = lazy(() =>
   import("@/features/catalog/curseforge-key").then((m) => ({ default: m.CurseForgeKey })),
@@ -37,6 +38,7 @@ const SECTIONS: { id: string; label: string; icon: React.ReactNode; access: Acce
   { id: "domains", label: "Domains", icon: <Globe />, access: "admins" },
   { id: "notifications", label: "Notifications", icon: <Bell />, access: "admins" },
   { id: "mods", label: "Mods and modpacks", icon: <Box />, access: "admins" },
+  { id: "storage", label: "Storage", icon: <HardDrive />, access: "admins" },
   { id: "stats", label: "Anonymous stats", icon: <ChartNoAxesColumn />, access: "owners" },
 ];
 
@@ -135,6 +137,12 @@ function Section({ id }: { id: string }) {
             <CurseForgeKey />
           </Suspense>
         </Panel>
+      );
+    case "storage":
+      return (
+        <Suspense fallback={<Loading height="h-48" />}>
+          <CachePanel />
+        </Suspense>
       );
     case "stats":
       return (

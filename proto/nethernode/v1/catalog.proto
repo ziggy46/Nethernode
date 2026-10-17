@@ -29,6 +29,15 @@ service CatalogService {
   // Sets the CurseForge API key after checking it with CurseForge, or
   // removes it when empty. Administrators only.
   rpc SetCurseForgeKey(SetCurseForgeKeyRequest) returns (SetCurseForgeKeyResponse);
+  // Space the panel's downloads take: Minecraft game files and copies of
+  // mod files (to draw items), project icons, and player faces.
+  // Administrators only.
+  rpc GetCacheUsage(GetCacheUsageRequest) returns (GetCacheUsageResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Deletes the panel's downloads; they're fetched again when needed.
+  // Administrators only.
+  rpc ClearCache(ClearCacheRequest) returns (ClearCacheResponse);
 }
 
 enum Platform {
@@ -182,3 +191,24 @@ message SetCurseForgeKeyRequest {
 }
 
 message SetCurseForgeKeyResponse {}
+
+message GetCacheUsageRequest {}
+
+// One part of the download cache.
+message CacheUsage {
+  // "minecraft" (game files), "mods" (mod file copies), "icons" (project
+  // icons), or "heads" (player faces).
+  string kind = 1;
+  uint64 bytes = 2;
+  uint64 files = 3;
+}
+
+message GetCacheUsageResponse {
+  repeated CacheUsage parts = 1;
+}
+
+message ClearCacheRequest {}
+
+message ClearCacheResponse {
+  uint64 freed_bytes = 1;
+}
