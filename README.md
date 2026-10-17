@@ -26,11 +26,16 @@ web panel:
   them in their server list ("Sleeping, join to wake"), and joining starts them.
 - **Any server, any pack.** Vanilla, Paper, Fabric, Forge, NeoForge and Quilt,
   or install a Modrinth or CurseForge modpack in a few clicks.
-- **Everything in the browser.** Live console, file manager and editor,
-  uploads of any size that resume, mod management, and `server.properties` as
-  a form.
+- **Everything in the browser.** A live console that completes commands and
+  player names and searches the logs of earlier runs, a file manager and
+  editor, uploads of any size that resume, mod management, and
+  `server.properties` as a form.
 - **Players.** Operators, allowlists, bans per server or everywhere (enforced
-  by the proxy before a login even reaches a server), inventories and stats.
+  by the proxy before a login even reaches a server), stats, and live
+  inventories drawn with the game's own item icons, modded items included.
+- **See how it's running.** CPU, memory, tick health (TPS), players and disk,
+  live and over the last day, week or month. Servers Minecraft has paused
+  for want of players say so.
 - **Backups you don't think about.** Live backups while people play, safe
   restores that keep a copy of what was there, and schedules for backups,
   restarts with in-game warnings, commands and announcements.
@@ -38,16 +43,24 @@ web panel:
   from the same panel. They connect out to the panel, so they need no open
   ports, and players still join through the one address. Stopped servers move
   between machines in a click.
+- **Copies and templates.** Copy a server to any machine, with or without its
+  world, or save its setup as a template to start new servers from.
 - **Room for friends.** Roles from viewer to owner, one-time passwords,
   two-factor sign-in, an audit log, and Discord notifications.
+- **Updates in a click.** The panel tells you when a new version is out and
+  updates itself from Settings; the other machines follow on their own.
 - **Light.** A single static binary with the panel built in; it idles at a few
   tens of megabytes of memory.
 
 ## A closer look
 
-| Server console | Backups and schedules | Proxy and routes |
+| Server console | Performance | Live inventories |
 | :---: | :---: | :---: |
-| <img src="assets/screenshots/console.png" alt="A server's live console with controls and resource use"> | <img src="assets/screenshots/backups.png" alt="Scheduled backups, restarts and messages, and the snapshot list"> | <img src="assets/screenshots/proxy.png" alt="Hostname routes, live players per route, listeners and connections"> |
+| <img src="assets/screenshots/console.png" alt="A server's live console suggesting the online players to complete a command"> | <img src="assets/screenshots/performance.png" alt="CPU, memory, tick health, players, disk and storage, with ranges from an hour to 30 days"> | <img src="assets/screenshots/inventory.png" alt="A player's live inventory, armor and ender chest drawn with Minecraft's item icons"> |
+
+| Backups and schedules | Proxy and routes | Modpacks |
+| :---: | :---: | :---: |
+| <img src="assets/screenshots/backups.png" alt="Scheduled backups, restarts and messages, and the snapshot list"> | <img src="assets/screenshots/proxy.png" alt="Hostname routes, live players per route, listeners and connections"> | <img src="assets/screenshots/modpacks.png" alt="Modrinth modpacks to search and turn into a server in one click"> |
 
 ## How it works
 
@@ -94,7 +107,7 @@ server. To let friends join from outside your network, point a hostname at the
 machine (or forward port 25565 on your router) and add a route on the
 **Proxy & routes** page; it lists the DNS records each route needs.
 
-Images are tagged `latest` and by version (`0.2.0`, `0.2`); `edge` follows
+Images are tagged `latest` and by version (`0.2.6`, `0.2`); `edge` follows
 the main branch. NetherNode can also run as a plain binary from the releases
 page.
 
@@ -106,8 +119,9 @@ page.
 
 ## Documentation
 
-The full guides (installing, DNS and ports, the proxy, Cloudflare Tunnel,
-backups, more machines, users, configuration, the API and the security model) live in the
+The full guides (installing, running servers, DNS and ports, the proxy,
+Cloudflare Tunnel, backups, more machines, users, notifications and updates,
+configuration, the API and the security model) live in the
 **NetherNode-docs** repository, with a hosted site coming.
 
 ## The install count
