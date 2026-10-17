@@ -61,7 +61,32 @@ fn tint_for(texture: &str) -> Option<String> {
     Some(colour.to_owned())
 }
 
-type Jar = Arc<Mutex<zip::ZipArchive<std::fs::File>>>;
+/// An open game client or mod file.
+pub type Jar = Arc<Mutex<zip::ZipArchive<std::fs::File>>>;
+
+/// Opens a jar (a mod file, say) to draw items from.
+pub fn open_jar(path: &Path) -> Result<Jar, Error> {
+    let file = std::fs::File::open(path)
+        .map_err(|e| Error::Upstream(format!("couldn't open {}: {e}", path.display())))?;
+    let zip = zip::ZipArchive::new(file)
+        .map_err(|e| Error::Upstream(format!("{} isn't a jar: {e}", path.display())))?;
+    Ok(Arc::new(Mutex::new(zip)))
+}
+
+/// A texture's PNG from a mod file: `path` like `item/wrench` in
+/// `namespace`.
+pub async fn mod_texture(jar: Jar, namespace: &str, path: &str) -> Result<Vec<u8>, Error> {
+    if !valid_namespace(namespace) || !valid_path(path) {
+        return Err(Error::NotFound("no such texture".into()));
+    }
+    let entry = format!("assets/{namespace}/textures/{path}.png");
+    tokio::task::spawn_blocking(move || {
+        let mut zip = jar.lock().unwrap_or_else(|e| e.into_inner());
+        read(&mut zip, &entry, 1024 * 1024).ok_or_else(|| Error::NotFound("no such texture".into()))
+    })
+    .await
+    .map_err(|e| Error::Upstream(e.to_string()))?
+}
 
 /// Minecraft clients downloaded for their textures, by version.
 pub struct ItemTextures {
@@ -80,22 +105,30 @@ impl ItemTextures {
         }
     }
 
-    /// How to draw each of `ids` (`minecraft:diamond_sword`) in `version`,
-    /// and the concrete version the textures come from (`LATEST` resolves).
-    /// Items it can't work out (other namespaces, unusual models) are left
-    /// out.
+    /// How to draw each of `ids` (`minecraft:diamond_sword`,
+    /// `create:wrench`) in `version`, with `mods` for items from mods, and
+    /// the concrete version the textures come from (`LATEST` resolves).
+    /// Items it can't work out are left out.
     pub async fn icons(
         &self,
         catalog: &Catalog,
         version: &str,
         ids: Vec<String>,
+        mods: Vec<Jar>,
     ) -> Result<(String, HashMap<String, Icon>), Error> {
         let version = catalog.release_id(version).await?;
         let jar = self.jar(catalog, &version).await?;
         let icons = tokio::task::spawn_blocking(move || {
-            let mut zip = jar.lock().unwrap_or_else(|e| e.into_inner());
+            let mut vanilla = jar.lock().unwrap_or_else(|e| e.into_inner());
+            let mut assets = Assets {
+                vanilla: &mut vanilla,
+                mods: mods
+                    .iter()
+                    .map(|m| m.lock().unwrap_or_else(|e| e.into_inner()))
+                    .collect(),
+            };
             ids.into_iter()
-                .filter_map(|id| resolve(&mut zip, &id).map(|icon| (id, icon)))
+                .filter_map(|id| resolve(&mut assets, &id).map(|icon| (id, icon)))
                 .collect()
         })
         .await
@@ -310,46 +343,100 @@ fn valid_path(p: &str) -> bool {
         })
 }
 
-fn read(zip: &mut zip::ZipArchive<std::fs::File>, name: &str, max: u64) -> Option<Vec<u8>> {
+type Zip = zip::ZipArchive<std::fs::File>;
+
+fn read(zip: &mut Zip, name: &str, max: u64) -> Option<Vec<u8>> {
     let entry = zip.by_name(name).ok()?;
     let mut out = Vec::new();
     entry.take(max).read_to_end(&mut out).ok()?;
     Some(out)
 }
 
-fn read_json(zip: &mut zip::ZipArchive<std::fs::File>, name: &str) -> Option<Value> {
-    serde_json::from_slice(&read(zip, name, 256 * 1024)?).ok()
+/// Where an item's files come from: the game, and mods (which also point
+/// at the game's models, like `minecraft:block/cube_all`).
+struct Assets<'a> {
+    vanilla: &'a mut Zip,
+    mods: Vec<std::sync::MutexGuard<'a, Zip>>,
 }
 
-fn exists(zip: &mut zip::ZipArchive<std::fs::File>, name: &str) -> bool {
-    zip.by_name(name).is_ok()
+impl Assets<'_> {
+    /// `assets/<namespace>/<rest>` from whichever file has it.
+    fn read(&mut self, namespace: &str, rest: &str, max: u64) -> Option<Vec<u8>> {
+        let name = format!("assets/{namespace}/{rest}");
+        if namespace == "minecraft"
+            && let Some(found) = read(self.vanilla, &name, max)
+        {
+            return Some(found);
+        }
+        self.mods
+            .iter_mut()
+            .find_map(|zip| read(zip, &name, max))
+            .or_else(|| read(self.vanilla, &name, max))
+    }
+
+    fn json(&mut self, namespace: &str, rest: &str) -> Option<Value> {
+        serde_json::from_slice(&self.read(namespace, rest, 256 * 1024)?).ok()
+    }
+
+    fn exists(&mut self, namespace: &str, rest: &str) -> bool {
+        let name = format!("assets/{namespace}/{rest}");
+        self.vanilla.by_name(&name).is_ok()
+            || self.mods.iter_mut().any(|zip| zip.by_name(&name).is_ok())
+    }
 }
 
-/// `minecraft:block/stone` → `block/stone`.
-fn bare(reference: &str) -> &str {
-    reference.strip_prefix("minecraft:").unwrap_or(reference)
+/// A resource location: `create:item/wrench` → (`create`, `item/wrench`);
+/// no namespace means `minecraft`.
+fn location(reference: &str) -> (String, String) {
+    match reference.split_once(':') {
+        Some((namespace, path)) => (namespace.to_owned(), path.to_owned()),
+        None => ("minecraft".to_owned(), reference.to_owned()),
+    }
 }
 
-fn resolve(zip: &mut zip::ZipArchive<std::fs::File>, id: &str) -> Option<Icon> {
-    let (namespace, name) = id.split_once(':').unwrap_or(("minecraft", id));
-    if namespace != "minecraft" || !valid_path(name) || name.contains('/') {
+fn valid_namespace(n: &str) -> bool {
+    !n.is_empty()
+        && n.len() <= 64
+        && n.bytes().all(|b| {
+            b.is_ascii_lowercase() || b.is_ascii_digit() || matches!(b, b'_' | b'-' | b'.')
+        })
+}
+
+/// How an [`Icon`] names a texture: the game's as `block/stone`, a mod's as
+/// `create:item/wrench`.
+fn texture_name(namespace: &str, path: &str) -> String {
+    if namespace == "minecraft" {
+        path.to_owned()
+    } else {
+        format!("{namespace}:{path}")
+    }
+}
+
+fn resolve(assets: &mut Assets<'_>, id: &str) -> Option<Icon> {
+    let (namespace, name) = location(id);
+    if !valid_namespace(&namespace) || !valid_path(&name) || name.contains('/') {
         return None;
     }
     let flat = format!("item/{name}");
-    if exists(zip, &format!("assets/minecraft/textures/{flat}.png")) {
+    if assets.exists(&namespace, &format!("textures/{flat}.png")) {
         return Some(Icon::Flat {
-            tint: tint_for(&flat),
-            texture: flat,
+            tint: (namespace == "minecraft")
+                .then(|| tint_for(&flat))
+                .flatten(),
+            texture: texture_name(&namespace, &flat),
         });
     }
     // 1.21.4 and later describe items in items/; before, models/item/.
-    let model = read_json(zip, &format!("assets/minecraft/items/{name}.json"))
+    let model = assets
+        .json(&namespace, &format!("items/{name}.json"))
         .and_then(|item| model_reference(&item))
         .or_else(|| {
             let path = format!("item/{name}");
-            exists(zip, &format!("assets/minecraft/models/{path}.json")).then_some(path)
+            assets
+                .exists(&namespace, &format!("models/{path}.json"))
+                .then(|| format!("{namespace}:{path}"))
         })?;
-    model_icon(zip, bare(&model))
+    model_icon(assets, &model)
 }
 
 /// The first plain model an item definition points to.
@@ -358,7 +445,7 @@ fn model_reference(definition: &Value) -> Option<String> {
         Value::Object(map) => {
             if let (Some(Value::String(kind)), Some(Value::String(model))) =
                 (map.get("type"), map.get("model"))
-                && bare(kind) == "model"
+                && location(kind).1 == "model"
             {
                 return Some(model.clone());
             }
@@ -369,20 +456,23 @@ fn model_reference(definition: &Value) -> Option<String> {
     }
 }
 
-fn model_icon(zip: &mut zip::ZipArchive<std::fs::File>, model: &str) -> Option<Icon> {
+fn model_icon(assets: &mut Assets<'_>, model: &str) -> Option<Icon> {
+    // Texture variables, each with the namespace of the model that set it.
     let mut textures: HashMap<String, String> = HashMap::new();
-    let mut current = Some(model.to_owned());
+    let mut current = Some(location(model));
     let mut generated = false;
     for _ in 0..12 {
-        let Some(path) = current.take() else { break };
+        let Some((namespace, path)) = current.take() else {
+            break;
+        };
         if path.ends_with("generated") || path.starts_with("builtin/") {
             generated = path.ends_with("generated");
             break;
         }
-        if !valid_path(&path) {
+        if !valid_namespace(&namespace) || !valid_path(&path) {
             break;
         }
-        let Some(json) = read_json(zip, &format!("assets/minecraft/models/{path}.json")) else {
+        let Some(json) = assets.json(&namespace, &format!("models/{path}.json")) else {
             break;
         };
         if let Some(Value::Object(own)) = json.get("textures") {
@@ -392,47 +482,49 @@ fn model_icon(zip: &mut zip::ZipArchive<std::fs::File>, model: &str) -> Option<I
                 }
             }
         }
-        current = json
-            .get("parent")
-            .and_then(Value::as_str)
-            .map(|p| bare(p).to_owned());
+        current = json.get("parent").and_then(Value::as_str).map(location);
     }
-    let lookup = |key: &str| -> Option<String> {
+    let lookup = |key: &str| -> Option<(String, String)> {
         let mut value = textures.get(key)?.clone();
         for _ in 0..8 {
             match value.strip_prefix('#') {
                 Some(next) => value = textures.get(next)?.clone(),
-                None => return Some(bare(&value).to_owned()),
+                None => return Some(location(&value)),
             }
         }
         None
     };
     let pick = |keys: &[&str]| keys.iter().find_map(|k| lookup(k));
-    let texture_ok = |zip: &mut zip::ZipArchive<std::fs::File>, t: &str| {
-        valid_path(t) && exists(zip, &format!("assets/minecraft/textures/{t}.png"))
+    let usable = |assets: &mut Assets<'_>, (namespace, path): &(String, String)| {
+        valid_namespace(namespace)
+            && valid_path(path)
+            && assets.exists(namespace, &format!("textures/{path}.png"))
+    };
+    let tint = |(namespace, path): &(String, String)| {
+        (namespace == "minecraft").then(|| tint_for(path)).flatten()
     };
     if generated || textures.contains_key("layer0") {
         let texture = lookup("layer0")?;
-        return texture_ok(zip, &texture).then(|| Icon::Flat {
-            tint: tint_for(&texture),
-            texture,
+        return usable(assets, &texture).then(|| Icon::Flat {
+            tint: tint(&texture),
+            texture: texture_name(&texture.0, &texture.1),
         });
     }
     let top = pick(&["top", "end", "up", "all", "texture", "particle"]);
     let side = pick(&["side", "front", "north", "all", "texture", "particle"]);
     match (top, side) {
-        (Some(top), Some(side)) if texture_ok(zip, &top) && texture_ok(zip, &side) => {
+        (Some(top), Some(side)) if usable(assets, &top) && usable(assets, &side) => {
             Some(Icon::Cube {
-                tint: tint_for(&top),
-                top,
-                side,
+                tint: tint(&top),
+                top: texture_name(&top.0, &top.1),
+                side: texture_name(&side.0, &side.1),
             })
         }
         _ => {
             let texture = lookup("particle")?;
-            texture_ok(zip, &texture).then(|| Icon::Flat {
-                tint: tint_for(&texture),
-                texture,
+            usable(assets, &texture).then(|| Icon::Flat {
+                tint: tint(&texture),
+                texture: texture_name(&texture.0, &texture.1),
             })
         }
     }
@@ -492,7 +584,11 @@ mod tests {
     #[test]
     fn items_resolve_to_flat_textures_or_cubes() {
         let dir = tempfile::tempdir().unwrap();
-        let mut zip = jar(dir.path());
+        let mut vanilla = jar(dir.path());
+        let mut zip = Assets {
+            vanilla: &mut vanilla,
+            mods: Vec::new(),
+        };
         assert_eq!(
             resolve(&mut zip, "minecraft:diamond_sword"),
             Some(Icon::Flat {
@@ -517,8 +613,57 @@ mod tests {
             })
         );
         assert_eq!(resolve(&mut zip, "minecraft:nothing_here"), None);
-        assert_eq!(resolve(&mut zip, "create:wrench"), None);
+        assert_eq!(
+            resolve(&mut zip, "create:wrench"),
+            None,
+            "no mod files given"
+        );
         assert_eq!(resolve(&mut zip, "minecraft:../secrets"), None);
+    }
+
+    #[test]
+    fn mod_items_use_the_mods_textures_and_the_games_models() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut vanilla = jar(dir.path());
+        let path = dir.path().join("create.jar");
+        let mut writer = zip::ZipWriter::new(std::fs::File::create(&path).unwrap());
+        let options = zip::write::SimpleFileOptions::default();
+        for (name, body) in [
+            ("assets/create/textures/item/wrench.png", &b"\x89PNG"[..]),
+            ("assets/create/textures/block/andesite_casing.png", b"\x89PNG"),
+            ("assets/create/models/item/andesite_casing.json", br#"{"parent":"create:block/andesite_casing"}"#),
+            (
+                "assets/create/models/block/andesite_casing.json",
+                br#"{"parent":"minecraft:block/cube_all","textures":{"all":"create:block/andesite_casing"}}"#,
+            ),
+        ] {
+            writer.start_file(name, options).unwrap();
+            writer.write_all(body).unwrap();
+        }
+        writer.finish().unwrap();
+        let jar = open_jar(&path).unwrap();
+        let guard = jar.lock().unwrap();
+        let mut assets = Assets {
+            vanilla: &mut vanilla,
+            mods: vec![guard],
+        };
+        assert_eq!(
+            resolve(&mut assets, "create:wrench"),
+            Some(Icon::Flat {
+                texture: "create:item/wrench".into(),
+                tint: None
+            })
+        );
+        assert_eq!(
+            resolve(&mut assets, "create:andesite_casing"),
+            Some(Icon::Cube {
+                top: "create:block/andesite_casing".into(),
+                side: "create:block/andesite_casing".into(),
+                tint: None
+            })
+        );
+        assert_eq!(resolve(&mut assets, "create:missing"), None);
+        assert_eq!(resolve(&mut assets, "Create:wrench"), None);
     }
 
     #[test]

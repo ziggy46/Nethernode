@@ -32,6 +32,8 @@ pub struct Content {
     pub(crate) icon_http: reqwest::Client,
     /// Minecraft clients, for item icons (`<data>/cache/minecraft`).
     pub(crate) item_textures: nn_catalog::items::ItemTextures,
+    /// Servers' mod files, for their items' icons (`<data>/cache/mods`).
+    pub(crate) mod_files: items::ModFiles,
 }
 
 impl Default for Content {
@@ -51,6 +53,7 @@ impl Default for Content {
             item_textures: nn_catalog::items::ItemTextures::new(
                 std::env::temp_dir().join("nethernode-minecraft"),
             ),
+            mod_files: items::ModFiles::default(),
         }
     }
 }
@@ -79,6 +82,13 @@ impl Content {
 
     pub(crate) fn icon_dir(&self) -> Option<PathBuf> {
         self.cache_dir.as_ref().map(|d| d.join("icons"))
+    }
+
+    /// The cache folder (a temporary one when there's no data folder).
+    pub(crate) fn cache_dir(&self) -> PathBuf {
+        self.cache_dir
+            .clone()
+            .unwrap_or_else(|| std::env::temp_dir().join("nethernode-cache"))
     }
 
     /// Where player heads are cached (`<data>/cache/heads`).

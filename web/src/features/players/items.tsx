@@ -27,6 +27,8 @@ export type ItemIcon =
 export interface ItemIcons {
   version: string;
   icons: Record<string, ItemIcon>;
+  /** The server, for textures from its mods. */
+  serverId: string;
 }
 
 /** Icons for the items in `ids`. The panel downloads the version's textures from Mojang the first time. */
@@ -36,7 +38,7 @@ export const itemIconsQuery = (serverId: string, ids: string[]) =>
     queryFn: async (): Promise<ItemIcons> => {
       const response = await fetch(`/api/servers/${serverId}/items?ids=${encodeURIComponent(ids.join(","))}`);
       if (!response.ok) throw new Error(`item icons: ${response.status}`);
-      return (await response.json()) as ItemIcons;
+      return { ...((await response.json()) as Omit<ItemIcons, "serverId">), serverId };
     },
     enabled: ids.length > 0,
     staleTime: Number.POSITIVE_INFINITY,
@@ -46,8 +48,14 @@ export const itemIconsQuery = (serverId: string, ids: string[]) =>
 /** Icons for the slots below; slots without one fall back to a symbol. */
 export const ItemIconsContext = createContext<ItemIcons | undefined>(undefined);
 
-const textureUrl = (version: string, path: string) =>
-  `/api/minecraft/${encodeURIComponent(version)}/textures/${path}.png`;
+/** The game's textures are `block/stone`; a mod's are `create:item/wrench`. */
+function textureUrl(icons: ItemIcons, texture: string): string {
+  const colon = texture.indexOf(":");
+  if (colon > 0) {
+    return `/api/servers/${icons.serverId}/mods/textures/${texture.slice(0, colon)}/${texture.slice(colon + 1)}.png`;
+  }
+  return `/api/minecraft/${encodeURIComponent(icons.version)}/textures/${texture}.png`;
+}
 
 /**
  * One texture face, cropped to its first 16×16 frame (animated textures are
@@ -79,7 +87,7 @@ function Face({
 }
 
 /** An item as the game draws it in inventories: flat, or a small isometric cube. */
-function GameIcon({ icon, version }: { icon: ItemIcon; version: string }) {
+function GameIcon({ icon, icons }: { icon: ItemIcon; icons: ItemIcons }) {
   const tintId = useId();
   // Grass and leaves are grey until the game colours them.
   const tint = icon.tint && (
@@ -96,12 +104,12 @@ function GameIcon({ icon, version }: { icon: ItemIcon; version: string }) {
     return (
       <svg viewBox="0 0 16 16" className="size-[78%]" aria-hidden>
         {tint}
-        <Face href={textureUrl(version, icon.texture)} transform="" filter={filter} />
+        <Face href={textureUrl(icons, icon.texture)} transform="" filter={filter} />
       </svg>
     );
   }
-  const top = textureUrl(version, icon.top);
-  const side = textureUrl(version, icon.side);
+  const top = textureUrl(icons, icon.top);
+  const side = textureUrl(icons, icon.side);
   // Leaves are one texture all round, so every face is coloured; a grass
   // block's sides are already green.
   const sideFilter = icon.top === icon.side ? filter : undefined;
@@ -170,7 +178,7 @@ export function Slot({ item, label, selected }: { item?: ItemStack; label?: stri
       )}
     >
       {game && icons ? (
-        <GameIcon icon={game} version={icons.version} />
+        <GameIcon icon={game} icons={icons} />
       ) : Icon ? (
         <Icon className="size-[55%] text-text-secondary" aria-hidden />
       ) : (

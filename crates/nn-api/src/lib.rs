@@ -173,6 +173,10 @@ pub fn router(state: AppState) -> Router {
         .route("/api/servers/{id}/mods/icon", get(content::icons::mod_icon))
         .route("/api/servers/{id}/items", get(content::items::icons))
         .route(
+            "/api/servers/{id}/mods/textures/{namespace}/{*path}",
+            get(content::items::mod_texture),
+        )
+        .route(
             "/api/minecraft/{version}/textures/{*path}",
             get(content::items::texture),
         )
