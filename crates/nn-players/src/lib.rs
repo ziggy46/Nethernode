@@ -9,6 +9,7 @@ pub mod nbt;
 pub mod playerdata;
 pub mod profile;
 pub mod rcon;
+pub mod snbt;
 
 pub use mgmt::{MgmtClient, MgmtError, MgmtStream};
 pub use profile::{Profile, offline_uuid, valid_name};

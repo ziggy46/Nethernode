@@ -2,6 +2,7 @@
 //! project icons.
 
 pub(crate) mod icons;
+pub(crate) mod items;
 pub(crate) mod manual;
 pub(crate) mod modpacks;
 
@@ -29,6 +30,8 @@ pub struct Content {
     /// For icons: never follows redirects, so an allowed host can't send
     /// NetherNode somewhere else.
     pub(crate) icon_http: reqwest::Client,
+    /// Minecraft clients, for item icons (`<data>/cache/minecraft`).
+    pub(crate) item_textures: nn_catalog::items::ItemTextures,
 }
 
 impl Default for Content {
@@ -45,6 +48,9 @@ impl Default for Content {
                 .timeout(std::time::Duration::from_secs(15))
                 .build()
                 .unwrap_or_default(),
+            item_textures: nn_catalog::items::ItemTextures::new(
+                std::env::temp_dir().join("nethernode-minecraft"),
+            ),
         }
     }
 }
@@ -56,10 +62,17 @@ impl Content {
         secrets: Option<Arc<SecretBox>>,
         cache_dir: Option<PathBuf>,
     ) -> Self {
+        let item_textures = nn_catalog::items::ItemTextures::new(
+            cache_dir
+                .as_ref()
+                .map(|d| d.join("minecraft"))
+                .unwrap_or_else(|| std::env::temp_dir().join("nethernode-minecraft")),
+        );
         Self {
             catalog: Arc::new(catalog),
             secrets,
             cache_dir,
+            item_textures,
             ..Default::default()
         }
     }

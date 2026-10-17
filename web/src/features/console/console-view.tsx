@@ -324,7 +324,11 @@ export default function ConsoleView({ server }: { server: Server }) {
             <Eraser className="size-[15px]" />
           </Button>
           <span className="ml-1.5">
-            <ServerStatusBadge status={server.status} />
+            <ServerStatusBadge
+              status={server.status}
+              nodeOffline={server.nodeOffline}
+              nodeUpdateNeeded={server.nodeUpdateNeeded}
+            />
           </span>
         </span>
       </div>

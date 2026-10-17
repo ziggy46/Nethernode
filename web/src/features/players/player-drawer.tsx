@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 
 import { playerClient } from "./api";
 import { BanDialog } from "./ban-dialog";
-import { Slot, statName } from "./items";
+import { ItemIconsContext, itemIconsQuery, Slot, statName } from "./items";
 import { PlayerHead } from "./player-head";
 import { playerDataQuery, playerQuery, playersKey } from "./queries";
 
@@ -560,7 +560,19 @@ function Actions({
 }
 
 function Inventory({ serverId, uuid, online }: { serverId: string; uuid: string; online: boolean }) {
-  const data = useQuery(playerDataQuery(serverId, uuid));
+  // Online players are read from the running server: keep it current.
+  const data = useQuery({ ...playerDataQuery(serverId, uuid), refetchInterval: online ? 2000 : false });
+  const d0 = data.data;
+  const ids = d0
+    ? [
+        ...new Set(
+          [...d0.inventory, ...d0.enderChest, d0.head, d0.chest, d0.legs, d0.feet, d0.offhand]
+            .filter((i): i is ItemStack => !!i)
+            .map((i) => i.id),
+        ),
+      ]
+    : [];
+  const icons = useQuery(itemIconsQuery(serverId, ids)).data;
   if (data.isPending) return <div className="h-40 animate-pulse rounded-md bg-surface-subtle" aria-busy />;
   if (data.isError) return <ErrorAlert>{errorMessage(data.error)}</ErrorAlert>;
   const d = data.data;
@@ -583,39 +595,48 @@ function Inventory({ serverId, uuid, online }: { serverId: string; uuid: string;
   );
   const range = (from: number, to: number) => Array.from({ length: to - from }, (_, i) => from + i);
   return (
-    <div className="flex flex-col gap-4">
-      <p className="text-meta text-text-muted">
-        As of the server's last save ({dateTime(d.savedMs)})
-        {online ? "; changes since then aren't shown while they're online" : ""}.
-      </p>
-      <dl className="grid grid-cols-2 gap-x-4 text-meta">
-        <Fact label="Health">{(d.health / 2).toFixed(1)} ♥</Fact>
-        <Fact label="Food">{String(d.food)} / 20</Fact>
-        <Fact label="Level">{String(d.xpLevel)}</Fact>
-        <Fact label="Game mode">{GAME_MODES.find(([v]) => v === Number(d.gameMode) + 1)?.[1] ?? "—"}</Fact>
-        <Fact label="Dimension">{d.dimension.replace("minecraft:", "").replaceAll("_", " ")}</Fact>
-        <Fact label="Position">
-          <span className="font-mono">{d.position.map((p) => Math.round(p)).join(", ")}</span>
-        </Fact>
-      </dl>
-      <div className="flex flex-col gap-2">
-        <div className="grid grid-cols-9 gap-1">
-          <Slot item={d.head} label="Head" />
-          <Slot item={d.chest} label="Body" />
-          <Slot item={d.legs} label="Legs" />
-          <Slot item={d.feet} label="Feet" />
-          <span className="col-start-9">
-            <Slot item={d.offhand} label="Off" />
-          </span>
+    <ItemIconsContext.Provider value={icons}>
+      <div className="flex flex-col gap-4">
+        {d.live ? (
+          <p className="flex items-center gap-1.5 text-meta text-text-muted">
+            <span aria-hidden className="inline-block size-1.5 rounded-full bg-success" />
+            Live: read from the running server every couple of seconds.
+          </p>
+        ) : (
+          <p className="text-meta text-text-muted">
+            As of the server's last save ({dateTime(d.savedMs)})
+            {online ? "; live details appear once the server answers" : ""}.
+          </p>
+        )}
+        <dl className="grid grid-cols-2 gap-x-4 text-meta">
+          <Fact label="Health">{(d.health / 2).toFixed(1)} ♥</Fact>
+          <Fact label="Food">{String(d.food)} / 20</Fact>
+          <Fact label="Level">{String(d.xpLevel)}</Fact>
+          <Fact label="Game mode">{GAME_MODES.find(([v]) => v === Number(d.gameMode) + 1)?.[1] ?? "—"}</Fact>
+          <Fact label="Dimension">{d.dimension.replace("minecraft:", "").replaceAll("_", " ")}</Fact>
+          <Fact label="Position">
+            <span className="font-mono">{d.position.map((p) => Math.round(p)).join(", ")}</span>
+          </Fact>
+        </dl>
+        <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-9 gap-1">
+            <Slot item={d.head} label="Head" />
+            <Slot item={d.chest} label="Body" />
+            <Slot item={d.legs} label="Legs" />
+            <Slot item={d.feet} label="Feet" />
+            <span className="col-start-9">
+              <Slot item={d.offhand} label="Off" />
+            </span>
+          </div>
+          {grid(range(9, 36), inv)}
+          {grid(range(0, 9), inv, Number(d.selectedSlot))}
         </div>
-        {grid(range(9, 36), inv)}
-        {grid(range(0, 9), inv, Number(d.selectedSlot))}
+        <div>
+          <h3 className="mb-2 text-label text-text-secondary">Ender chest</h3>
+          {grid(range(0, 27), ender)}
+        </div>
       </div>
-      <div>
-        <h3 className="mb-2 text-label text-text-secondary">Ender chest</h3>
-        {grid(range(0, 27), ender)}
-      </div>
-    </div>
+    </ItemIconsContext.Provider>
   );
 }
 

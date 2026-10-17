@@ -73,10 +73,21 @@ pub(crate) async fn check_now(state: &AppState) {
         *LATEST.lock().unwrap_or_else(|e| e.into_inner()) = None;
         return;
     }
-    match fetch_latest().await {
-        Ok(release) => *LATEST.lock().unwrap_or_else(|e| e.into_inner()) = Some(release),
-        Err(e) => tracing::debug!(error = %e, "couldn't check for a new NetherNode release"),
+    if let Err(e) = check_regardless().await {
+        tracing::debug!(error = %e, "couldn't check for a new NetherNode release");
     }
+}
+
+/// Asks GitHub for the newest release now (someone asked), and keeps it.
+pub(crate) async fn check_regardless() -> Result<Release, String> {
+    let release = fetch_latest().await?;
+    *LATEST.lock().unwrap_or_else(|e| e.into_inner()) = Some(release.clone());
+    Ok(release)
+}
+
+/// Whether `release` is newer than this panel.
+pub(crate) fn newer(release: &Release) -> bool {
+    older(VERSION, &release.version)
 }
 
 async fn fetch_latest() -> Result<Release, String> {
@@ -168,9 +179,9 @@ async fn gather(state: &AppState, admin: bool) -> Vec<Notice> {
             level: "info",
             title: format!("NetherNode {} is available", release.version),
             detail: format!(
-                "This panel runs {VERSION}. Pull the new image and restart it; nodes on other machines follow on their own."
+                "This panel runs {VERSION}. Update it from Settings › Notifications; nodes on other machines follow on their own."
             ),
-            link: Some(release.url),
+            link: Some("/settings?section=notifications".into()),
         });
     }
 

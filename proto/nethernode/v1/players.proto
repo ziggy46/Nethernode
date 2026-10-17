@@ -177,6 +177,9 @@ message GetPlayerDataResponse {
   optional ItemStack feet = 16;
   optional ItemStack offhand = 17;
   repeated StatEntry stats = 18;
+  // Read from the running server just now (the player is online), rather
+  // than from their saved file.
+  bool live = 19;
 }
 
 message ResolvePlayerRequest {

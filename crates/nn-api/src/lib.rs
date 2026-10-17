@@ -171,6 +171,11 @@ pub fn router(state: AppState) -> Router {
         .route("/api/catalog/icon", get(content::icons::icon))
         .route("/api/backups/{id}/download", get(backups::http::download))
         .route("/api/servers/{id}/mods/icon", get(content::icons::mod_icon))
+        .route("/api/servers/{id}/items", get(content::items::icons))
+        .route(
+            "/api/minecraft/{version}/textures/{*path}",
+            get(content::items::texture),
+        )
         .nest(RPC_PREFIX, rpc_routes)
         .fallback(spa::serve)
         .layer(from_fn_with_state(

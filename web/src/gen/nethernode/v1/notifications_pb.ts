@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file nethernode/v1/notifications.proto.
  */
 export const file_nethernode_v1_notifications: GenFile = /*@__PURE__*/
-  fileDesc("CiFuZXRoZXJub2RlL3YxL25vdGlmaWNhdGlvbnMucHJvdG8SDW5ldGhlcm5vZGUudjEiYwoSTm90aWZpY2F0aW9uRXZlbnRzEhIKCnN0YXJ0X3N0b3AYASABKAgSDQoFY3Jhc2gYAiABKAgSEwoLcGxheWVyX2pvaW4YAyABKAgSFQoNYmFja3VwX2ZhaWxlZBgEIAEoCCIZChdHZXROb3RpZmljYXRpb25zUmVxdWVzdCLnAQoYR2V0Tm90aWZpY2F0aW9uc1Jlc3BvbnNlEhkKDHdlYmhvb2tfaGludBgBIAEoCUgAiAEBEjEKBmV2ZW50cxgCIAEoCzIhLm5ldGhlcm5vZGUudjEuTm90aWZpY2F0aW9uRXZlbnRzEhIKCmxhc3RfZXJyb3IYAyABKAkSGQoMbGFzdF9zZW50X21zGAQgASgDSAGIAQESFAoMdXBkYXRlX2NoZWNrGAUgASgIEhYKDmxhdGVzdF92ZXJzaW9uGAYgASgJQg8KDV93ZWJob29rX2hpbnRCDwoNX2xhc3Rfc2VudF9tcyJ5ChpVcGRhdGVOb3RpZmljYXRpb25zUmVxdWVzdBIYCgt3ZWJob29rX3VybBgBIAEoCUgAiAEBEjEKBmV2ZW50cxgCIAEoCzIhLm5ldGhlcm5vZGUudjEuTm90aWZpY2F0aW9uRXZlbnRzQg4KDF93ZWJob29rX3VybCIdChtVcGRhdGVOb3RpZmljYXRpb25zUmVzcG9uc2UiHQobU2VuZFRlc3ROb3RpZmljYXRpb25SZXF1ZXN0Ih4KHFNlbmRUZXN0Tm90aWZpY2F0aW9uUmVzcG9uc2UiKAoVU2V0VXBkYXRlQ2hlY2tSZXF1ZXN0Eg8KB2VuYWJsZWQYASABKAgiGAoWU2V0VXBkYXRlQ2hlY2tSZXNwb25zZTK9AwoTTm90aWZpY2F0aW9uU2VydmljZRJoChBHZXROb3RpZmljYXRpb25zEiYubmV0aGVybm9kZS52MS5HZXROb3RpZmljYXRpb25zUmVxdWVzdBonLm5ldGhlcm5vZGUudjEuR2V0Tm90aWZpY2F0aW9uc1Jlc3BvbnNlIgOQAgESbAoTVXBkYXRlTm90aWZpY2F0aW9ucxIpLm5ldGhlcm5vZGUudjEuVXBkYXRlTm90aWZpY2F0aW9uc1JlcXVlc3QaKi5uZXRoZXJub2RlLnYxLlVwZGF0ZU5vdGlmaWNhdGlvbnNSZXNwb25zZRJvChRTZW5kVGVzdE5vdGlmaWNhdGlvbhIqLm5ldGhlcm5vZGUudjEuU2VuZFRlc3ROb3RpZmljYXRpb25SZXF1ZXN0GisubmV0aGVybm9kZS52MS5TZW5kVGVzdE5vdGlmaWNhdGlvblJlc3BvbnNlEl0KDlNldFVwZGF0ZUNoZWNrEiQubmV0aGVybm9kZS52MS5TZXRVcGRhdGVDaGVja1JlcXVlc3QaJS5uZXRoZXJub2RlLnYxLlNldFVwZGF0ZUNoZWNrUmVzcG9uc2ViBnByb3RvMw");
+  fileDesc("CiFuZXRoZXJub2RlL3YxL25vdGlmaWNhdGlvbnMucHJvdG8SDW5ldGhlcm5vZGUudjEiYwoSTm90aWZpY2F0aW9uRXZlbnRzEhIKCnN0YXJ0X3N0b3AYASABKAgSDQoFY3Jhc2gYAiABKAgSEwoLcGxheWVyX2pvaW4YAyABKAgSFQoNYmFja3VwX2ZhaWxlZBgEIAEoCCIZChdHZXROb3RpZmljYXRpb25zUmVxdWVzdCKaAgoYR2V0Tm90aWZpY2F0aW9uc1Jlc3BvbnNlEhkKDHdlYmhvb2tfaGludBgBIAEoCUgAiAEBEjEKBmV2ZW50cxgCIAEoCzIhLm5ldGhlcm5vZGUudjEuTm90aWZpY2F0aW9uRXZlbnRzEhIKCmxhc3RfZXJyb3IYAyABKAkSGQoMbGFzdF9zZW50X21zGAQgASgDSAGIAQESFAoMdXBkYXRlX2NoZWNrGAUgASgIEhYKDmxhdGVzdF92ZXJzaW9uGAYgASgJEhcKD2N1cnJlbnRfdmVyc2lvbhgHIAEoCRIYChB1cGRhdGVfYXZhaWxhYmxlGAggASgIQg8KDV93ZWJob29rX2hpbnRCDwoNX2xhc3Rfc2VudF9tcyJ5ChpVcGRhdGVOb3RpZmljYXRpb25zUmVxdWVzdBIYCgt3ZWJob29rX3VybBgBIAEoCUgAiAEBEjEKBmV2ZW50cxgCIAEoCzIhLm5ldGhlcm5vZGUudjEuTm90aWZpY2F0aW9uRXZlbnRzQg4KDF93ZWJob29rX3VybCIdChtVcGRhdGVOb3RpZmljYXRpb25zUmVzcG9uc2UiHQobU2VuZFRlc3ROb3RpZmljYXRpb25SZXF1ZXN0Ih4KHFNlbmRUZXN0Tm90aWZpY2F0aW9uUmVzcG9uc2UiKAoVU2V0VXBkYXRlQ2hlY2tSZXF1ZXN0Eg8KB2VuYWJsZWQYASABKAgiGAoWU2V0VXBkYXRlQ2hlY2tSZXNwb25zZSIXChVDaGVja0ZvclVwZGF0ZVJlcXVlc3QiSgoWQ2hlY2tGb3JVcGRhdGVSZXNwb25zZRIWCg5sYXRlc3RfdmVyc2lvbhgBIAEoCRIYChB1cGRhdGVfYXZhaWxhYmxlGAIgASgIIhQKElVwZGF0ZVBhbmVsUmVxdWVzdCImChNVcGRhdGVQYW5lbFJlc3BvbnNlEg8KB3ZlcnNpb24YASABKAky8gQKE05vdGlmaWNhdGlvblNlcnZpY2USaAoQR2V0Tm90aWZpY2F0aW9ucxImLm5ldGhlcm5vZGUudjEuR2V0Tm90aWZpY2F0aW9uc1JlcXVlc3QaJy5uZXRoZXJub2RlLnYxLkdldE5vdGlmaWNhdGlvbnNSZXNwb25zZSIDkAIBEmwKE1VwZGF0ZU5vdGlmaWNhdGlvbnMSKS5uZXRoZXJub2RlLnYxLlVwZGF0ZU5vdGlmaWNhdGlvbnNSZXF1ZXN0GioubmV0aGVybm9kZS52MS5VcGRhdGVOb3RpZmljYXRpb25zUmVzcG9uc2USbwoUU2VuZFRlc3ROb3RpZmljYXRpb24SKi5uZXRoZXJub2RlLnYxLlNlbmRUZXN0Tm90aWZpY2F0aW9uUmVxdWVzdBorLm5ldGhlcm5vZGUudjEuU2VuZFRlc3ROb3RpZmljYXRpb25SZXNwb25zZRJdCg5TZXRVcGRhdGVDaGVjaxIkLm5ldGhlcm5vZGUudjEuU2V0VXBkYXRlQ2hlY2tSZXF1ZXN0GiUubmV0aGVybm9kZS52MS5TZXRVcGRhdGVDaGVja1Jlc3BvbnNlEl0KDkNoZWNrRm9yVXBkYXRlEiQubmV0aGVybm9kZS52MS5DaGVja0ZvclVwZGF0ZVJlcXVlc3QaJS5uZXRoZXJub2RlLnYxLkNoZWNrRm9yVXBkYXRlUmVzcG9uc2USVAoLVXBkYXRlUGFuZWwSIS5uZXRoZXJub2RlLnYxLlVwZGF0ZVBhbmVsUmVxdWVzdBoiLm5ldGhlcm5vZGUudjEuVXBkYXRlUGFuZWxSZXNwb25zZWIGcHJvdG8z");
 
 /**
  * @generated from message nethernode.v1.NotificationEvents
@@ -98,6 +98,20 @@ export type GetNotificationsResponse = Message<"nethernode.v1.GetNotificationsRe
    * @generated from field: string latest_version = 6;
    */
   latestVersion: string;
+
+  /**
+   * This panel's version.
+   *
+   * @generated from field: string current_version = 7;
+   */
+  currentVersion: string;
+
+  /**
+   * The newest release is newer than this panel.
+   *
+   * @generated from field: bool update_available = 8;
+   */
+  updateAvailable: boolean;
 };
 
 /**
@@ -201,6 +215,77 @@ export const SetUpdateCheckResponseSchema: GenMessage<SetUpdateCheckResponse> = 
   messageDesc(file_nethernode_v1_notifications, 8);
 
 /**
+ * @generated from message nethernode.v1.CheckForUpdateRequest
+ */
+export type CheckForUpdateRequest = Message<"nethernode.v1.CheckForUpdateRequest"> & {
+};
+
+/**
+ * Describes the message nethernode.v1.CheckForUpdateRequest.
+ * Use `create(CheckForUpdateRequestSchema)` to create a new message.
+ */
+export const CheckForUpdateRequestSchema: GenMessage<CheckForUpdateRequest> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_notifications, 9);
+
+/**
+ * @generated from message nethernode.v1.CheckForUpdateResponse
+ */
+export type CheckForUpdateResponse = Message<"nethernode.v1.CheckForUpdateResponse"> & {
+  /**
+   * The newest release, like "0.2.4".
+   *
+   * @generated from field: string latest_version = 1;
+   */
+  latestVersion: string;
+
+  /**
+   * It's newer than this panel.
+   *
+   * @generated from field: bool update_available = 2;
+   */
+  updateAvailable: boolean;
+};
+
+/**
+ * Describes the message nethernode.v1.CheckForUpdateResponse.
+ * Use `create(CheckForUpdateResponseSchema)` to create a new message.
+ */
+export const CheckForUpdateResponseSchema: GenMessage<CheckForUpdateResponse> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_notifications, 10);
+
+/**
+ * @generated from message nethernode.v1.UpdatePanelRequest
+ */
+export type UpdatePanelRequest = Message<"nethernode.v1.UpdatePanelRequest"> & {
+};
+
+/**
+ * Describes the message nethernode.v1.UpdatePanelRequest.
+ * Use `create(UpdatePanelRequestSchema)` to create a new message.
+ */
+export const UpdatePanelRequestSchema: GenMessage<UpdatePanelRequest> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_notifications, 11);
+
+/**
+ * @generated from message nethernode.v1.UpdatePanelResponse
+ */
+export type UpdatePanelResponse = Message<"nethernode.v1.UpdatePanelResponse"> & {
+  /**
+   * The version being installed.
+   *
+   * @generated from field: string version = 1;
+   */
+  version: string;
+};
+
+/**
+ * Describes the message nethernode.v1.UpdatePanelResponse.
+ * Use `create(UpdatePanelResponseSchema)` to create a new message.
+ */
+export const UpdatePanelResponseSchema: GenMessage<UpdatePanelResponse> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_notifications, 12);
+
+/**
  * Discord webhook notifications. Administrators and owners.
  *
  * @generated from service nethernode.v1.NotificationService
@@ -246,6 +331,31 @@ export const NotificationService: GenService<{
     methodKind: "unary";
     input: typeof SetUpdateCheckRequestSchema;
     output: typeof SetUpdateCheckResponseSchema;
+  },
+  /**
+   * Asks GitHub for the newest release now. Fails with UNAVAILABLE, saying
+   * why, if GitHub can't be reached.
+   *
+   * @generated from rpc nethernode.v1.NotificationService.CheckForUpdate
+   */
+  checkForUpdate: {
+    methodKind: "unary";
+    input: typeof CheckForUpdateRequestSchema;
+    output: typeof CheckForUpdateResponseSchema;
+  },
+  /**
+   * Updates the panel to the newest release: in Docker, a copy of its
+   * container on the new image takes over; as a binary, it downloads the
+   * release (checked against its checksums) and restarts. The panel goes
+   * away for a moment once this answers. Fails with FAILED_PRECONDITION if
+   * there's no newer release, or with the reason the update couldn't start.
+   *
+   * @generated from rpc nethernode.v1.NotificationService.UpdatePanel
+   */
+  updatePanel: {
+    methodKind: "unary";
+    input: typeof UpdatePanelRequestSchema;
+    output: typeof UpdatePanelResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_nethernode_v1_notifications, 0);

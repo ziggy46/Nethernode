@@ -37,7 +37,7 @@ const SECTIONS: { id: string; label: string; icon: React.ReactNode; access: Acce
   { id: "domains", label: "Domains", icon: <Globe />, access: "admins" },
   { id: "notifications", label: "Notifications", icon: <Bell />, access: "admins" },
   { id: "mods", label: "Mods and modpacks", icon: <Box />, access: "admins" },
-  { id: "install-count", label: "Install count", icon: <ChartNoAxesColumn />, access: "owners" },
+  { id: "stats", label: "Anonymous stats", icon: <ChartNoAxesColumn />, access: "owners" },
 ];
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
@@ -136,7 +136,7 @@ function Section({ id }: { id: string }) {
           </Suspense>
         </Panel>
       );
-    case "install-count":
+    case "stats":
       return (
         <Suspense fallback={<Loading height="h-28" />}>
           <InstallCountPanel />

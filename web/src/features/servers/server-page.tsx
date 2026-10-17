@@ -100,11 +100,6 @@ export function ServerPage({ id }: { id: string }) {
             )}
           </p>
         </div>
-        <ServerStatusBadge
-          status={s.status}
-          nodeOffline={s.nodeOffline}
-          nodeUpdateNeeded={s.nodeUpdateNeeded}
-        />
       </div>
 
       <Tabs.Root

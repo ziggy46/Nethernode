@@ -172,12 +172,17 @@ mod tests {
             username: name,
             ip: Some("127.0.0.1"),
         };
+        // Sessions are stamped to the millisecond; keep the steps apart.
+        let tick = || tokio::time::sleep(std::time::Duration::from_millis(3));
         assert_eq!(store.player_peak_since(&server.id, 0).await.unwrap(), 0);
         let a = store.open_player_session(join("a")).await.unwrap();
+        tick().await;
         let b = store.open_player_session(join("b")).await.unwrap();
+        tick().await;
         assert_eq!(store.player_peak_since(&server.id, 0).await.unwrap(), 2);
         store.close_player_session(&a).await.unwrap();
         store.close_player_session(&b).await.unwrap();
+        tick().await;
         store.open_player_session(join("c")).await.unwrap();
         assert_eq!(store.player_peak_since(&server.id, 0).await.unwrap(), 2);
         // Sessions that ended before the window don't count.

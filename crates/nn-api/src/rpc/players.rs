@@ -392,7 +392,7 @@ impl pb::PlayerService for PlayerRpc {
         require(&ctx, Permission::View)?;
         let uuid = nn_players::profile::normalize_uuid(request.uuid)
             .ok_or_else(|| ConnectError::invalid_argument("not a player UUID"))?;
-        let (_, files) = crate::files::open(&self.state, request.server_id).await?;
+        let (server, files) = crate::files::open(&self.state, request.server_id).await?;
         let read = async |path: &str| -> Result<Option<(Vec<u8>, i64)>, ConnectError> {
             let rel = RelPath::parse(path).map_err(file_error)?;
             let content = files
@@ -423,13 +423,31 @@ impl pb::PlayerService for PlayerRpc {
                 break;
             }
         }
-        let found = (data, stats);
-        let (Some((bytes, saved_ms)), stats) = found else {
-            return Response::ok(pb::GetPlayerDataResponse::default());
+        // An online player's data, straight from the running server: the
+        // file is only written every few minutes and when they leave.
+        let live = if server.status == "running" {
+            self.state
+                .nodes
+                .for_server(&server)
+                .command(&server.id, &format!("data get entity {uuid}"))
+                .await
+                .ok()
+                .and_then(|out| nn_players::snbt::entity_data(&out))
+        } else {
+            None
         };
-        let root = nbt::read_gzip(&bytes).map(|(_, root)| root).map_err(|e| {
-            ConnectError::failed_precondition(format!("The player's data file can't be read: {e}"))
-        })?;
+        let (root, saved_ms, live) = match (live, data) {
+            (Some(root), _) => (root, nn_store::now_ms(), true),
+            (None, Some((bytes, saved_ms))) => {
+                let root = nbt::read_gzip(&bytes).map(|(_, root)| root).map_err(|e| {
+                    ConnectError::failed_precondition(format!(
+                        "The player's data file can't be read: {e}"
+                    ))
+                })?;
+                (root, saved_ms, false)
+            }
+            (None, None) => return Response::ok(pb::GetPlayerDataResponse::default()),
+        };
         let data = playerdata::parse(&root);
         let item = |i: &playerdata::Item| pb::ItemStack {
             slot: i.slot,
@@ -451,6 +469,7 @@ impl pb::PlayerService for PlayerRpc {
         let e = &data.equipment;
         Response::ok(pb::GetPlayerDataResponse {
             found: true,
+            live,
             saved_ms,
             position: data.position.map(|p| p.to_vec()).unwrap_or_default(),
             dimension: data.dimension.clone().unwrap_or_default(),

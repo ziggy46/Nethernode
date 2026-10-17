@@ -8,6 +8,7 @@
 mod cache;
 pub mod content;
 mod curseforge;
+pub mod items;
 pub mod jar;
 mod modrinth;
 pub mod versions;

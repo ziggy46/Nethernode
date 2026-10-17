@@ -37,7 +37,7 @@ export default function InstallCountPanel() {
 
   return (
     <Panel>
-      <PanelHeader title="Count this install" icon={<ChartNoAxesColumn />} />
+      <PanelHeader title="Share anonymous stats" icon={<ChartNoAxesColumn />} />
       {status.isError ? (
         <ErrorAlert>{errorMessage(status.error)}</ErrorAlert>
       ) : !data ? (

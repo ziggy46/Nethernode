@@ -96,6 +96,9 @@ fn main() -> Result<()> {
 
 async fn serve(config: Config) -> Result<()> {
     init_logging();
+    // A panel container that updated itself: the old one goes first, so the
+    // two never share the data folder or the ports.
+    nn_orchestrator::self_update::finish_replacing(&config.docker.socket).await;
 
     let metrics = metrics_exporter_prometheus::PrometheusBuilder::new()
         .install_recorder()

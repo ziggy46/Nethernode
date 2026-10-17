@@ -44,6 +44,82 @@ impl pb::NotificationService for NotificationRpc {
             latest_version: crate::notices::latest_release()
                 .map(|r| r.version)
                 .unwrap_or_default(),
+            current_version: env!("CARGO_PKG_VERSION").to_owned(),
+            update_available: crate::notices::latest_release()
+                .is_some_and(|r| crate::notices::newer(&r)),
+            ..Default::default()
+        })
+    }
+
+    async fn check_for_update(
+        &self,
+        ctx: RequestContext,
+        _request: ServiceRequest<'_, pb::CheckForUpdateRequest>,
+    ) -> ServiceResult<pb::CheckForUpdateResponse> {
+        require(&ctx, Permission::ManageSettings)?;
+        let release = crate::notices::check_regardless().await.map_err(|e| {
+            ConnectError::unavailable(format!("Couldn't reach GitHub to check: {e}"))
+        })?;
+        Response::ok(pb::CheckForUpdateResponse {
+            update_available: crate::notices::newer(&release),
+            latest_version: release.version,
+            ..Default::default()
+        })
+    }
+
+    async fn update_panel(
+        &self,
+        ctx: RequestContext,
+        _request: ServiceRequest<'_, pb::UpdatePanelRequest>,
+    ) -> ServiceResult<pb::UpdatePanelResponse> {
+        let user = require(&ctx, Permission::ManageSettings)?.clone();
+        let release = match crate::notices::latest_release() {
+            Some(release) => release,
+            None => crate::notices::check_regardless().await.map_err(|e| {
+                ConnectError::unavailable(format!("Couldn't reach GitHub to check: {e}"))
+            })?,
+        };
+        if !crate::notices::newer(&release) {
+            return Err(ConnectError::failed_precondition(
+                "This panel already runs the newest release.",
+            ));
+        }
+        let next = nn_node::update::prepare(
+            self.state.nodes.local(),
+            env!("CARGO_PKG_VERSION"),
+            &release.version,
+        )
+        .await
+        .map_err(|e| {
+            ConnectError::failed_precondition(format!("The update couldn't start: {e}"))
+        })?;
+        audit(
+            &self.state,
+            &user,
+            "settings.update_panel",
+            ("settings", "updates"),
+            json!({ "from": env!("CARGO_PKG_VERSION"), "to": release.version }),
+        )
+        .await;
+        tracing::info!(to = %release.version, "updating the panel");
+        // Answer first; then hand over to the new version.
+        tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            match next {
+                nn_node::update::Next::Exec(exe, _) => {
+                    let error = nn_node::update::exec(&exe);
+                    tracing::error!(%error, "couldn't restart as the new version; exiting");
+                    std::process::exit(1);
+                }
+                nn_node::update::Next::Exit(_) => {
+                    tracing::info!("the new panel container has taken over; exiting");
+                    std::process::exit(0);
+                }
+                nn_node::update::Next::Stay(_) => {}
+            }
+        });
+        Response::ok(pb::UpdatePanelResponse {
+            version: release.version,
             ..Default::default()
         })
     }

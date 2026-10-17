@@ -19,6 +19,17 @@ service NotificationService {
   // about twice a day it asks GitHub for the newest release, and the bell
   // says when there's a newer one.
   rpc SetUpdateCheck(SetUpdateCheckRequest) returns (SetUpdateCheckResponse);
+
+  // Asks GitHub for the newest release now. Fails with UNAVAILABLE, saying
+  // why, if GitHub can't be reached.
+  rpc CheckForUpdate(CheckForUpdateRequest) returns (CheckForUpdateResponse);
+
+  // Updates the panel to the newest release: in Docker, a copy of its
+  // container on the new image takes over; as a binary, it downloads the
+  // release (checked against its checksums) and restarts. The panel goes
+  // away for a moment once this answers. Fails with FAILED_PRECONDITION if
+  // there's no newer release, or with the reason the update couldn't start.
+  rpc UpdatePanel(UpdatePanelRequest) returns (UpdatePanelResponse);
 }
 
 message NotificationEvents {
@@ -41,6 +52,10 @@ message GetNotificationsResponse {
   bool update_check = 5;
   // The newest release found, like "0.2.3", while checking is on.
   string latest_version = 6;
+  // This panel's version.
+  string current_version = 7;
+  // The newest release is newer than this panel.
+  bool update_available = 8;
 }
 
 message UpdateNotificationsRequest {
@@ -60,3 +75,19 @@ message SetUpdateCheckRequest {
 }
 
 message SetUpdateCheckResponse {}
+
+message CheckForUpdateRequest {}
+
+message CheckForUpdateResponse {
+  // The newest release, like "0.2.4".
+  string latest_version = 1;
+  // It's newer than this panel.
+  bool update_available = 2;
+}
+
+message UpdatePanelRequest {}
+
+message UpdatePanelResponse {
+  // The version being installed.
+  string version = 1;
+}

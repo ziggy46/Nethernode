@@ -59,7 +59,11 @@ function Frame({ server, bare, children }: { server: Server; bare?: boolean; chi
         <SquareTerminal className="size-4" aria-hidden />
         Server console
         <span className="ml-auto">
-          <ServerStatusBadge status={server.status} />
+          <ServerStatusBadge
+            status={server.status}
+            nodeOffline={server.nodeOffline}
+            nodeUpdateNeeded={server.nodeUpdateNeeded}
+          />
         </span>
       </div>
       {bare ? (
