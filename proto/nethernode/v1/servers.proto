@@ -29,6 +29,20 @@ service ServerService {
   // set up on the new one, then removed from the old one. Progress and the
   // outcome arrive as file_job events for the returned job.
   rpc MoveServer(MoveServerRequest) returns (MoveServerResponse);
+  // Copies a server (its files and settings, and its world unless left
+  // out) into a new, stopped server on any machine. Schedules, routes and
+  // backups stay with the original. Runs in the background; progress and
+  // the outcome are reported as file job events under the returned job.
+  rpc CopyServer(CopyServerRequest) returns (CopyServerResponse);
+  // Saves a server's files and settings, without its world, as a template
+  // for new servers. Runs in the background like CopyServer.
+  rpc SaveServerTemplate(SaveServerTemplateRequest) returns (SaveServerTemplateResponse);
+  rpc ListServerTemplates(ListServerTemplatesRequest) returns (ListServerTemplatesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc DeleteServerTemplate(DeleteServerTemplateRequest) returns (DeleteServerTemplateResponse);
+  // Creates a new, stopped server from a template, in the background.
+  rpc CreateServerFromTemplate(CreateServerFromTemplateRequest) returns (CreateServerFromTemplateResponse);
 
   rpc StartServer(StartServerRequest) returns (StartServerResponse);
   // Saves the world and stops gracefully (up to 60 s, then forced).
@@ -352,6 +366,69 @@ message SearchServerLogsResponse {
   // The search stopped early (too many matches or files, or it took too
   // long), so older matches may be missing.
   bool truncated = 4;
+}
+
+message CopyServerRequest {
+  string id = 1;
+  // The copy's name.
+  string name = 2;
+  // The machine to put it on; empty for the panel's own.
+  string node_id = 3;
+  // Copy the world too; otherwise the copy makes a new one when it starts.
+  bool include_world = 4;
+}
+
+message CopyServerResponse {
+  string job_id = 1;
+}
+
+message SaveServerTemplateRequest {
+  string id = 1;
+  // The template's name.
+  string name = 2;
+}
+
+message SaveServerTemplateResponse {
+  string job_id = 1;
+}
+
+// A server's files (without its world) and settings, to start new servers
+// from.
+message ServerTemplate {
+  string id = 1;
+  string name = 2;
+  // The server it was saved from (it may be gone since).
+  string source_name = 3;
+  string loader = 4;
+  string mc_version = 5;
+  uint32 memory_mb = 6;
+  uint64 size_bytes = 7;
+  int64 created_at_ms = 8;
+}
+
+message ListServerTemplatesRequest {}
+
+message ListServerTemplatesResponse {
+  // Newest first.
+  repeated ServerTemplate templates = 1;
+}
+
+message DeleteServerTemplateRequest {
+  string id = 1;
+}
+
+message DeleteServerTemplateResponse {}
+
+message CreateServerFromTemplateRequest {
+  string template_id = 1;
+  // The new server's name.
+  string name = 2;
+  // The machine to create it on; empty for the panel's own.
+  string node_id = 3;
+}
+
+message CreateServerFromTemplateResponse {
+  string job_id = 1;
 }
 
 message GetHostInfoRequest {}

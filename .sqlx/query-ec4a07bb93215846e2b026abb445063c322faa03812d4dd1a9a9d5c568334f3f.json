@@ -1,0 +1,122 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id AS \"id!\", name, source_name, loader, mc_version, memory_mb, server_json,\n                   archive_bytes, created_at\n               FROM server_templates ORDER BY created_at DESC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "server_templates",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "server_templates",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "name": "source_name",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "server_templates",
+            "name": "source_name"
+          }
+        }
+      },
+      {
+        "name": "loader",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "server_templates",
+            "name": "loader"
+          }
+        }
+      },
+      {
+        "name": "mc_version",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "server_templates",
+            "name": "mc_version"
+          }
+        }
+      },
+      {
+        "name": "memory_mb",
+        "ordinal": 5,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "server_templates",
+            "name": "memory_mb"
+          }
+        }
+      },
+      {
+        "name": "server_json",
+        "ordinal": 6,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "server_templates",
+            "name": "server_json"
+          }
+        }
+      },
+      {
+        "name": "archive_bytes",
+        "ordinal": 7,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "server_templates",
+            "name": "archive_bytes"
+          }
+        }
+      },
+      {
+        "name": "created_at",
+        "ordinal": 8,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "server_templates",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "ec4a07bb93215846e2b026abb445063c322faa03812d4dd1a9a9d5c568334f3f"
+}

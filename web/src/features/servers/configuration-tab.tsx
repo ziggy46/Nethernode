@@ -20,7 +20,7 @@ import { Switch } from "@/components/ui/switch";
 import { CardTheme, type Server } from "@/gen/nethernode/v1/servers_pb";
 import { errorMessage, serverClient } from "@/lib/api";
 import { useCanManage } from "@/lib/session";
-
+import { CopyServer } from "./copy-server";
 import { LOADERS, loaderName } from "./format";
 import { MoveServer } from "./move-server";
 import { THEME_NAMES } from "./world-banner";
@@ -326,6 +326,7 @@ export function ConfigurationTab({ server }: { server: Server }) {
         </Suspense>
       )}
       {canManage && <MoveServer server={server} />}
+      {canManage && <CopyServer server={server} />}
       {canManage && <DangerZone server={server} />}
     </div>
   );

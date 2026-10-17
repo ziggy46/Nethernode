@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO server_templates (id, name, source_name, loader, mc_version, memory_mb,\n                   server_json, archive_bytes, created_at)\n               VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 9
+    },
+    "nullable": []
+  },
+  "hash": "f9a3aac05b5e1ffbe1cafce826dda2fa85bbe000dddec353a9cb5dc6370830b2"
+}

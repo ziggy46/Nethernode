@@ -18,6 +18,7 @@ import { nodesQuery } from "@/features/nodes/queries";
 import { proxyClient } from "@/features/proxy/client";
 import { Platform } from "@/gen/nethernode/v1/catalog_pb";
 import { NodeStatus } from "@/gen/nethernode/v1/nodes_pb";
+import type { ServerTemplate } from "@/gen/nethernode/v1/servers_pb";
 import { errorMessage, serverClient } from "@/lib/api";
 import { healthQuery } from "@/lib/health";
 import { useCanManage } from "@/lib/session";
@@ -36,6 +37,7 @@ import {
   VersionStep,
 } from "./create/steps";
 import { loaderName } from "./format";
+import { FromTemplateDialog, TemplatePicker } from "./templates";
 
 export { EULA_URL } from "./create/steps";
 
@@ -63,6 +65,7 @@ export function CreateServerDialog({
   });
   const [draft, setDraft] = useState(() => newDraft(preset));
   const [step, setStep] = useState(0);
+  const [template, setTemplate] = useState<ServerTemplate | null>(null);
   const update = useCallback((patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch })), []);
   // Machines that have joined (one waiting to join can't run anything yet).
   const machines = (useQuery({ ...nodesQuery, enabled: open }).data?.nodes ?? []).filter(
@@ -213,103 +216,116 @@ export function CreateServerDialog({
   };
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(o) => {
-        if (!o) create.reset();
-        onOpenChange(o);
-      }}
-    >
-      <DialogContent className="flex w-[620px] flex-col">
-        <DialogHeader>
-          <DialogTitle>A new world awaits.</DialogTitle>
-          <DialogDescription>Choose the basics. Your next server starts here.</DialogDescription>
-        </DialogHeader>
-        <ol className="mb-5 flex gap-1.5" aria-label="Steps">
-          {STEPS.map((name, i) => (
-            <li key={name} className="flex-1">
-              <button
-                type="button"
-                disabled={i > step}
-                onClick={() => setStep(i)}
-                aria-current={i === step ? "step" : undefined}
-                className="w-full text-left disabled:cursor-default"
-              >
-                <span
-                  className={cn("block h-1 rounded-full", i <= step ? "bg-primary" : "bg-surface-subtle")}
-                  aria-hidden
-                />
-                <span
-                  className={cn(
-                    "mt-1.5 block text-meta",
-                    i === step ? "text-text-primary" : "text-text-muted",
-                  )}
+    <>
+      <FromTemplateDialog template={template} onClose={() => setTemplate(null)} />
+      <Dialog
+        open={open}
+        onOpenChange={(o) => {
+          if (!o) create.reset();
+          onOpenChange(o);
+        }}
+      >
+        <DialogContent className="flex w-[620px] flex-col">
+          <DialogHeader>
+            <DialogTitle>A new world awaits.</DialogTitle>
+            <DialogDescription>Choose the basics. Your next server starts here.</DialogDescription>
+          </DialogHeader>
+          <ol className="mb-5 flex gap-1.5" aria-label="Steps">
+            {STEPS.map((name, i) => (
+              <li key={name} className="flex-1">
+                <button
+                  type="button"
+                  disabled={i > step}
+                  onClick={() => setStep(i)}
+                  aria-current={i === step ? "step" : undefined}
+                  className="w-full text-left disabled:cursor-default"
                 >
-                  {i + 1}. {name}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ol>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            next();
-          }}
-          noValidate
-        >
-          {create.isError && <ErrorAlert>{errorMessage(create.error)}</ErrorAlert>}
-          <div className="min-h-[300px]">
-            {step === 0 && <SoftwareStep draft={draft} update={update} />}
-            {step === 1 &&
-              (isPack ? (
-                <ModpackStep draft={draft} update={update} />
-              ) : (
-                <VersionStep draft={draft} update={update} />
-              ))}
-            {step === 2 && (
-              <ResourcesStep
-                draft={draft}
-                update={update}
-                machines={machines}
-                hostMemory={
-                  Number(
-                    (draft.nodeId === "local" ? host.data?.memoryBytes : machine?.host?.memoryBytes) ?? 0,
-                  ) || undefined
-                }
-              />
-            )}
-            {step === 3 && <NetworkStep draft={draft} update={update} canManageProxy={canManageProxy} />}
-            {step === 4 && <ReviewStep draft={draft} update={update} summary={summary} />}
-          </div>
-          <DialogFooter className="items-center">
-            <p className="mr-auto text-meta text-text-muted" aria-live="polite">
-              {problem && step > 0 ? problem : `NetherNode ${health.data?.version ?? ""}`.trim()}
-            </p>
-            {step > 0 ? (
-              <Button onClick={() => setStep(step - 1)}>
-                <ArrowLeft />
-                Back
-              </Button>
-            ) : (
-              <Button onClick={() => onOpenChange(false)}>Cancel</Button>
-            )}
-            <Button type="submit" variant="primary" disabled={!!problem || create.isPending}>
-              {step < STEPS.length - 1 ? (
+                  <span
+                    className={cn("block h-1 rounded-full", i <= step ? "bg-primary" : "bg-surface-subtle")}
+                    aria-hidden
+                  />
+                  <span
+                    className={cn(
+                      "mt-1.5 block text-meta",
+                      i === step ? "text-text-primary" : "text-text-muted",
+                    )}
+                  >
+                    {i + 1}. {name}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ol>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              next();
+            }}
+            noValidate
+          >
+            {create.isError && <ErrorAlert>{errorMessage(create.error)}</ErrorAlert>}
+            <div className="min-h-[300px]">
+              {step === 0 && (
                 <>
-                  Next
-                  <ArrowRight />
-                </>
-              ) : (
-                <>
-                  <Plus />
-                  {create.isPending ? "Creating…" : "Create server"}
+                  <SoftwareStep draft={draft} update={update} />
+                  <TemplatePicker
+                    onUse={(t) => {
+                      onOpenChange(false);
+                      setTemplate(t);
+                    }}
+                  />
                 </>
               )}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+              {step === 1 &&
+                (isPack ? (
+                  <ModpackStep draft={draft} update={update} />
+                ) : (
+                  <VersionStep draft={draft} update={update} />
+                ))}
+              {step === 2 && (
+                <ResourcesStep
+                  draft={draft}
+                  update={update}
+                  machines={machines}
+                  hostMemory={
+                    Number(
+                      (draft.nodeId === "local" ? host.data?.memoryBytes : machine?.host?.memoryBytes) ?? 0,
+                    ) || undefined
+                  }
+                />
+              )}
+              {step === 3 && <NetworkStep draft={draft} update={update} canManageProxy={canManageProxy} />}
+              {step === 4 && <ReviewStep draft={draft} update={update} summary={summary} />}
+            </div>
+            <DialogFooter className="items-center">
+              <p className="mr-auto text-meta text-text-muted" aria-live="polite">
+                {problem && step > 0 ? problem : `NetherNode ${health.data?.version ?? ""}`.trim()}
+              </p>
+              {step > 0 ? (
+                <Button onClick={() => setStep(step - 1)}>
+                  <ArrowLeft />
+                  Back
+                </Button>
+              ) : (
+                <Button onClick={() => onOpenChange(false)}>Cancel</Button>
+              )}
+              <Button type="submit" variant="primary" disabled={!!problem || create.isPending}>
+                {step < STEPS.length - 1 ? (
+                  <>
+                    Next
+                    <ArrowRight />
+                  </>
+                ) : (
+                  <>
+                    <Plus />
+                    {create.isPending ? "Creating…" : "Create server"}
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

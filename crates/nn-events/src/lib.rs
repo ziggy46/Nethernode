@@ -68,6 +68,8 @@ pub enum Event {
         /// Listener ID.
         listener_id: String,
     },
+    /// A server template was saved or deleted.
+    TemplatesChanged,
     /// A node's agent connected or disconnected, or a node was added,
     /// renamed, or removed.
     NodeChanged {

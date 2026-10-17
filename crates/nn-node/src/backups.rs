@@ -69,7 +69,13 @@ impl LocalNode {
 
     /// Archives the server's folder (lock already held), pausing saving
     /// while a running server is read.
-    async fn make(&self, server: &Server, name: &str, job_id: &str) -> Result<Archive, String> {
+    async fn make(
+        &self,
+        server: &Server,
+        name: &str,
+        job_id: &str,
+        leave_out: &[String],
+    ) -> Result<Archive, String> {
         let file = self
             .archive_path(name)
             .ok_or("the data folder isn't available, so backups can't be made")?;
@@ -84,7 +90,7 @@ impl LocalNode {
                 return Err(format!("couldn't save the world first: {e}"));
             }
         }
-        let result = self.write_archive(server, &file, job_id).await;
+        let result = self.write_archive(server, &file, job_id, leave_out).await;
         if let Some(o) = &orchestrator {
             // Always turn saving back on, whatever happened.
             if let Err(e) = o.command(&server.id, "save-on").await {
@@ -102,8 +108,10 @@ impl LocalNode {
         server: &Server,
         file: &Path,
         job_id: &str,
+        leave_out: &[String],
     ) -> Result<Archive, String> {
         let files = self.open_files(server).await.map_err(|e| e.to_string())?;
+        let leave_out = leave_out.to_vec();
         let tmp = file.with_extension("zst.tmp");
         let (file, tmp2) = (file.to_owned(), tmp.clone());
         let mut progress = Progress::for_job(&self.events, &server.id, job_id, "backup");
@@ -112,8 +120,9 @@ impl LocalNode {
                 .write(true)
                 .create_new(true)
                 .open(&tmp2)?;
-            let (out, report) = files.backup_to(
+            let (out, report) = files.backup_without(
                 std::io::BufWriter::with_capacity(1 << 20, out),
+                &leave_out,
                 &mut |done, total| progress.report(done, total),
             )?;
             let out = out
@@ -246,18 +255,31 @@ impl Node {
         name: &str,
         job_id: &str,
     ) -> Result<Archive, String> {
+        self.backup_without(server, name, job_id, &[]).await
+    }
+
+    /// Like [`Self::backup`], leaving out the top-level folders named in
+    /// `leave_out`.
+    pub async fn backup_without(
+        &self,
+        server: &Server,
+        name: &str,
+        job_id: &str,
+        leave_out: &[String],
+    ) -> Result<Archive, String> {
         if let Node::Remote(remote) = self {
             let request = Request::Backup {
                 id: server.id.clone(),
                 name: name.to_owned(),
                 job_id: job_id.to_owned(),
+                leave_out: leave_out.to_vec(),
             };
             return remote.call(request).await.map_err(|e| e.to_string());
         }
         let local = self.as_local(NOT_YET).map_err(|e| e.to_string())?;
         local
             .locked(server, async |current| {
-                local.make(&current, name, job_id).await
+                local.make(&current, name, job_id, leave_out).await
             })
             .await
     }
@@ -295,7 +317,7 @@ impl Node {
                             .to_owned(),
                     );
                 }
-                let pre = local.make(&current, pre_restore, job_id).await;
+                let pre = local.make(&current, pre_restore, job_id, &[]).await;
                 if let Err(e) = &pre {
                     return Ok(Restored {
                         files: Err(e.clone()),
@@ -388,7 +410,11 @@ impl Node {
             }
             if let Ok(mut entries) = tokio::fs::read_dir(&dir).await {
                 while let Ok(Some(entry)) = entries.next_entry().await {
-                    if entry.file_name().to_string_lossy().ends_with(".tmp") {
+                    let name = entry.file_name().to_string_lossy().into_owned();
+                    // Archives made only to copy a server (see
+                    // `nn_api::copies`); no copy survives a restart.
+                    let copy = name.starts_with("copy-") && name.ends_with(".tar.zst");
+                    if name.ends_with(".tmp") || copy {
                         let _ = tokio::fs::remove_file(entry.path()).await;
                     }
                 }

@@ -27,6 +27,7 @@ const INVALIDATES: Record<string, string[][]> = {
     ["notices"],
   ],
   server_players: [["servers"]],
+  templates_changed: [["templates"]],
   server_operation_failed: [["servers"]],
 };
 

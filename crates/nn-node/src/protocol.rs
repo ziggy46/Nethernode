@@ -118,6 +118,9 @@ pub enum Request {
         name: String,
         /// Job ID for progress events.
         job_id: String,
+        /// Top-level folders to leave out (a world, for a copy without it).
+        #[serde(default)]
+        leave_out: Vec<String>,
     },
     /// Restore archive `source` over a stopped server, after archiving
     /// what's there as `pre_restore`.

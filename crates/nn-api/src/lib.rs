@@ -35,6 +35,7 @@ pub mod cache;
 mod console;
 pub mod content;
 mod cookies;
+mod copies;
 mod events;
 mod files;
 mod files_http;

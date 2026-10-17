@@ -17,7 +17,7 @@ use crate::proto::nethernode::v1 as pb;
 use crate::rpc::{audit, require, store_error};
 
 /// Serializes server creation across machines.
-static CREATE_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+pub(crate) static CREATE_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
 pub(crate) struct ServerRpc {
     state: AppState,
@@ -872,6 +872,144 @@ impl pb::ServerService for ServerRpc {
             samples,
             periods,
             since_ms,
+            ..Default::default()
+        })
+    }
+
+    async fn copy_server(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::CopyServerRequest>,
+    ) -> ServiceResult<pb::CopyServerResponse> {
+        let user = require(&ctx, Permission::ManageServers)?.clone();
+        let source = self.load(request.id).await?;
+        let job_id = crate::copies::start_copy(
+            &self.state,
+            source.clone(),
+            request.name,
+            request.node_id,
+            request.include_world,
+        )
+        .await?;
+        audit(
+            &self.state,
+            &user,
+            "server.copy",
+            ("server", &source.id),
+            json!({ "name": request.name.trim(), "node": request.node_id, "world": request.include_world }),
+        )
+        .await;
+        Response::ok(pb::CopyServerResponse {
+            job_id,
+            ..Default::default()
+        })
+    }
+
+    async fn save_server_template(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::SaveServerTemplateRequest>,
+    ) -> ServiceResult<pb::SaveServerTemplateResponse> {
+        let user = require(&ctx, Permission::ManageServers)?.clone();
+        let source = self.load(request.id).await?;
+        let job_id =
+            crate::copies::start_save_template(&self.state, source.clone(), request.name).await?;
+        audit(
+            &self.state,
+            &user,
+            "server.template_save",
+            ("server", &source.id),
+            json!({ "name": request.name.trim() }),
+        )
+        .await;
+        Response::ok(pb::SaveServerTemplateResponse {
+            job_id,
+            ..Default::default()
+        })
+    }
+
+    async fn list_server_templates(
+        &self,
+        ctx: RequestContext,
+        _request: ServiceRequest<'_, pb::ListServerTemplatesRequest>,
+    ) -> ServiceResult<pb::ListServerTemplatesResponse> {
+        require(&ctx, Permission::ManageServers)?;
+        let templates = self
+            .state
+            .auth
+            .store()
+            .list_templates()
+            .await
+            .map_err(store_error)?
+            .into_iter()
+            .map(|t| pb::ServerTemplate {
+                id: t.id,
+                name: t.name,
+                source_name: t.source_name,
+                loader: t.loader,
+                mc_version: t.mc_version,
+                memory_mb: u32::try_from(t.memory_mb).unwrap_or(0),
+                size_bytes: u64::try_from(t.archive_bytes).unwrap_or(0),
+                created_at_ms: t.created_at,
+                ..Default::default()
+            })
+            .collect();
+        Response::ok(pb::ListServerTemplatesResponse {
+            templates,
+            ..Default::default()
+        })
+    }
+
+    async fn delete_server_template(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::DeleteServerTemplateRequest>,
+    ) -> ServiceResult<pb::DeleteServerTemplateResponse> {
+        let user = require(&ctx, Permission::ManageServers)?.clone();
+        let template = crate::copies::delete_template(&self.state, request.id).await?;
+        audit(
+            &self.state,
+            &user,
+            "server.template_delete",
+            ("template", &template.id),
+            json!({ "name": template.name }),
+        )
+        .await;
+        Response::ok(pb::DeleteServerTemplateResponse::default())
+    }
+
+    async fn create_server_from_template(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::CreateServerFromTemplateRequest>,
+    ) -> ServiceResult<pb::CreateServerFromTemplateResponse> {
+        let user = require(&ctx, Permission::ManageServers)?.clone();
+        let template = self
+            .state
+            .auth
+            .store()
+            .find_template(request.template_id)
+            .await
+            .map_err(store_error)?
+            .ok_or_else(|| ConnectError::not_found("That template doesn't exist."))?;
+        let template_id = template.id.clone();
+        let job_id = crate::copies::start_from_template(
+            &self.state,
+            template,
+            request.name,
+            request.node_id,
+        )
+        .await?;
+        audit(
+            &self.state,
+            &user,
+            "server.create_from_template",
+            ("template", &template_id),
+            json!({ "name": request.name.trim(), "node": request.node_id }),
+        )
+        .await;
+        Response::ok(pb::CreateServerFromTemplateResponse {
+            job_id,
             ..Default::default()
         })
     }

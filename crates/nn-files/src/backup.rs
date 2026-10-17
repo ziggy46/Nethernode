@@ -50,6 +50,17 @@ pub struct BackupReport {
 impl ServerFiles {
     /// Writes a backup of the whole folder to `out`, returning it when done.
     pub fn backup_to<W: Write>(&self, out: W, progress: Progress<'_>) -> Result<(W, BackupReport)> {
+        self.backup_without(out, &[], progress)
+    }
+
+    /// Like [`Self::backup_to`], also leaving out the top-level entries
+    /// named in `leave_out` (a world, for a copy without it).
+    pub fn backup_without<W: Write>(
+        &self,
+        out: W,
+        leave_out: &[String],
+        progress: Progress<'_>,
+    ) -> Result<(W, BackupReport)> {
         let mut report = BackupReport::default();
         // Walk first: the total drives progress.
         let mut dirs: Vec<PathBuf> = Vec::new();
@@ -65,7 +76,9 @@ impl ServerFiles {
                 let Ok(name) = item.file_name().into_string() else {
                     continue;
                 };
-                if dir.as_os_str() == "." && REGENERATED.contains(&name.as_str()) {
+                if dir.as_os_str() == "."
+                    && (REGENERATED.contains(&name.as_str()) || leave_out.contains(&name))
+                {
                     continue;
                 }
                 let path = if dir.as_os_str() == "." {
@@ -347,6 +360,29 @@ mod tests {
         assert_eq!(std::fs::read(out.join("mods/a.jar")).unwrap(), b"jar");
         assert!(!out.join("libraries").exists());
         assert!(!out.join("world/escape").exists());
+    }
+
+    #[test]
+    fn a_world_can_be_left_out() {
+        let tmp = tempfile::tempdir().unwrap();
+        let files = server(tmp.path());
+        let leave_out = ["world".to_owned(), "world_nether".to_owned()];
+        let (bytes, report) = files
+            .backup_without(Vec::new(), &leave_out, &mut |_, _| {})
+            .unwrap();
+        assert_eq!(report.files, 2, "server.properties and the mod");
+        restore_into(
+            bytes.as_slice(),
+            bytes.len() as u64,
+            tmp.path(),
+            "copy",
+            Owner::default(),
+            Limits::default(),
+            &mut |_, _| {},
+        )
+        .unwrap();
+        assert!(!tmp.path().join("copy/world").exists());
+        assert!(tmp.path().join("copy/mods/a.jar").exists());
     }
 
     fn tar_with(entries: &[(&str, tar::EntryType, &[u8])]) -> Vec<u8> {

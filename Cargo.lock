@@ -2430,6 +2430,7 @@ dependencies = [
  "connectrpc",
  "connectrpc-build",
  "croner",
+ "flate2",
  "futures-util",
  "hex",
  "http",

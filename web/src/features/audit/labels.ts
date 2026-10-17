@@ -24,6 +24,10 @@ const LABELS: Record<string, string> = {
   "server.allowlist_enabled": "Changed the allowlist setting",
   "server.properties": "Changed game settings",
   "server.move": "Moved a server to another machine",
+  "server.copy": "Copied a server",
+  "server.template_save": "Saved a server as a template",
+  "server.template_delete": "Deleted a server template",
+  "server.create_from_template": "Created a server from a template",
   "node.create": "Added a node",
   "node.join": "A node's agent joined",
   "node.join_failed": "An agent failed to join",
@@ -135,6 +139,8 @@ export function activityTitle(action: string, server: string): string {
       return `${s} was created`;
     case "server.delete":
       return `${s} was deleted`;
+    case "server.copy":
+      return `${s} was copied`;
     case "server.start":
       return `${s} started`;
     case "server.stop":

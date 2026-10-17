@@ -481,8 +481,16 @@ async fn answer(node: &Node, request: Request) -> Reply {
             reply(Ok(()))
         }
         Request::BackupsFreeSpace => said(node.backups_free_space().await),
-        Request::Backup { id, name, job_id } => match server_row(node, &id).await {
-            Ok(server) => said(node.backup(&server, &name, &job_id).await),
+        Request::Backup {
+            id,
+            name,
+            job_id,
+            leave_out,
+        } => match server_row(node, &id).await {
+            Ok(server) => said(
+                node.backup_without(&server, &name, &job_id, &leave_out)
+                    .await,
+            ),
             Err(e) => reply::<()>(Err(e)),
         },
         Request::Restore {
