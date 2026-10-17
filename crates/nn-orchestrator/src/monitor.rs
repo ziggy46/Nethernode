@@ -4,7 +4,8 @@
 //! - **players:** ping every `player_poll`; sleep the server when it has
 //!   been empty long enough and `sleep_when_empty` is on
 //! - **stats:** Docker stats → CPU %, memory, network, once per second
-//! - **logs:** Docker logs (follow) → the server's log hub
+//! - **logs:** Docker logs (follow) → the server's log hub, noting when
+//!   the server pauses itself for want of players
 //!
 //! Tasks end on their own when the container stops; the event watcher
 //! also aborts them when it sees the container die.
@@ -44,6 +45,7 @@ pub(crate) fn spawn(
     state.stop_tasks();
     state.launching = false;
     state.tick = None;
+    state.paused = false;
     state.tasks.push(tokio::spawn(crate::ticks::poll(
         orch.clone(),
         id.to_owned(),
@@ -124,6 +126,9 @@ async fn watch_health(orch: Arc<Orchestrator>, id: String, adopted: bool) {
             publish_players(&orch, &id, players);
         }
         if players.online > 0 {
+            // A paused server resumes when someone joins; the log line may
+            // be missed (adopted with a short backlog), the ping isn't.
+            orch.runtime(&id).state().paused = false;
             empty_since = None;
             continue;
         }
@@ -174,6 +179,7 @@ async fn stream_stats(orch: Arc<Orchestrator>, id: String, container: String) {
             let state = rt.state();
             sample.players_online = state.players.map(|p| p.online);
             sample.tick = state.tick;
+            sample.paused = state.paused;
         }
         orch.record_stats(&id, sample);
         orch.events.publish(Event::ServerStats {
@@ -189,6 +195,7 @@ async fn stream_stats(orch: Arc<Orchestrator>, id: String, container: String) {
             mspt: sample.tick.map(|t| t.mspt),
             mspt_p95: sample.tick.and_then(|t| t.mspt_p95),
             tps: sample.tick.map(|t| t.tps),
+            paused: sample.paused,
         });
     }
 }
@@ -259,6 +266,7 @@ pub(crate) fn sample_from(stats: &ContainerStatsResponse) -> Option<StatSample> 
         disk_write_bytes: disk_write,
         players_online: None,
         tick: None,
+        paused: false,
     })
 }
 
@@ -283,11 +291,34 @@ async fn stream_logs(orch: Arc<Orchestrator>, rt: Arc<Runtime>, container: Strin
         partial.push_str(&String::from_utf8_lossy(&chunk));
         while let Some(pos) = partial.find('\n') {
             let line: String = partial.drain(..=pos).collect();
-            rt.logs.push(visible(&line));
+            let line = visible(&line);
+            if let Some(paused) = pause_change(line) {
+                rt.state().paused = paused;
+            }
+            rt.logs.push(line);
         }
     }
     if !partial.is_empty() {
         rt.logs.push(visible(&partial));
+    }
+}
+
+/// Whether a log line says the server paused itself (nobody online for
+/// `pause-when-empty-seconds`) or resumed (someone joined). Minecraft logs
+/// no line of its own when it resumes.
+fn pause_change(line: &str) -> Option<bool> {
+    // The message after "[12:00:00] [Server thread/INFO]: ". Chat and
+    // `/say` lines ("<Steve> …", "[Server] …") can't fake either.
+    let (_, message) = line.split_once("]: ")?;
+    if message.starts_with(['<', '[', '*']) {
+        return None;
+    }
+    if message.starts_with("Server empty for ") && message.contains(" pausing") {
+        Some(true)
+    } else if message.contains(" joined the game") {
+        Some(false)
+    } else {
+        None
     }
 }
 
@@ -304,6 +335,33 @@ pub(crate) fn visible(raw: &str) -> &str {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn pausing_and_resuming_are_noticed() {
+        assert_eq!(
+            pause_change("[02:47:45] [Server thread/INFO]: Server empty for 60 seconds, pausing"),
+            Some(true)
+        );
+        assert_eq!(
+            pause_change("[02:48:12] [Server thread/INFO]: Probe joined the game"),
+            Some(false)
+        );
+        assert_eq!(
+            pause_change(
+                "[02:48:13] [Server thread/INFO]: <Probe> Server empty for 1 seconds, pausing"
+            ),
+            None,
+            "chat can't pause it"
+        );
+        assert_eq!(
+            pause_change("[02:48:14] [Server thread/INFO]: [Server] Steve joined the game"),
+            None
+        );
+        assert_eq!(
+            pause_change("[02:48:15] [Server thread/INFO]: Done (5.2s)!"),
+            None
+        );
+    }
+
     #[test]
     fn prompt_redraws_are_removed() {
         use super::visible;

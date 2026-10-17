@@ -114,6 +114,10 @@ message Server {
   // Its node's agent is connected but runs a different NetherNode version,
   // so it can't be managed until it's updated (node_offline is also set).
   bool node_update_needed = 20;
+  // Running, but paused by Minecraft itself because nobody's online
+  // (`pause-when-empty-seconds`, 1.21.2 and later). It resumes when a
+  // player joins.
+  bool paused = 21;
 }
 
 // Settings an admin can change after creation.

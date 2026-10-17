@@ -7,6 +7,7 @@ import type { Server } from "@/gen/nethernode/v1/servers_pb";
 import { useCanModerate } from "@/lib/session";
 
 import { useDockerAvailable } from "../servers/docker-notice";
+import { usePaused } from "../servers/server-card";
 
 const ConsoleView = lazy(() => import("./console-view"));
 
@@ -50,6 +51,7 @@ export function ConsolePanel({ server }: { server: Server }) {
 
 /** The console's chrome without a terminal, for loading and unavailable states. */
 function Frame({ server, bare, children }: { server: Server; bare?: boolean; children: React.ReactNode }) {
+  const paused = usePaused(server);
   return (
     <section
       aria-label="Server console"
@@ -63,6 +65,7 @@ function Frame({ server, bare, children }: { server: Server; bare?: boolean; chi
             status={server.status}
             nodeOffline={server.nodeOffline}
             nodeUpdateNeeded={server.nodeUpdateNeeded}
+            paused={paused}
           />
         </span>
       </div>

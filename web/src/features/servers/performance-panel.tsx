@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 import { formatBytes } from "./format";
 import { statsHistoryQuery } from "./queries";
-import { useLiveStats } from "./server-card";
+import { useLiveStats, usePaused } from "./server-card";
 import { type Point, Sparkline, useStatsSeries } from "./sparkline";
 
 /** Samples in the short charts (one a second). */
@@ -22,6 +22,7 @@ export function PerformancePanel({ server }: { server: Server }) {
   const series = useStatsSeries(server.id, running || server.status === ServerStatus.STARTING);
   const details = useQuery({ ...statsHistoryQuery(server.id), refetchInterval: 5 * 60_000 }).data;
   const live = useLiveStats(server.id);
+  const paused = usePaused(server);
   const recent = series.slice(-RECENT);
   const graphs = running && recent.length > 1;
 
@@ -51,10 +52,10 @@ export function PerformancePanel({ server }: { server: Server }) {
           </Tile>
           <Tile
             label="Tick health · last 5 minutes"
-            value={tick?.tps !== undefined ? tick.tps.toFixed(1) : "—"}
-            unit={tick ? "TPS" : undefined}
+            value={paused ? "Paused" : tick?.tps !== undefined ? tick.tps.toFixed(1) : "—"}
+            unit={tick && !paused ? "TPS" : undefined}
             tone={
-              tick?.tps === undefined
+              paused || tick?.tps === undefined
                 ? undefined
                 : tick.tps >= 19.5
                   ? "good"
@@ -63,11 +64,13 @@ export function PerformancePanel({ server }: { server: Server }) {
                     : "bad"
             }
             note={
-              tick?.mspt !== undefined
-                ? `${tick.mspt.toFixed(1)} ms per tick on average${
-                    tick.msptP95 !== undefined ? `, ${tick.msptP95.toFixed(1)} ms for the slowest 5%` : ""
-                  } (50 ms keeps up)`
-                : "Waiting for the server to report tick times. Some older or modded servers don't."
+              paused
+                ? "Nobody's online, so Minecraft has paused the world. It resumes when someone joins (see “Pause when empty” in the game settings)."
+                : tick?.mspt !== undefined
+                  ? `${tick.mspt.toFixed(1)} ms per tick on average${
+                      tick.msptP95 !== undefined ? `, ${tick.msptP95.toFixed(1)} ms for the slowest 5%` : ""
+                    } (50 ms keeps up)`
+                  : "Waiting for the server to report tick times. Some older or modded servers don't."
             }
           >
             {tick && (

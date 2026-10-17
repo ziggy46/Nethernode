@@ -277,7 +277,7 @@ function RouteCard({
           )}
         </div>
         <div className="below-md:col-start-3 below-md:row-start-1">
-          {server && <ServerStatusBadge status={server.status} />}
+          {server && <ServerStatusBadge status={server.status} paused={server.paused} />}
         </div>
         <div className="flex items-center gap-1 below-md:col-span-2 below-md:col-start-2 below-md:row-start-3">
           {route.kind !== RouteKind.DEFAULT && (

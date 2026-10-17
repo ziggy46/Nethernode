@@ -46,6 +46,10 @@ pub struct StatSample {
     /// Tick health, when the server reports it.
     #[serde(default)]
     pub tick: Option<crate::ticks::TickStats>,
+    /// The server stopped ticking because nobody's online (Minecraft's
+    /// `pause-when-empty-seconds`, 1.21.2 and later).
+    #[serde(default)]
+    pub paused: bool,
 }
 
 /// Player counts from the last successful status ping.
@@ -100,6 +104,8 @@ pub(crate) struct State {
     pub players: Option<Players>,
     /// The latest tick timing, while running.
     pub tick: Option<crate::ticks::TickStats>,
+    /// Paused while empty (see [`StatSample::paused`]).
+    pub paused: bool,
     pub crash_restarts: VecDeque<Instant>,
     /// NetherNode is starting the container itself, so Docker's `start`
     /// event shouldn't be treated as an outside start.

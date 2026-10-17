@@ -42,6 +42,8 @@ export interface LiveStats {
   mspt?: number | null;
   msptP95?: number | null;
   tps?: number | null;
+  /** Minecraft paused it because nobody's online. */
+  paused?: boolean;
 }
 export const liveStatsKey = (id: string) => ["servers", "live", id] as const;
 

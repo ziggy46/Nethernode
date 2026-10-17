@@ -146,6 +146,7 @@ impl RemoteNode {
                 mspt,
                 mspt_p95,
                 tps,
+                paused,
             } => {
                 cache.entry(server_id.clone()).or_default().stats = Some(StatSample {
                     at_ms: nn_store::now_ms(),
@@ -164,6 +165,7 @@ impl RemoteNode {
                             mspt_p95: *mspt_p95,
                             tps,
                         }),
+                    paused: *paused,
                 });
             }
             Event::ServerStatusChanged { server_id, status } if status != "running" => {

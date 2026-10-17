@@ -23,6 +23,7 @@ import { toast } from "sonner";
 
 import { ServerStatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
+import { usePaused } from "@/features/servers/server-card";
 import { type Server, ServerStatus } from "@/gen/nethernode/v1/servers_pb";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
@@ -108,6 +109,7 @@ const STATE_LABEL: Record<SocketState, string> = {
 };
 
 export default function ConsoleView({ server }: { server: Server }) {
+  const paused = usePaused(server);
   const host = useRef<HTMLDivElement>(null);
   const term = useRef<Terminal | null>(null);
   const searcher = useRef<SearchAddon | null>(null);
@@ -328,6 +330,7 @@ export default function ConsoleView({ server }: { server: Server }) {
               status={server.status}
               nodeOffline={server.nodeOffline}
               nodeUpdateNeeded={server.nodeUpdateNeeded}
+              paused={paused}
             />
           </span>
         </span>

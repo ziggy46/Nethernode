@@ -15,6 +15,12 @@ import { useServerAction } from "./use-server-actions";
 import { WorldBanner } from "./world-banner";
 
 /** Reads the latest live sample pushed by `server_stats` events. */
+/** Whether Minecraft has paused the server for want of players. */
+export function usePaused(server: Server): boolean {
+  const live = useLiveStats(server.id);
+  return server.status === ServerStatus.RUNNING && (live?.paused ?? server.paused);
+}
+
 export function useLiveStats(id: string): LiveStats | undefined {
   return (
     useQuery<LiveStats | null>({
@@ -60,6 +66,7 @@ export async function copyAddress(address: string) {
 /** Server card, per the UI reference's anatomy. */
 export function ServerCard({ server, now }: { server: Server; now: number }) {
   const live = useLiveStats(server.id);
+  const paused = usePaused(server);
   const canManage = useCanManage();
   const action = useServerAction(server.id, server.name);
   const running = server.status === ServerStatus.RUNNING;
@@ -79,6 +86,7 @@ export function ServerCard({ server, now }: { server: Server; now: number }) {
             status={server.status}
             nodeOffline={server.nodeOffline}
             nodeUpdateNeeded={server.nodeUpdateNeeded}
+            paused={paused}
           />
         </div>
         <Button

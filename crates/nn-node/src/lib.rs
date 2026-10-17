@@ -344,6 +344,12 @@ impl Node {
         }
     }
 
+    /// Whether the server paused itself because nobody's online, as of its
+    /// newest sample (meaningful only while it runs).
+    pub fn paused(&self, id: &str) -> bool {
+        self.latest_stats(id).is_some_and(|s| s.paused)
+    }
+
     /// How much space a server's folder and worlds take, if that can be
     /// measured.
     pub async fn folder_usage(&self, id: &str) -> Option<nn_orchestrator::FolderUsage> {

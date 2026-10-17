@@ -100,6 +100,7 @@ impl ServerRpc {
             players_online: players.map(|p| p.online),
             players_max: players.map(|p| p.max),
             restart_required,
+            paused: server.status == "running" && node.paused(&server.id),
             modpack: proto_modpack(server.modpack_json.as_deref()).into(),
             internal_port: u32::try_from(server.internal_port).unwrap_or_default(),
             sleep_when_empty: server.sleep_when_empty,

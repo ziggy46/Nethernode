@@ -1,4 +1,4 @@
-import { CircleAlert, Moon } from "lucide-react";
+import { CircleAlert, Moon, Pause } from "lucide-react";
 
 import { ServerStatus } from "@/gen/nethernode/v1/servers_pb";
 import { cn } from "@/lib/utils";
@@ -19,14 +19,17 @@ export function Badge({
   icon,
   children,
   className,
+  title,
 }: {
   tone: Tone;
   icon?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
+  title?: string;
 }) {
   return (
     <span
+      title={title}
       className={cn(
         "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-sm border px-[7px] py-[3px] text-meta leading-none",
         TONES[tone],
@@ -68,15 +71,29 @@ export function ServerStatusBadge({
   status,
   nodeOffline,
   nodeUpdateNeeded,
+  paused,
 }: {
   status: ServerStatus;
   nodeOffline?: boolean;
   nodeUpdateNeeded?: boolean;
+  /** Running, but Minecraft paused it because nobody's online. */
+  paused?: boolean;
 }) {
   if (nodeOffline) {
     return (
       <Badge tone="muted" icon={<CircleAlert className="size-3" aria-hidden />}>
         {nodeUpdateNeeded ? "Machine needs update" : "Machine offline"}
+      </Badge>
+    );
+  }
+  if (paused && status === ServerStatus.RUNNING) {
+    return (
+      <Badge
+        tone="info"
+        icon={<Pause className="size-3" aria-hidden />}
+        title="Nobody's online, so Minecraft has paused the world. It resumes when someone joins."
+      >
+        Paused
       </Badge>
     );
   }

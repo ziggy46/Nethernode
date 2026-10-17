@@ -116,6 +116,9 @@ pub enum Event {
         /// Ticks per second achieved (20 is full speed).
         #[serde(default)]
         tps: Option<f64>,
+        /// Paused because nobody's online (Minecraft 1.21.2+).
+        #[serde(default)]
+        paused: bool,
     },
     /// Players online, from the server's status ping.
     ServerPlayers {
