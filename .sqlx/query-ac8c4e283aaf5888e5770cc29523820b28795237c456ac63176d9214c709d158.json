@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO server_stats (server_id, period, at_ms, samples, cpu_sum, cpu_max,\n                   memory_sum, memory_max, memory_limit, net_rx, net_tx, disk_read, disk_write,\n                   players_max, tick_samples, mspt_sum, mspt_max, tps_sum, tps_min, paused_samples)\n               VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17,\n                   ?18, ?19, ?20)\n               ON CONFLICT (server_id, period, at_ms) DO UPDATE SET\n                   samples = samples + excluded.samples,\n                   cpu_sum = cpu_sum + excluded.cpu_sum,\n                   cpu_max = max(cpu_max, excluded.cpu_max),\n                   memory_sum = memory_sum + excluded.memory_sum,\n                   memory_max = max(memory_max, excluded.memory_max),\n                   memory_limit = excluded.memory_limit,\n                   net_rx = net_rx + excluded.net_rx,\n                   net_tx = net_tx + excluded.net_tx,\n                   disk_read = disk_read + excluded.disk_read,\n                   disk_write = disk_write + excluded.disk_write,\n                   players_max = max(coalesce(players_max, excluded.players_max),\n                                     coalesce(excluded.players_max, players_max)),\n                   tick_samples = tick_samples + excluded.tick_samples,\n                   mspt_sum = mspt_sum + excluded.mspt_sum,\n                   mspt_max = max(coalesce(mspt_max, excluded.mspt_max),\n                                  coalesce(excluded.mspt_max, mspt_max)),\n                   tps_sum = tps_sum + excluded.tps_sum,\n                   tps_min = min(coalesce(tps_min, excluded.tps_min),\n                                 coalesce(excluded.tps_min, tps_min)),\n                   paused_samples = paused_samples + excluded.paused_samples",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 20
+    },
+    "nullable": []
+  },
+  "hash": "ac8c4e283aaf5888e5770cc29523820b28795237c456ac63176d9214c709d158"
+}

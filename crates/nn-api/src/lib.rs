@@ -50,6 +50,7 @@ mod request_meta;
 mod rpc;
 pub mod schedules;
 mod spa;
+pub mod stats_history;
 pub mod uploads;
 
 pub use middleware::{CurrentUser, PUBLIC_PROCEDURES, SETUP_REQUIRED_HEADER};

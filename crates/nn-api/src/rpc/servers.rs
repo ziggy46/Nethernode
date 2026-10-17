@@ -82,6 +82,62 @@ impl ServerRpc {
         Ok(out)
     }
 
+    /// The server's stored stats for one of the longer ranges, and where
+    /// the range starts.
+    async fn stat_periods(
+        &self,
+        id: &str,
+        range: pb::StatsRange,
+    ) -> Result<(Vec<pb::StatPeriod>, i64), ConnectError> {
+        const MINUTE: i64 = 60_000;
+        const HOUR: i64 = 60 * MINUTE;
+        let (period, span, bucket) = match range {
+            pb::StatsRange::STATS_RANGE_WEEK => (3600, 7 * 24 * HOUR, HOUR),
+            pb::StatsRange::STATS_RANGE_MONTH => (3600, 30 * 24 * HOUR, 4 * HOUR),
+            _ => (60, 24 * HOUR, 5 * MINUTE),
+        };
+        let since = nn_store::now_ms() - span;
+        let since = since - since.rem_euclid(bucket);
+        let rows = self
+            .state
+            .auth
+            .store()
+            .stats_since(id, period, since, bucket)
+            .await
+            .map_err(store_error)?;
+        let seconds = u32::try_from(bucket / 1000).unwrap_or(u32::MAX);
+        let periods = rows
+            .into_iter()
+            .map(|r| {
+                let n = r.samples.max(1) as f64;
+                let ticks = r.tick_samples.max(1) as f64;
+                let has_ticks = r.tick_samples > 0;
+                pb::StatPeriod {
+                    at_ms: r.at_ms,
+                    seconds,
+                    running_seconds: u32::try_from(r.samples).unwrap_or(u32::MAX),
+                    cpu_avg: r.cpu_sum / n,
+                    cpu_max: r.cpu_max,
+                    memory_avg: (r.memory_sum as f64 / n) as u64,
+                    memory_max: u64::try_from(r.memory_max).unwrap_or(0),
+                    memory_limit: u64::try_from(r.memory_limit).unwrap_or(0),
+                    net_rx: u64::try_from(r.net_rx).unwrap_or(0),
+                    net_tx: u64::try_from(r.net_tx).unwrap_or(0),
+                    disk_read: u64::try_from(r.disk_read).unwrap_or(0),
+                    disk_write: u64::try_from(r.disk_write).unwrap_or(0),
+                    players_max: r.players_max.and_then(|p| u32::try_from(p).ok()),
+                    mspt_avg: has_ticks.then(|| r.mspt_sum / ticks),
+                    mspt_max: r.mspt_max,
+                    tps_avg: has_ticks.then(|| r.tps_sum / ticks),
+                    tps_min: r.tps_min,
+                    paused_seconds: u32::try_from(r.paused_samples).unwrap_or(u32::MAX),
+                    ..Default::default()
+                }
+            })
+            .collect();
+        Ok((periods, since))
+    }
+
     async fn to_proto(&self, server: Server, hostnames: &Hostnames) -> pb::Server {
         let node = self.state.nodes.for_server(&server);
         let node_offline = matches!(&node, Node::Remote(r) if !r.is_online());
@@ -772,9 +828,17 @@ impl pb::ServerService for ServerRpc {
     ) -> ServiceResult<pb::GetServerStatsResponse> {
         require(&ctx, Permission::View)?;
         let node = self.state.nodes.for_server_id(request.id).await;
-        let samples = node
-            .stats_history(request.id)
-            .await
+        let range = request.range.as_known();
+        let (periods, since_ms) = match range {
+            Some(pb::StatsRange::STATS_RANGE_UNSPECIFIED) | None => (Vec::new(), 0),
+            Some(range) => self.stat_periods(request.id, range).await?,
+        };
+        let samples = if periods.is_empty() && since_ms == 0 {
+            node.stats_history(request.id).await
+        } else {
+            Vec::new()
+        };
+        let samples = samples
             .into_iter()
             .map(|s| pb::StatSample {
                 at_ms: s.at_ms,
@@ -806,6 +870,8 @@ impl pb::ServerService for ServerRpc {
             world_bytes: usage.map(|u| u.world_bytes),
             players_peak_day,
             samples,
+            periods,
+            since_ms,
             ..Default::default()
         })
     }

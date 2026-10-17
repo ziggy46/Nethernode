@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM server_stats WHERE period = ?1 AND at_ms < ?2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "53ac688965cac2a850cfb5df2756f04aaa918609cc9ba408240bb57973248ed3"
+}

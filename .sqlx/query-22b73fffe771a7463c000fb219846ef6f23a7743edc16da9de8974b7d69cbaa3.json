@@ -1,0 +1,140 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT (at_ms / ?4) * ?4 AS \"at_ms!: i64\",\n                   sum(samples) AS \"samples!: i64\",\n                   sum(cpu_sum) AS \"cpu_sum!: f64\",\n                   max(cpu_max) AS \"cpu_max!: f64\",\n                   sum(memory_sum) AS \"memory_sum!: i64\",\n                   max(memory_max) AS \"memory_max!: i64\",\n                   max(memory_limit) AS \"memory_limit!: i64\",\n                   sum(net_rx) AS \"net_rx!: i64\",\n                   sum(net_tx) AS \"net_tx!: i64\",\n                   sum(disk_read) AS \"disk_read!: i64\",\n                   sum(disk_write) AS \"disk_write!: i64\",\n                   max(players_max) AS \"players_max: i64\",\n                   sum(tick_samples) AS \"tick_samples!: i64\",\n                   sum(mspt_sum) AS \"mspt_sum!: f64\",\n                   max(mspt_max) AS \"mspt_max: f64\",\n                   sum(tps_sum) AS \"tps_sum!: f64\",\n                   min(tps_min) AS \"tps_min: f64\",\n                   sum(paused_samples) AS \"paused_samples!: i64\"\n               FROM server_stats\n               WHERE server_id = ?1 AND period = ?2 AND at_ms >= ?3\n               GROUP BY 1\n               ORDER BY 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "at_ms!: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "samples!: i64",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "cpu_sum!: f64",
+        "ordinal": 2,
+        "type_info": "Float",
+        "origin": "Expression"
+      },
+      {
+        "name": "cpu_max!: f64",
+        "ordinal": 3,
+        "type_info": "Float",
+        "origin": "Expression"
+      },
+      {
+        "name": "memory_sum!: i64",
+        "ordinal": 4,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "memory_max!: i64",
+        "ordinal": 5,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "memory_limit!: i64",
+        "ordinal": 6,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "net_rx!: i64",
+        "ordinal": 7,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "net_tx!: i64",
+        "ordinal": 8,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "disk_read!: i64",
+        "ordinal": 9,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "disk_write!: i64",
+        "ordinal": 10,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "players_max: i64",
+        "ordinal": 11,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "tick_samples!: i64",
+        "ordinal": 12,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "mspt_sum!: f64",
+        "ordinal": 13,
+        "type_info": "Float",
+        "origin": "Expression"
+      },
+      {
+        "name": "mspt_max: f64",
+        "ordinal": 14,
+        "type_info": "Float",
+        "origin": "Expression"
+      },
+      {
+        "name": "tps_sum!: f64",
+        "ordinal": 15,
+        "type_info": "Float",
+        "origin": "Expression"
+      },
+      {
+        "name": "tps_min: f64",
+        "ordinal": 16,
+        "type_info": "Float",
+        "origin": "Expression"
+      },
+      {
+        "name": "paused_samples!: i64",
+        "ordinal": 17,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "22b73fffe771a7463c000fb219846ef6f23a7743edc16da9de8974b7d69cbaa3"
+}

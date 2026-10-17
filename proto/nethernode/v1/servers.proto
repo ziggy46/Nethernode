@@ -257,8 +257,50 @@ message StatSample {
   optional double tps = 12;
 }
 
+// How far back GetServerStats looks.
+enum StatsRange {
+  // The last hour, one sample a second (`samples`).
+  STATS_RANGE_UNSPECIFIED = 0;
+  // The last 24 hours in 5-minute periods (`periods`).
+  STATS_RANGE_DAY = 1;
+  // The last 7 days in 1-hour periods.
+  STATS_RANGE_WEEK = 2;
+  // The last 30 days in 4-hour periods.
+  STATS_RANGE_MONTH = 3;
+}
+
+// A summary of a server's samples over one period. Periods with no samples
+// (the server wasn't running) are left out.
+message StatPeriod {
+  // Start, unix ms.
+  int64 at_ms = 1;
+  // Length in seconds.
+  uint32 seconds = 2;
+  // About how many seconds of it the server was running.
+  uint32 running_seconds = 3;
+  double cpu_avg = 4;
+  double cpu_max = 5;
+  uint64 memory_avg = 6;
+  uint64 memory_max = 7;
+  uint64 memory_limit = 8;
+  // Bytes moved during the period.
+  uint64 net_rx = 9;
+  uint64 net_tx = 10;
+  uint64 disk_read = 11;
+  uint64 disk_write = 12;
+  optional uint32 players_max = 13;
+  // Tick health, when the server reported it.
+  optional double mspt_avg = 14;
+  optional double mspt_max = 15;
+  optional double tps_avg = 16;
+  optional double tps_min = 17;
+  // About how many seconds the server was paused for want of players.
+  uint32 paused_seconds = 18;
+}
+
 message GetServerStatsRequest {
   string id = 1;
+  StatsRange range = 2;
 }
 
 message GetServerStatsResponse {
@@ -270,6 +312,10 @@ message GetServerStatsResponse {
   optional uint64 world_bytes = 3;
   // The most players online at once in the last 24 hours.
   uint32 players_peak_day = 4;
+  // For the longer ranges, oldest first.
+  repeated StatPeriod periods = 5;
+  // Where the longer ranges start, unix ms.
+  int64 since_ms = 6;
 }
 
 message GetHostInfoRequest {}

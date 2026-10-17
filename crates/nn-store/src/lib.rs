@@ -24,6 +24,7 @@ pub mod proxy;
 pub mod servers;
 pub mod sessions;
 pub mod settings;
+pub mod stats;
 pub mod uploads;
 pub mod users;
 
@@ -35,6 +36,7 @@ pub use players::{NewPlayerSession, PlayerSession};
 pub use proxy::{ListenerInput, ProxyListener, Route, RouteInput};
 pub use servers::{NewServer, Server, ServerSettings};
 pub use sessions::{NewSession, Session};
+pub use stats::StatPeriod;
 pub use uploads::{NewUpload, Upload};
 pub use users::{NewUser, User};
 

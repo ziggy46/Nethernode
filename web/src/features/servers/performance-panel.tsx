@@ -1,15 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { Zap } from "lucide-react";
-import type * as React from "react";
+import { useState } from "react";
 
-import { Panel, PanelHeader } from "@/components/page";
+import { Panel } from "@/components/page";
 import { type Server, ServerStatus } from "@/gen/nethernode/v1/servers_pb";
-import { cn } from "@/lib/utils";
 
 import { formatBytes } from "./format";
 import { statsHistoryQuery } from "./queries";
 import { useLiveStats, usePaused } from "./server-card";
 import { type Point, Sparkline, useStatsSeries } from "./sparkline";
+import { HistoryTiles, type Range, RangePicker, Tile } from "./stats-history";
 
 /** Samples in the short charts (one a second). */
 const RECENT = 300;
@@ -18,6 +18,7 @@ const HOUR_POINTS = 240;
 
 /** The server's resources, tick health, players, and disk. */
 export function PerformancePanel({ server }: { server: Server }) {
+  const [range, setRange] = useState<Range>("hour");
   const running = server.status === ServerStatus.RUNNING;
   const series = useStatsSeries(server.id, running || server.status === ServerStatus.STARTING);
   const details = useQuery({ ...statsHistoryQuery(server.id), refetchInterval: 5 * 60_000 }).data;
@@ -33,8 +34,18 @@ export function PerformancePanel({ server }: { server: Server }) {
 
   return (
     <Panel>
-      <PanelHeader title="Performance" icon={<Zap />} />
-      {graphs ? (
+      <div className="mb-[17px] flex flex-wrap items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 font-semibold text-label tracking-[-0.3px]">
+          <Zap className="size-[15px] text-text-muted" aria-hidden />
+          Performance
+        </h2>
+        <RangePicker value={range} onChange={setRange} />
+      </div>
+      {range !== "hour" ? (
+        <HistoryTiles serverId={server.id} range={range} playersMax={server.playersMax}>
+          <Storage folder={details?.folderBytes} world={details?.worldBytes} />
+        </HistoryTiles>
+      ) : graphs ? (
         <div className="grid grid-cols-2 gap-x-6 gap-y-7 below-sm:grid-cols-1">
           <Tile label="CPU · last 5 minutes" value={`${Math.round(live?.cpuPercent ?? 0)}%`}>
             <Sparkline values={recent.map((p) => p.cpu)} max={100} className="mt-2 h-16 w-full" />
@@ -102,7 +113,7 @@ export function PerformancePanel({ server }: { server: Server }) {
       ) : (
         <div className="grid grid-cols-2 gap-6 below-sm:grid-cols-1">
           <p className="col-span-2 text-label text-text-muted below-sm:col-span-1">
-            Live graphs appear while the server is running.
+            Live graphs appear while the server is running. Pick 24 hours, 7 days or 30 days for its history.
           </p>
           <Storage folder={details?.folderBytes} world={details?.worldBytes} />
           <Tile
@@ -128,41 +139,6 @@ function Storage({ folder, world }: { folder?: bigint; world?: bigint }) {
           : undefined
       }
     />
-  );
-}
-
-function Tile({
-  label,
-  value,
-  unit,
-  note,
-  tone,
-  children,
-}: {
-  label: string;
-  value: string;
-  unit?: string;
-  note?: string;
-  tone?: "good" | "warn" | "bad";
-  children?: React.ReactNode;
-}) {
-  return (
-    <div className="min-w-0">
-      <p className="text-meta text-text-muted">{label}</p>
-      <p
-        className={cn(
-          "font-[650] text-title tabular-nums",
-          tone === "good" && "text-success",
-          tone === "warn" && "text-warning",
-          tone === "bad" && "text-danger",
-        )}
-      >
-        {value}
-        {unit && <span className="ml-1 font-normal text-label text-text-muted">{unit}</span>}
-      </p>
-      {note && <p className="mt-0.5 text-meta text-text-muted">{note}</p>}
-      {children}
-    </div>
   );
 }
 

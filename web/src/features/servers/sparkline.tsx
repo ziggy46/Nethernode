@@ -68,22 +68,54 @@ export function useStatsSeries(id: string, enabled: boolean): Point[] {
 
 /**
  * A minimal line chart (design system §3.6): 1.5 px primary line, a faint
- * area fill, and a lava dot on the latest value. Decorative: the caller
- * shows the numbers.
+ * area fill, and a lava dot on the latest value. `null` values leave a gap
+ * (the server wasn't running). Decorative: the caller shows the numbers.
  */
-export function Sparkline({ values, max, className }: { values: number[]; max: number; className?: string }) {
+export function Sparkline({
+  values,
+  max,
+  className,
+}: {
+  values: (number | null)[];
+  max: number;
+  className?: string;
+}) {
   const width = 300;
   const height = 64;
-  if (values.length < 2) {
+  const known = values.filter((v): v is number => v !== null);
+  if (values.length < 2 || known.length === 0) {
     return <div className={className} aria-hidden />;
   }
-  const top = Math.max(max, ...values, 1);
+  const top = Math.max(max, ...known, 1);
   const step = width / (values.length - 1);
-  const y = (v: number) => height - 4 - (Math.max(0, v) / top) * (height - 8);
-  const line = values
-    .map((v, i) => `${i === 0 ? "M" : "L"}${(i * step).toFixed(1)},${y(v).toFixed(1)}`)
+  const x = (i: number) => (i * step).toFixed(1);
+  const y = (v: number) => (height - 4 - (Math.max(0, v) / top) * (height - 8)).toFixed(1);
+  // One run per stretch without gaps; a lone point gets a short tick.
+  const runs: [number, number][][] = [];
+  values.forEach((v, i) => {
+    if (v === null) return;
+    const last = runs[runs.length - 1];
+    if (last && values[i - 1] !== null && i > 0) last.push([i, v]);
+    else runs.push([[i, v]]);
+  });
+  const line = runs
+    .map((run) =>
+      run.length === 1 && run[0]
+        ? `M${x(run[0][0])},${y(run[0][1])}h${Math.max(step / 2, 1).toFixed(1)}`
+        : run.map(([i, v], j) => `${j === 0 ? "M" : "L"}${x(i)},${y(v)}`).join(""),
+    )
     .join("");
-  const last = values[values.length - 1] ?? 0;
+  const fill = runs
+    .filter((run) => run.length > 1)
+    .map((run) => {
+      const [first] = run;
+      const end = run[run.length - 1];
+      if (!first || !end) return "";
+      return `${run.map(([i, v], j) => `${j === 0 ? "M" : "L"}${x(i)},${y(v)}`).join("")}L${x(end[0])},${height}L${x(first[0])},${height}Z`;
+    })
+    .join("");
+  const lastIndex = values.length - 1;
+  const last = values[lastIndex];
   return (
     <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className={className} aria-hidden>
       <defs>
@@ -92,7 +124,7 @@ export function Sparkline({ values, max, className }: { values: number[]; max: n
           <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0" />
         </linearGradient>
       </defs>
-      <path d={`${line}L${width},${height}L0,${height}Z`} fill="url(#nn-spark-fill)" />
+      <path d={fill} fill="url(#nn-spark-fill)" />
       <path
         d={line}
         fill="none"
@@ -100,7 +132,9 @@ export function Sparkline({ values, max, className }: { values: number[]; max: n
         strokeWidth="1.5"
         vectorEffect="non-scaling-stroke"
       />
-      <circle cx={width} cy={y(last)} r="2.5" fill="var(--color-lava)" />
+      {last !== null && last !== undefined && (
+        <circle cx={width} cy={y(last)} r="2.5" fill="var(--color-lava)" />
+      )}
     </svg>
   );
 }
