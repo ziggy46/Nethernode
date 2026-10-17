@@ -18,7 +18,7 @@ export function Sidebar({ open, onNavigate }: { open: boolean; onNavigate: () =>
       id="sidebar"
       aria-label="Sidebar"
       className={cn(
-        "fixed inset-y-0 left-0 z-40 flex w-(--nn-sidebar-width) flex-col overflow-y-auto border-divider border-r bg-sidebar px-[17px] pt-[27px] pb-[18px]",
+        "fixed inset-y-0 left-0 z-40 flex w-(--nn-sidebar-width) flex-col overflow-y-auto border-divider border-r bg-sidebar px-[17px] pt-[27px] pb-[18px] short:pt-[18px] short:pb-3",
         "below-xl:px-3",
         "below-md:shadow-overlay below-md:transition-transform below-md:duration-200",
         !open && "below-md:-translate-x-full below-md:invisible",
@@ -28,7 +28,7 @@ export function Sidebar({ open, onNavigate }: { open: boolean; onNavigate: () =>
         to="/"
         onClick={onNavigate}
         aria-label="NetherNode overview"
-        className="flex items-center gap-2.5 rounded-md px-2 pb-[30px] below-md:pb-[22px]"
+        className="flex items-center gap-2.5 rounded-md px-2 pb-[30px] below-md:pb-[22px] short:pb-4"
       >
         <Logo decorative className="h-[46px] w-[42px] shrink-0" />
         <span className="min-w-0">
@@ -44,7 +44,7 @@ export function Sidebar({ open, onNavigate }: { open: boolean; onNavigate: () =>
 
       <div className="mt-auto">
         <ConnectionCard />
-        <div className="flex items-center gap-2.5 border-divider border-t px-[9px] pt-[17px]">
+        <div className="flex items-center gap-2.5 border-divider border-t px-[9px] pt-[17px] short:pt-2.5">
           <Avatar name={user.username} />
           <span className="min-w-0">
             <span className="block truncate font-semibold text-label">{user.username}</span>
@@ -78,10 +78,13 @@ function NavSection({
   const { role } = useCurrentUser();
   return (
     <>
-      <p className="mb-[9px] px-[13px] font-[650] text-[10px] text-text-muted uppercase tracking-[1.5px]">
+      <p className="mb-[9px] px-[13px] font-[650] text-[10px] text-text-muted uppercase tracking-[1.5px] short:mb-1.5">
         {label}
       </p>
-      <nav aria-label={`${label} navigation`} className="mb-[27px] flex flex-col gap-1">
+      <nav
+        aria-label={`${label} navigation`}
+        className="mb-[27px] flex flex-col gap-1 short:mb-4 short:gap-0.5"
+      >
         {items
           .filter((item) => canSee(item, role))
           .map(({ to, label: text, icon: Icon }) => (
@@ -91,7 +94,7 @@ function NavSection({
               onClick={onNavigate}
               activeOptions={{ exact: to === "/" }}
               className={cn(
-                "flex items-center gap-3 rounded-md px-[13px] py-[11px] text-nav text-text-secondary transition-colors duration-(--nn-transition)",
+                "flex items-center gap-3 rounded-md px-[13px] py-[11px] text-nav text-text-secondary transition-colors duration-(--nn-transition) short:py-2",
                 "hover:bg-nav-hover hover:text-text-primary",
                 "data-[status=active]:bg-nav-active data-[status=active]:text-nav-active-foreground data-[status=active]:shadow-[inset_3px_0_var(--color-primary)]",
               )}
@@ -117,7 +120,10 @@ function ConnectionCard() {
   const connected = health.isSuccess;
   const label = health.isPending ? "Connecting…" : connected ? "Panel connected" : "Connection lost";
   return (
-    <div className="mb-[17px] rounded-[9px] border border-divider p-[13px] text-label" role="status">
+    <div
+      className="mb-[17px] rounded-[9px] border border-divider p-[13px] text-label short:mb-2.5 short:px-[13px] short:py-2"
+      role="status"
+    >
       <div className="flex items-center justify-between">
         <span className="flex items-center gap-1.5 font-semibold">
           <span

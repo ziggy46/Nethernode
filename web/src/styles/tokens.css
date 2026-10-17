@@ -225,6 +225,8 @@
 @custom-variant below-lg (@media (max-width: 1000px));
 @custom-variant below-md (@media (max-width: 750px));
 @custom-variant below-sm (@media (max-width: 480px));
+/* Short windows (a 14-inch laptop's browser): the sidebar tightens up. */
+@custom-variant short (@media (max-height: 860px));
 
 /* Layout values that change with viewport (from the UI reference). */
 :root {
