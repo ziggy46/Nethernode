@@ -876,6 +876,44 @@ impl pb::ServerService for ServerRpc {
         })
     }
 
+    async fn search_server_logs(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::SearchServerLogsRequest>,
+    ) -> ServiceResult<pb::SearchServerLogsResponse> {
+        require(&ctx, Permission::ManagePlayers)?;
+        let query = request.query.trim();
+        if query.is_empty() && !request.chat_only {
+            return Err(ConnectError::invalid_argument(
+                "type something to search for",
+            ));
+        }
+        if query.chars().count() > 200 {
+            return Err(ConnectError::invalid_argument("that search is too long"));
+        }
+        let (_, folder) = crate::files::open(&self.state, request.id).await?;
+        let found = crate::log_search::search(&folder, query, request.chat_only)
+            .await
+            .map_err(crate::files::file_error)?;
+        Response::ok(pb::SearchServerLogsResponse {
+            matches: found
+                .matches
+                .into_iter()
+                .map(|m| pb::LogMatch {
+                    file: m.file,
+                    file_modified_ms: m.file_modified_ms,
+                    line: m.line,
+                    text: m.text,
+                    ..Default::default()
+                })
+                .collect(),
+            files_searched: found.files_searched,
+            files_total: found.files_total,
+            truncated: found.truncated,
+            ..Default::default()
+        })
+    }
+
     async fn get_host_info(
         &self,
         ctx: RequestContext,

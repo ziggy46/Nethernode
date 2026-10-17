@@ -39,6 +39,7 @@ mod events;
 mod files;
 mod files_http;
 pub mod install_count;
+mod log_search;
 mod middleware;
 mod moves;
 pub mod notices;

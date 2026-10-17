@@ -193,14 +193,98 @@ export const VANILLA_COMMANDS = [
   "xp",
 ] as const;
 
+/** Player names to complete, online ones first. */
+export interface KnownPlayers {
+  online: string[];
+  offline: string[];
+}
+
+/** A suggestion: what's shown, and the input once it's chosen. */
+export interface Completion {
+  label: string;
+  value: string;
+  /** Shown faintly beside the label. */
+  hint?: string;
+}
+
+const SELECTORS = ["@a", "@p", "@r", "@s", "@e"];
+const SELECTOR_HINTS: Record<string, string> = {
+  "@a": "all players",
+  "@p": "nearest player",
+  "@r": "a random player",
+  "@s": "the one running it",
+  "@e": "all entities",
+};
+
+const GAME_MODES = ["survival", "creative", "adventure", "spectator"];
+
 /**
- * Commands that complete the first word of `input`, or none once the
- * command name is typed out (arguments aren't completed).
+ * What each command takes, per argument: a list of words, or `player`.
+ * Arguments not listed aren't completed.
  */
-export function completions(input: string, limit = 6): string[] {
-  const text = input.replace(/^\//, "");
-  if (text.includes(" ")) return [];
-  const word = text.toLowerCase();
-  if (!word) return [];
-  return VANILLA_COMMANDS.filter((c) => c.startsWith(word) && c !== word).slice(0, limit);
+const ARGUMENTS: Record<string, (readonly string[] | "player")[]> = {
+  ban: ["player"],
+  clear: ["player"],
+  defaultgamemode: [GAME_MODES],
+  deop: ["player"],
+  difficulty: [["peaceful", "easy", "normal", "hard"]],
+  effect: [["give", "clear"], "player"],
+  enchant: ["player"],
+  experience: [["add", "set", "query"], "player"],
+  gamemode: [GAME_MODES, "player"],
+  give: ["player"],
+  kick: ["player"],
+  kill: ["player"],
+  msg: ["player"],
+  op: ["player"],
+  pardon: ["player"],
+  "save-all": [["flush"]],
+  spawnpoint: ["player"],
+  spectate: ["player"],
+  teleport: ["player", "player"],
+  tell: ["player"],
+  tellraw: ["player"],
+  time: [["set", "add", "query"]],
+  title: ["player", ["title", "subtitle", "actionbar", "clear", "reset", "times"]],
+  tp: ["player", "player"],
+  w: ["player"],
+  weather: [["clear", "rain", "thunder"]],
+  whitelist: [["add", "remove", "on", "off", "list", "reload"], "player"],
+  xp: [["add", "set", "query"], "player"],
+};
+
+/**
+ * Suggestions for the word being typed in `input`: command names first,
+ * then the command's arguments (players, online ones first, and fixed
+ * words like game modes). Choosing one replaces that word.
+ */
+export function completions(input: string, players?: KnownPlayers, limit = 8): Completion[] {
+  const slash = input.startsWith("/") ? "/" : "";
+  const words = input.slice(slash.length).split(" ");
+  const typing = words[words.length - 1] ?? "";
+  const word = typing.toLowerCase();
+  const before = `${slash}${words.slice(0, -1).join(" ")}${words.length > 1 ? " " : ""}`;
+  const pick = (options: Completion[]) =>
+    options
+      .filter((o) => o.label.toLowerCase().startsWith(word) && o.label.toLowerCase() !== word)
+      .slice(0, limit);
+
+  if (words.length === 1) {
+    if (!word) return [];
+    return pick(VANILLA_COMMANDS.map((c) => ({ label: c, value: `${slash}${c} ` })));
+  }
+  const command = (words[0] ?? "").toLowerCase();
+  const kind = ARGUMENTS[command]?.[words.length - 2];
+  if (!kind) return [];
+  const choose = (label: string, hint?: string): Completion => ({ label, value: `${before}${label} `, hint });
+  if (kind !== "player") return pick(kind.map((w) => choose(w)));
+  const online = players?.online ?? [];
+  const offline = (players?.offline ?? []).filter((p) => !online.includes(p));
+  const options = [
+    ...online.map((p) => choose(p, "online")),
+    ...(word.startsWith("@") ? SELECTORS.map((s) => choose(s, SELECTOR_HINTS[s])) : []),
+    ...offline.map((p) => choose(p)),
+  ];
+  // Offline players only once something's typed: the list could be long.
+  return pick(word ? options : options.filter((o) => o.hint === "online"));
 }

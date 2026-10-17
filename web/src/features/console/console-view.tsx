@@ -5,6 +5,7 @@
  */
 import "@xterm/xterm/css/xterm.css";
 
+import { useQuery } from "@tanstack/react-query";
 import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
 import { Terminal } from "@xterm/xterm";
@@ -14,21 +15,32 @@ import {
   ArrowUp,
   ClipboardCopy,
   Eraser,
+  History,
   Search,
   SquareTerminal,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { ServerStatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
+import { playersQuery } from "@/features/players/queries";
 import { usePaused } from "@/features/servers/server-card";
 import { type Server, ServerStatus } from "@/gen/nethernode/v1/servers_pb";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
-import { type ConsoleColors, colorize, completions, fg, type Rgb, sectionToAnsi } from "./format";
+import {
+  type ConsoleColors,
+  colorize,
+  completions,
+  fg,
+  type KnownPlayers,
+  type Rgb,
+  sectionToAnsi,
+} from "./format";
+import { OlderLogs } from "./older-logs";
 import { type ConsoleFrame, type SocketState, useConsoleSocket } from "./use-console-socket";
 
 const RESET = "\x1b[0m";
@@ -110,6 +122,7 @@ const STATE_LABEL: Record<SocketState, string> = {
 
 export default function ConsoleView({ server }: { server: Server }) {
   const paused = usePaused(server);
+  const players = useKnownPlayers(server.id);
   const host = useRef<HTMLDivElement>(null);
   const term = useRef<Terminal | null>(null);
   const searcher = useRef<SearchAddon | null>(null);
@@ -121,6 +134,7 @@ export default function ConsoleView({ server }: { server: Server }) {
   const [following, setFollowing] = useState(true);
   const [unseen, setUnseen] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [olderOpen, setOlderOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<{ index: number; count: number } | null>(null);
   const followingRef = useRef(true);
@@ -353,6 +367,7 @@ export default function ConsoleView({ server }: { server: Server }) {
               if (e.key === "Enter") find(e.shiftKey ? "previous" : "next");
               if (e.key === "Escape") {
                 setSearchOpen(false);
+                setOlderOpen(false);
                 searcher.current?.clearDecorations();
                 term.current?.focus();
               }
@@ -385,18 +400,32 @@ export default function ConsoleView({ server }: { server: Server }) {
             <ArrowDown className="size-[13px]" />
           </Button>
           <Button
+            size="mini"
+            variant="ghost"
+            aria-pressed={olderOpen}
+            title="Search the logs Minecraft saved from this and earlier runs"
+            onClick={() => setOlderOpen((open) => !open)}
+          >
+            <History />
+            Older logs
+          </Button>
+          <Button
             size="icon"
             variant="ghost"
             className="size-6"
             aria-label="Close search"
             onClick={() => {
               setSearchOpen(false);
+              setOlderOpen(false);
               searcher.current?.clearDecorations();
             }}
           >
             <X className="size-[13px]" />
           </Button>
         </div>
+      )}
+      {searchOpen && olderOpen && (
+        <OlderLogs serverId={server.id} query={query} onClose={() => setOlderOpen(false)} />
       )}
 
       <div className="relative">
@@ -425,6 +454,7 @@ export default function ConsoleView({ server }: { server: Server }) {
 
       <CommandInput
         serverId={server.id}
+        players={players}
         enabled={live && running}
         reason={!live ? "Connecting to the console…" : "Commands can be sent once the server is running."}
         onSend={(command) => {
@@ -437,31 +467,58 @@ export default function ConsoleView({ server }: { server: Server }) {
   );
 }
 
+/** Players to complete in commands: online ones, then everyone seen here. */
+function useKnownPlayers(serverId: string): KnownPlayers {
+  const rows = useQuery(playersQuery(serverId)).data?.players;
+  return useMemo(() => {
+    const online: string[] = [];
+    const offline: string[] = [];
+    for (const p of [...(rows ?? [])].sort((a, b) => Number(b.lastSeenMs - a.lastSeenMs))) {
+      if (p.name) (p.online ? online : offline).push(p.name);
+    }
+    return { online, offline };
+  }, [rows]);
+}
+
 function CommandInput({
   serverId,
   enabled,
   reason,
+  players,
   onSend,
 }: {
   serverId: string;
   enabled: boolean;
   reason: string;
+  players: KnownPlayers;
   onSend: (command: string) => boolean;
 }) {
   const history = useHistory(serverId);
+  const listId = useId();
   const [value, setValue] = useState("");
   // Position while browsing history: entries.length means "the draft".
   const [cursor, setCursor] = useState<number | null>(null);
   const [draft, setDraft] = useState("");
-  const suggestions = completions(value);
+  // The highlighted suggestion, and whether Esc hid the list.
+  const [selected, setSelected] = useState(0);
+  const [dismissed, setDismissed] = useState(false);
+  // Recalled commands aren't completed, so the arrows keep browsing.
+  const suggestions = enabled && cursor === null && !dismissed ? completions(value, players) : [];
+  const active = suggestions[Math.min(selected, suggestions.length - 1)];
+
+  const change = (next: string) => {
+    setValue(next);
+    setCursor(null);
+    setSelected(0);
+    setDismissed(false);
+  };
 
   const submit = () => {
     const command = value.trim();
     if (!command || !enabled) return;
     if (onSend(command)) {
       history.push(command);
-      setValue("");
-      setCursor(null);
+      change("");
     }
   };
 
@@ -483,19 +540,34 @@ function CommandInput({
         submit();
       }}
     >
-      {enabled && suggestions.length > 0 && (
-        <div className="absolute inset-x-0 bottom-full flex flex-wrap items-center gap-1.5 border-border border-t bg-surface-subtle px-4 py-2 text-meta">
-          <span className="text-text-muted">Tab to complete:</span>
-          {suggestions.map((s) => (
-            <button
-              key={s}
-              type="button"
-              className="rounded-xs bg-surface-elevated px-1.5 py-0.5 font-mono text-text-secondary hover:text-text-primary"
-              onClick={() => setValue(`${s} `)}
-            >
-              {s}
-            </button>
-          ))}
+      {suggestions.length > 0 && (
+        <div className="absolute inset-x-0 bottom-full border-border border-t bg-surface-subtle text-meta">
+          <div id={listId} role="listbox" aria-label="Suggestions" className="max-h-56 overflow-y-auto py-1">
+            {suggestions.map((s, i) => (
+              <div
+                key={s.value}
+                id={`${listId}-${i}`}
+                role="option"
+                tabIndex={-1}
+                aria-selected={s === active}
+                className={cn(
+                  "flex cursor-pointer items-baseline gap-2 px-4 py-1 font-mono",
+                  s === active ? "bg-nav-active text-nav-active-foreground" : "text-text-secondary",
+                )}
+                onMouseDown={(e) => {
+                  // Keep focus in the input.
+                  e.preventDefault();
+                  change(s.value);
+                }}
+              >
+                {s.label}
+                {s.hint && <span className="font-sans text-text-muted">{s.hint}</span>}
+              </div>
+            ))}
+          </div>
+          <p className="border-border border-t px-4 py-1.5 text-text-muted">
+            ↑ ↓ to choose · Tab to complete · Esc to hide
+          </p>
         </div>
       )}
       <div className="flex items-center gap-[9px] px-4 py-3">
@@ -504,25 +576,36 @@ function CommandInput({
         </span>
         <input
           aria-label="Console command"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={suggestions.length > 0}
+          aria-controls={suggestions.length > 0 ? listId : undefined}
+          aria-activedescendant={active ? `${listId}-${suggestions.indexOf(active)}` : undefined}
           autoComplete="off"
           spellCheck={false}
           disabled={!enabled}
           placeholder={enabled ? "Enter a command (try list or help)…" : reason}
           value={value}
-          onChange={(e) => {
-            setValue(e.target.value);
-            setCursor(null);
-          }}
+          onChange={(e) => change(e.target.value)}
           onKeyDown={(e) => {
+            const open = suggestions.length > 0;
             if (e.key === "ArrowUp") {
               e.preventDefault();
-              browse(-1);
+              if (open)
+                setSelected(
+                  (i) => (Math.min(i, suggestions.length - 1) - 1 + suggestions.length) % suggestions.length,
+                );
+              else browse(-1);
             } else if (e.key === "ArrowDown") {
               e.preventDefault();
-              browse(1);
-            } else if (e.key === "Tab" && suggestions[0]) {
+              if (open) setSelected((i) => (Math.min(i, suggestions.length - 1) + 1) % suggestions.length);
+              else browse(1);
+            } else if (e.key === "Tab" && active) {
               e.preventDefault();
-              setValue(`${suggestions[0]} `);
+              change(active.value);
+            } else if (e.key === "Escape" && open) {
+              e.preventDefault();
+              setDismissed(true);
             }
           }}
           className="min-w-0 flex-1 bg-transparent font-mono text-meta text-text-primary outline-none placeholder:text-text-muted disabled:cursor-not-allowed"

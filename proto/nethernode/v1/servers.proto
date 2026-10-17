@@ -42,6 +42,11 @@ service ServerService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Facts about the Docker host servers run on.
+  // Searches the server's saved logs (logs/latest.log and the dated
+  // .log.gz files Minecraft keeps), newest first. Moderators and up.
+  rpc SearchServerLogs(SearchServerLogsRequest) returns (SearchServerLogsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc GetHostInfo(GetHostInfoRequest) returns (GetHostInfoResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
@@ -316,6 +321,37 @@ message GetServerStatsResponse {
   repeated StatPeriod periods = 5;
   // Where the longer ranges start, unix ms.
   int64 since_ms = 6;
+}
+
+message SearchServerLogsRequest {
+  string id = 1;
+  // Matched in any case. May be empty with `chat_only`, for all chat.
+  string query = 2;
+  // Only players' chat messages.
+  bool chat_only = 3;
+}
+
+// A matching log line.
+message LogMatch {
+  // The file in logs/: "latest.log" (the current or last run) or a dated
+  // one like "2026-10-15-1.log.gz".
+  string file = 1;
+  int64 file_modified_ms = 2;
+  // 1-based line number in the file.
+  uint32 line = 3;
+  // The line, without color codes.
+  string text = 4;
+}
+
+message SearchServerLogsResponse {
+  // Newest files first; lines in order within a file. At most 300, the
+  // newest ones.
+  repeated LogMatch matches = 1;
+  uint32 files_searched = 2;
+  uint32 files_total = 3;
+  // The search stopped early (too many matches or files, or it took too
+  // long), so older matches may be missing.
+  bool truncated = 4;
 }
 
 message GetHostInfoRequest {}

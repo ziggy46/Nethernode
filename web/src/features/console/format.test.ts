@@ -44,11 +44,36 @@ describe("colorize", () => {
 });
 
 describe("completions", () => {
-  it("completes the command name only", () => {
-    expect(completions("whi")).toEqual(["whitelist"]);
-    expect(completions("/sa")).toEqual(["save-all", "save-off", "save-on", "say"]);
-    expect(completions("say hi")).toEqual([]);
-    expect(completions("list")).toEqual([]);
-    expect(completions("")).toEqual([]);
+  const labels = (input: string, players?: Parameters<typeof completions>[1]) =>
+    completions(input, players).map((c) => c.label);
+  const players = { online: ["Steve", "Sam"], offline: ["Alex", "Sally"] };
+
+  it("completes command names", () => {
+    expect(labels("whi")).toEqual(["whitelist"]);
+    expect(labels("/sa")).toEqual(["save-all", "save-off", "save-on", "say"]);
+    expect(completions("/whi")[0]?.value).toBe("/whitelist ");
+    expect(labels("list")).toEqual([]);
+    expect(labels("")).toEqual([]);
+  });
+
+  it("completes players, online ones first", () => {
+    expect(labels("kick ", players)).toEqual(["Steve", "Sam"]);
+    expect(labels("kick s", players)).toEqual(["Steve", "Sam", "Sally"]);
+    expect(labels("op a", players)).toEqual(["Alex"]);
+    expect(labels("kick @", players)).toEqual(["@a", "@p", "@r", "@s", "@e"]);
+    expect(completions("tp Steve S", players).map((c) => c.value)).toEqual([
+      "tp Steve Steve ",
+      "tp Steve Sam ",
+      "tp Steve Sally ",
+    ]);
+    expect(labels("kick Steve", players), "already typed out").toEqual([]);
+  });
+
+  it("completes fixed words, then the player after them", () => {
+    expect(labels("gamemode c")).toEqual(["creative"]);
+    expect(labels("gamemode creative ", players)).toEqual(["Steve", "Sam"]);
+    expect(labels("whitelist a")).toEqual(["add"]);
+    expect(labels("say ", players), "free text").toEqual([]);
+    expect(labels("gamemode creative Steve ", players), "nothing more to complete").toEqual([]);
   });
 });
