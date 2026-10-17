@@ -1,13 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronRight, Copy, Loader, Play, Server as ServerIcon, SquareTerminal, Users } from "lucide-react";
-import { toast } from "sonner";
 
 import { ResourceMeter } from "@/components/resource-meter";
 import { ServerStatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { type Server, ServerStatus } from "@/gen/nethernode/v1/servers_pb";
 import { useCanManage } from "@/lib/session";
+import { withToast } from "@/lib/toast";
 
 import { formatUptime, gb, loaderName, versionLabel } from "./format";
 import { type LiveStats, liveStatsKey } from "./queries";
@@ -49,9 +49,11 @@ export function subtitle(server: Server, now: number): string {
 export async function copyAddress(address: string) {
   try {
     await navigator.clipboard.writeText(address);
-    toast.success("Server address copied.");
+    withToast((toast) => toast.success("Server address copied."));
   } catch {
-    toast(`Address: ${address}`, { description: "Couldn't copy automatically; select and copy it." });
+    withToast((toast) =>
+      toast(`Address: ${address}`, { description: "Couldn't copy automatically; select and copy it." }),
+    );
   }
 }
 

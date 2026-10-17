@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 
 import { errorMessage, serverClient } from "@/lib/api";
+import { withToast } from "@/lib/toast";
 
 type Action = "start" | "stop" | "restart" | "kill";
 
@@ -33,13 +33,12 @@ export function useServerAction(id: string, name: string) {
       }
     },
     onSuccess: (_, action) => {
-      toast(`${VERBS[action]} ${name}…`);
+      withToast((toast) => toast(`${VERBS[action]} ${name}…`));
       void queryClient.invalidateQueries({ queryKey: ["servers"] });
     },
     onError: (error, action) => {
-      toast.error(`Couldn't ${action} ${name}. ${errorMessage(error)}`, {
-        duration: Number.POSITIVE_INFINITY,
-      });
+      const message = `Couldn't ${action} ${name}. ${errorMessage(error)}`;
+      withToast((toast) => toast.error(message, { duration: Number.POSITIVE_INFINITY }));
     },
   });
 }

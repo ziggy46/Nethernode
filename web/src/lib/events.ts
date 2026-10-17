@@ -1,10 +1,10 @@
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { toast } from "sonner";
 
 import { type LiveStats, liveStatsKey, type PullProgress, pullKey } from "@/features/servers/queries";
 import { uploadFinished } from "@/features/uploads/store";
 import { jobFinished, jobProgress } from "@/lib/jobs";
+import { withToast } from "@/lib/toast";
 
 /**
  * Bus event names sent by `/api/events`, mapped to the queries they make
@@ -105,7 +105,8 @@ function applyData(client: QueryClient, event: DataEvent) {
       const name = client
         .getQueryData<{ id: string; name: string }[]>(["servers"])
         ?.find((s) => s.id === event.server_id)?.name;
-      toast.error(name ? `${name}: ${event.message}` : event.message, { duration: 15_000 });
+      const message = name ? `${name}: ${event.message}` : event.message;
+      withToast((toast) => toast.error(message, { duration: 15_000 }));
       break;
     }
     case "file_job_progress":

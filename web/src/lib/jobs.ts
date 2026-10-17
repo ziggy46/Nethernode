@@ -4,7 +4,7 @@
  * the request that started it returns, so finished jobs are remembered
  * briefly and shown when the starter catches up.
  */
-import { toast } from "sonner";
+import { withToast } from "@/lib/toast";
 
 interface Result {
   message: string;
@@ -24,8 +24,10 @@ const stale = new Map<string, ReturnType<typeof setTimeout>>();
 function show(jobId: string, result: Result) {
   clearTimeout(stale.get(jobId));
   stale.delete(jobId);
-  if (result.failed) toast.error(result.message, { id: jobId, duration: ERROR_MS });
-  else toast.success(result.message, { id: jobId });
+  withToast((toast) => {
+    if (result.failed) toast.error(result.message, { id: jobId, duration: ERROR_MS });
+    else toast.success(result.message, { id: jobId });
+  });
 }
 
 /** Takes the toast down if the job goes quiet (its finish event was missed). */
@@ -35,7 +37,7 @@ function watch(jobId: string) {
     jobId,
     setTimeout(() => {
       stale.delete(jobId);
-      if (titles.delete(jobId)) toast.dismiss(jobId);
+      if (titles.delete(jobId)) withToast((toast) => toast.dismiss(jobId));
     }, STALE_MS),
   );
 }
@@ -49,14 +51,14 @@ export function trackJob(jobId: string, title: string) {
     return;
   }
   titles.set(jobId, title);
-  toast.loading(title, { id: jobId });
+  withToast((toast) => toast.loading(title, { id: jobId }));
   watch(jobId);
 }
 
 export function jobProgress(jobId: string, percent: number) {
   const title = titles.get(jobId);
   if (!title) return;
-  toast.loading(`${title} ${percent}%`, { id: jobId });
+  withToast((toast) => toast.loading(`${title} ${percent}%`, { id: jobId }));
   watch(jobId);
 }
 

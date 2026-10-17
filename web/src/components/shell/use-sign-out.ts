@@ -1,9 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { toast } from "sonner";
 
 import { authClient, errorMessage } from "@/lib/api";
 import { type Session, sessionQuery } from "@/lib/session";
+import { withToast } from "@/lib/toast";
 
 /** Ends the session, then routes to the login page. */
 export function useSignOut() {
@@ -13,7 +13,8 @@ export function useSignOut() {
     try {
       await authClient.logout({});
     } catch (error) {
-      toast.error(`Couldn't sign out. ${errorMessage(error)}`, { duration: Number.POSITIVE_INFINITY });
+      const message = `Couldn't sign out. ${errorMessage(error)}`;
+      withToast((toast) => toast.error(message, { duration: Number.POSITIVE_INFINITY }));
       return;
     }
     const anonymous: Session = { status: "anonymous", setupRequired: false };
