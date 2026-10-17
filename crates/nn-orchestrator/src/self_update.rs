@@ -229,9 +229,9 @@ pub async fn finish_replacing(socket: &str) {
     }
     let force = RemoveContainerOptionsBuilder::default().force(true).build();
     match docker.remove_container(&old, Some(force)).await {
-        Ok(()) => tracing::info!(replaced = %old, "removed the agent container this one replaced"),
+        Ok(()) => tracing::info!(replaced = %old, "removed the container this one replaced"),
         Err(e) => {
-            tracing::warn!(replaced = %old, error = %e, "couldn't remove the agent container this one replaced")
+            tracing::warn!(replaced = %old, error = %e, "couldn't remove the container this one replaced")
         }
     }
 }
