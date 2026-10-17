@@ -356,7 +356,9 @@ async fn save_template(
         loader: source.loader.clone(),
         mc_version: source.mc_version.clone(),
         memory_mb: source.memory_mb,
-        server_json: serde_json::to_string(source).map_err(|e| failed(e.to_string()))?,
+        // Only its settings: no secrets, ports or container.
+        server_json: serde_json::to_string(&fresh_row(source, &source.name, nn_store::LOCAL_NODE))
+            .map_err(|e| failed(e.to_string()))?,
         archive_bytes: i64::try_from(made.size).unwrap_or(i64::MAX),
         created_at: now_ms(),
     };

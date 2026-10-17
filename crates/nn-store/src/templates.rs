@@ -113,7 +113,10 @@ mod tests {
             created_at: 1,
         };
         store.insert_template(&t).await.unwrap();
-        assert_eq!(store.list_templates().await.unwrap(), std::slice::from_ref(&t));
+        assert_eq!(
+            store.list_templates().await.unwrap(),
+            std::slice::from_ref(&t)
+        );
         assert_eq!(store.find_template("01T").await.unwrap(), Some(t.clone()));
         assert_eq!(t.archive(), "template-01T.tar.zst");
         assert!(store.delete_template("01T").await.unwrap());
