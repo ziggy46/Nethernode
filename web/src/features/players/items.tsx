@@ -22,7 +22,23 @@ import { cn } from "@/lib/utils";
 /** How to draw an item, from the server's Minecraft version (`/api/servers/{id}/items`). */
 export type ItemIcon =
   | { kind: "flat"; texture: string; tint?: string }
-  | { kind: "cube"; top: string; side: string; tint?: string };
+  | { kind: "cube"; top: string; side: string; tint?: string }
+  | {
+      /** Cut from a model's texture sheet (chests, shields). */
+      kind: "sheet";
+      texture: string;
+      size: [number, number];
+      front: SheetPart[];
+      top?: SheetPart[];
+      side?: SheetPart[];
+    };
+
+/** A rectangle of a texture sheet (`from`, in pixels) placed on a 16×16 face (`to`). */
+interface SheetPart {
+  from: [number, number, number, number];
+  to: [number, number, number, number];
+  flip?: boolean;
+}
 
 export interface ItemIcons {
   version: string;
@@ -86,25 +102,97 @@ function Face({
   );
 }
 
+/** Parts of a texture sheet laid out on one 16×16 face. */
+function SheetFace({
+  href,
+  size,
+  parts,
+  transform,
+  shade,
+}: {
+  href: string;
+  size: [number, number];
+  parts: SheetPart[];
+  transform: string;
+  shade?: number;
+}) {
+  return (
+    <g transform={transform}>
+      {parts.map(({ from: [sx, sy, sw, sh], to: [x, y, w, h], flip }) => (
+        <svg
+          key={`${sx},${sy},${x},${y}`}
+          x={x}
+          y={y}
+          width={w}
+          height={h}
+          viewBox={`${sx} ${sy} ${sw} ${sh}`}
+          preserveAspectRatio="none"
+          overflow="hidden"
+          aria-hidden
+        >
+          <image
+            href={href}
+            width={size[0]}
+            height={size[1]}
+            transform={flip ? `translate(0 ${2 * sy + sh}) scale(1 -1)` : undefined}
+            style={{ imageRendering: "pixelated" }}
+          />
+        </svg>
+      ))}
+      {shade ? <rect width="16" height="16" fill="black" opacity={shade} /> : null}
+    </g>
+  );
+}
+
 /** An item as the game draws it in inventories: flat, or a small isometric cube. */
 function GameIcon({ icon, icons }: { icon: ItemIcon; icons: ItemIcons }) {
   const tintId = useId();
   // Grass and leaves are grey until the game colours them.
-  const tint = icon.tint && (
+  const colour = icon.kind === "sheet" ? undefined : icon.tint;
+  const tint = colour && (
     <defs>
       <filter id={tintId}>
-        <feFlood floodColor={icon.tint} result="tint" />
+        <feFlood floodColor={colour} result="tint" />
         <feComposite in="tint" in2="SourceAlpha" operator="in" result="tinted" />
         <feBlend in="SourceGraphic" in2="tinted" mode="multiply" />
       </filter>
     </defs>
   );
-  const filter = icon.tint ? `url(#${tintId})` : undefined;
+  const filter = colour ? `url(#${tintId})` : undefined;
   if (icon.kind === "flat") {
     return (
       <svg viewBox="0 0 16 16" className="size-[78%]" aria-hidden>
         {tint}
         <Face href={textureUrl(icons, icon.texture)} transform="" filter={filter} />
+      </svg>
+    );
+  }
+  if (icon.kind === "sheet") {
+    const href = textureUrl(icons, icon.texture);
+    if (!icon.top?.length) {
+      return (
+        <svg viewBox="0 0 16 16" className="size-[78%]" aria-hidden>
+          <SheetFace href={href} size={icon.size} parts={icon.front} transform="" />
+        </svg>
+      );
+    }
+    return (
+      <svg viewBox="0 0 32 32" className="size-[82%]" aria-hidden>
+        <SheetFace href={href} size={icon.size} parts={icon.top} transform="matrix(1,0.5,-1,0.5,16,0)" />
+        <SheetFace
+          href={href}
+          size={icon.size}
+          parts={icon.front}
+          transform="matrix(1,0.5,0,1,0,8)"
+          shade={0.25}
+        />
+        <SheetFace
+          href={href}
+          size={icon.size}
+          parts={icon.side ?? []}
+          transform="matrix(1,-0.5,0,1,16,16)"
+          shade={0.45}
+        />
       </svg>
     );
   }

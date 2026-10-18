@@ -5,7 +5,9 @@
 //!
 //! Flat items (tools, food, ingots, …) use their item texture. Blocks are
 //! shown as a cube from their top and side textures, like the game's
-//! inventory does; odd shapes (stairs, chests) get the closest cube.
+//! inventory does; odd shapes (stairs) get the closest cube. Chests and
+//! shields, which the game draws as models, are cut from their model
+//! textures.
 
 use std::collections::{HashMap, HashSet};
 use std::io::Read;
@@ -24,7 +26,7 @@ const MAX_JAR: u64 = 200 * 1024 * 1024;
 const MOJANG_HOSTS: &[&str] = &["piston-meta.mojang.com", "piston-data.mojang.com"];
 
 /// How to draw an item.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Icon {
     /// One texture, drawn flat.
@@ -46,6 +48,34 @@ pub enum Icon {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         tint: Option<String>,
     },
+    /// Cut from one texture sheet, for items the game draws as models
+    /// rather than from item textures (chests, shields).
+    Sheet {
+        /// Texture path, like `entity/chest/normal`.
+        texture: String,
+        /// The sheet's size in pixels, `[width, height]`.
+        size: [u32; 2],
+        /// The whole icon when flat; the left face of a cube.
+        front: Vec<Part>,
+        /// For a cube, its top face; empty when flat.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        top: Vec<Part>,
+        /// For a cube, its right face; empty when flat.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        side: Vec<Part>,
+    },
+}
+
+/// A rectangle of a texture sheet, placed on a 16×16 face.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Part {
+    /// `[x, y, width, height]` on the sheet, in pixels.
+    pub from: [u32; 4],
+    /// `[x, y, width, height]` on the face, 0 to 16.
+    pub to: [f32; 4],
+    /// Drawn upside down (the game keeps chest textures that way).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub flip: bool,
 }
 
 /// The colours the game gives grey foliage textures in inventories.
@@ -476,16 +506,141 @@ fn resolve(assets: &mut Assets<'_>, id: &str) -> Option<Icon> {
         });
     }
     // 1.21.4 and later describe items in items/; before, models/item/.
-    let model = assets
-        .json(&namespace, &format!("items/{name}.json"))
-        .and_then(|item| model_reference(&item))
-        .or_else(|| {
-            let path = format!("item/{name}");
-            assets
-                .exists(&namespace, &format!("models/{path}.json"))
-                .then(|| format!("{namespace}:{path}"))
-        })?;
+    let definition = assets.json(&namespace, &format!("items/{name}.json"));
+    let special = match &definition {
+        Some(definition) => special_model(definition),
+        // Before 1.21.4 these were "builtin/entity", drawn by the game.
+        None if namespace == "minecraft" => match name.as_str() {
+            "chest" => Some(("chest".into(), Some("normal".into()))),
+            "trapped_chest" => Some(("chest".into(), Some("trapped".into()))),
+            "ender_chest" => Some(("chest".into(), Some("ender".into()))),
+            "shield" => Some(("shield".into(), None)),
+            _ => None,
+        },
+        None => None,
+    };
+    if let Some((kind, texture)) = special
+        && let Some(icon) = sheet_icon(assets, &namespace, &kind, texture.as_deref())
+    {
+        return Some(icon);
+    }
+    let model = definition.as_ref().and_then(model_reference).or_else(|| {
+        let path = format!("item/{name}");
+        assets
+            .exists(&namespace, &format!("models/{path}.json"))
+            .then(|| format!("{namespace}:{path}"))
+    })?;
     model_icon(assets, &model)
+}
+
+/// The kind of a "special" model an item definition draws (`chest`,
+/// `shield`), and its texture if it names one. A chest's usual look (the
+/// `fallback` of its date switch) wins over its Christmas one.
+fn special_model(definition: &Value) -> Option<(String, Option<String>)> {
+    let map = definition.as_object()?;
+    if map
+        .get("type")
+        .and_then(Value::as_str)
+        .is_some_and(|t| location(t).1 == "special")
+    {
+        let model = map.get("model")?.as_object()?;
+        let kind = location(model.get("type")?.as_str()?).1;
+        let texture = model
+            .get("texture")
+            .and_then(Value::as_str)
+            .map(str::to_owned);
+        return Some((kind, texture));
+    }
+    const FIRST: [&str; 3] = ["model", "fallback", "on_false"];
+    let nested = |value: &Value| match value {
+        Value::Array(items) => items.iter().find_map(special_model),
+        value => special_model(value),
+    };
+    FIRST
+        .iter()
+        .filter_map(|key| map.get(*key))
+        .find_map(nested)
+        .or_else(|| {
+            map.iter()
+                .filter(|(key, _)| !FIRST.contains(&key.as_str()))
+                .find_map(|(_, value)| nested(value))
+        })
+}
+
+/// A sheet's size from its PNG header.
+fn png_size(assets: &mut Assets<'_>, namespace: &str, path: &str) -> Option<[u32; 2]> {
+    let head = assets.read(namespace, &format!("textures/{path}.png"), 24)?;
+    if head.len() < 24 || &head[1..4] != b"PNG" {
+        return None;
+    }
+    let word = |at: usize| u32::from_be_bytes([head[at], head[at + 1], head[at + 2], head[at + 3]]);
+    let size = [word(16), word(20)];
+    (size[0] > 0 && size[1] > 0 && size[0] <= 4096 && size[1] <= 4096).then_some(size)
+}
+
+/// Icons for items the game draws as entity models. Sheets are laid out
+/// for 64×64 and scaled for bigger ones (high-resolution packs).
+fn sheet_icon(
+    assets: &mut Assets<'_>,
+    namespace: &str,
+    kind: &str,
+    texture: Option<&str>,
+) -> Option<Icon> {
+    let (sheet_namespace, path) = match kind {
+        "chest" => {
+            let (ns, name) = location(texture.unwrap_or("normal"));
+            (ns, format!("entity/chest/{name}"))
+        }
+        "shield" if namespace == "minecraft" => (
+            "minecraft".to_owned(),
+            "entity/shield_base_nopattern".to_owned(),
+        ),
+        _ => return None,
+    };
+    if !valid_namespace(&sheet_namespace) || !valid_path(&path) {
+        return None;
+    }
+    let size = png_size(assets, &sheet_namespace, &path)?;
+    let scale = size[0] / 64;
+    if scale == 0 || size[0] % 64 != 0 || size[1] != size[0] {
+        return None;
+    }
+    let part = |from: [u32; 4], to: [f32; 4], flip: bool| Part {
+        from: from.map(|v| v * scale),
+        to,
+        flip,
+    };
+    let texture = texture_name(&sheet_namespace, &path);
+    Some(match kind {
+        // The plate's front: 12×22 at (1, 1), centred.
+        "shield" => Icon::Sheet {
+            texture,
+            size,
+            front: vec![part([1, 1, 12, 22], [3.64, 0.0, 8.73, 16.0], false)],
+            top: Vec::new(),
+            side: Vec::new(),
+        },
+        // A 14×14 box: the lid (5 high) on the base (10 high), stored
+        // upside down. The front, with the latch, faces left.
+        _ => {
+            const LID: f32 = 16.0 * 5.0 / 15.0;
+            Icon::Sheet {
+                texture,
+                size,
+                top: vec![part([28, 0, 14, 14], [0.0, 0.0, 16.0, 16.0], false)],
+                front: vec![
+                    part([42, 14, 14, 5], [0.0, 0.0, 16.0, LID], true),
+                    part([42, 33, 14, 10], [0.0, LID, 16.0, 16.0 - LID], true),
+                    // The latch, over the seam.
+                    part([4, 1, 2, 4], [6.86, 3.43, 2.29, 4.57], true),
+                ],
+                side: vec![
+                    part([0, 14, 14, 5], [0.0, 0.0, 16.0, LID], true),
+                    part([0, 33, 14, 10], [0.0, LID, 16.0, 16.0 - LID], true),
+                ],
+            }
+        }
+    })
 }
 
 /// The first plain model an item definition points to.
@@ -734,6 +889,96 @@ mod tests {
         );
         assert_eq!(resolve(&mut assets, "create:missing"), None);
         assert_eq!(resolve(&mut assets, "Create:wrench"), None);
+    }
+
+    /// A PNG's first bytes, up to its size.
+    fn png_header(width: u32, height: u32) -> Vec<u8> {
+        let mut out = b"\x89PNG\r\n\x1a\n\0\0\0\x0dIHDR".to_vec();
+        out.extend(width.to_be_bytes());
+        out.extend(height.to_be_bytes());
+        out.extend([8, 6, 0, 0, 0]);
+        out
+    }
+
+    #[test]
+    fn chests_and_shields_are_cut_from_their_model_textures() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("client.jar");
+        let mut writer = zip::ZipWriter::new(std::fs::File::create(&path).unwrap());
+        let options = zip::write::SimpleFileOptions::default();
+        let sheet = png_header(64, 64);
+        let big = png_header(128, 128);
+        for (name, body) in [
+            ("assets/minecraft/textures/entity/chest/normal.png", &sheet[..]),
+            ("assets/minecraft/textures/entity/chest/christmas.png", &sheet[..]),
+            ("assets/minecraft/textures/entity/chest/ender.png", &big[..]),
+            ("assets/minecraft/textures/entity/chest/trapped.png", &sheet[..]),
+            ("assets/minecraft/textures/entity/shield_base_nopattern.png", &sheet[..]),
+            (
+                "assets/minecraft/items/chest.json",
+                br#"{"model":{"type":"minecraft:select","property":"minecraft:local_time","cases":[{"when":["12-24"],"model":{"type":"minecraft:special","base":"minecraft:item/chest","model":{"type":"minecraft:chest","texture":"minecraft:christmas"}}}],"fallback":{"type":"minecraft:special","base":"minecraft:item/chest","model":{"type":"minecraft:chest","texture":"minecraft:normal"}}}}"#,
+            ),
+            (
+                "assets/minecraft/items/ender_chest.json",
+                br#"{"model":{"type":"minecraft:special","base":"minecraft:item/ender_chest","model":{"type":"minecraft:chest","texture":"minecraft:ender"}}}"#,
+            ),
+            (
+                "assets/minecraft/items/shield.json",
+                br#"{"model":{"type":"minecraft:condition","property":"minecraft:using_item","on_false":{"type":"minecraft:special","base":"minecraft:item/shield","model":{"type":"minecraft:shield"}},"on_true":{"type":"minecraft:special","base":"minecraft:item/shield_blocking","model":{"type":"minecraft:shield"}}}}"#,
+            ),
+        ] {
+            writer.start_file(name, options).unwrap();
+            writer.write_all(body).unwrap();
+        }
+        writer.finish().unwrap();
+        let mut vanilla = zip::ZipArchive::new(std::fs::File::open(&path).unwrap()).unwrap();
+        let mut assets = Assets {
+            vanilla: &mut vanilla,
+            mods: Vec::new(),
+        };
+
+        let Some(Icon::Sheet {
+            texture,
+            size,
+            front,
+            top,
+            side,
+        }) = resolve(&mut assets, "minecraft:chest")
+        else {
+            panic!("a chest is cut from its sheet");
+        };
+        assert_eq!(texture, "entity/chest/normal", "not the Christmas one");
+        assert_eq!(size, [64, 64]);
+        assert_eq!(top[0].from, [28, 0, 14, 14]);
+        assert_eq!(front.len(), 3, "lid, base, and latch");
+        assert!(front.iter().all(|p| p.flip));
+        assert_eq!(side.len(), 2);
+
+        let Some(Icon::Sheet { front, size, .. }) = resolve(&mut assets, "ender_chest") else {
+            panic!("an ender chest is a chest");
+        };
+        assert_eq!(size, [128, 128]);
+        assert_eq!(front[0].from, [84, 28, 28, 10], "scaled for a bigger sheet");
+
+        let Some(Icon::Sheet {
+            texture,
+            front,
+            top,
+            ..
+        }) = resolve(&mut assets, "minecraft:shield")
+        else {
+            panic!("a shield is cut from its sheet");
+        };
+        assert_eq!(texture, "entity/shield_base_nopattern");
+        assert_eq!(front[0].from, [1, 1, 12, 22]);
+        assert!(top.is_empty(), "drawn flat");
+
+        // Before 1.21.4 there are no item definitions; the names say it.
+        let Some(Icon::Sheet { texture, .. }) = resolve(&mut assets, "minecraft:trapped_chest")
+        else {
+            panic!("an old trapped chest is found by its name");
+        };
+        assert_eq!(texture, "entity/chest/trapped");
     }
 
     #[test]
