@@ -3,6 +3,7 @@
 //! administrator. Every action is audit-logged.
 
 use std::collections::{BTreeMap, HashMap};
+use std::time::{Duration, Instant};
 
 use connectrpc::{ConnectError, RequestContext, Response, ServiceRequest, ServiceResult};
 use nn_auth::{AuthUser, Permission};
@@ -10,7 +11,7 @@ use nn_events::Event;
 use nn_files::{EDITOR_LIMIT, RelPath};
 use nn_players::commands::{Destination, GameMode};
 use nn_players::profile::Profile;
-use nn_players::{nbt, playerdata};
+use nn_players::{live, nbt, playerdata};
 use nn_store::{NewPlayerBan, PlayerBan};
 use serde_json::json;
 
@@ -20,6 +21,26 @@ use crate::players::backend::{Ctx, Via};
 use crate::players::resolve;
 use crate::proto::nethernode::v1 as pb;
 use crate::rpc::{audit, require, store_error};
+
+/// Commands one live read of a player may send when the server cuts the
+/// one-command read short (Paper): a full inventory and ender chest of
+/// plain stacks takes about 75, an enchanted stack 3–5 more. Each is well
+/// under a millisecond on the server.
+const LIVE_COMMANDS: usize = 160;
+/// And how long it may take; the drawer asks again every 2 s.
+const LIVE_TIME: Duration = Duration::from_millis(1500);
+
+/// A server's console, for [`live::read`].
+struct Console<'a> {
+    node: &'a nn_node::Node,
+    id: &'a str,
+}
+
+impl live::Console for Console<'_> {
+    async fn command(&mut self, command: String) -> Option<String> {
+        self.node.command(self.id, &command).await.ok()
+    }
+}
 
 pub(crate) struct PlayerRpc {
     state: AppState,
@@ -425,19 +446,27 @@ impl pb::PlayerService for PlayerRpc {
         }
         // An online player's data, straight from the running server: the
         // file is only written every few minutes and when they leave.
+        // Paper cuts long output short, so there it takes several commands.
         let live = if server.status == "running" {
-            self.state
-                .nodes
-                .for_server(&server)
-                .command(&server.id, &format!("data get entity {uuid}"))
-                .await
-                .ok()
-                .and_then(|out| nn_players::snbt::entity_data(&out))
+            let node = self.state.nodes.for_server(&server);
+            let limits = live::Limits {
+                commands: LIVE_COMMANDS,
+                until: Instant::now() + LIVE_TIME,
+            };
+            let mut console = Console {
+                node: &node,
+                id: &server.id,
+            };
+            live::read(&uuid, limits, &mut console).await
         } else {
             None
         };
+        let mut partial = false;
         let (root, saved_ms, live) = match (live, data) {
-            (Some(root), _) => (root, nn_store::now_ms(), true),
+            (Some(read), _) => {
+                partial = !read.complete;
+                (read.root, nn_store::now_ms(), true)
+            }
             (None, Some((bytes, saved_ms))) => {
                 let root = nbt::read_gzip(&bytes).map(|(_, root)| root).map_err(|e| {
                     ConnectError::failed_precondition(format!(
@@ -470,6 +499,7 @@ impl pb::PlayerService for PlayerRpc {
         Response::ok(pb::GetPlayerDataResponse {
             found: true,
             live,
+            partial,
             saved_ms,
             position: data.position.map(|p| p.to_vec()).unwrap_or_default(),
             dimension: data.dimension.clone().unwrap_or_default(),

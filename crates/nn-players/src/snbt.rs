@@ -6,7 +6,7 @@
 use crate::nbt::Tag;
 
 /// Why SNBT couldn't be read.
-#[derive(Debug, thiserror::Error, PartialEq, Eq)]
+#[derive(Debug, Clone, thiserror::Error, PartialEq, Eq)]
 #[error("unreadable SNBT at {at}: {what}")]
 pub struct SnbtError {
     /// Byte offset.
@@ -33,13 +33,85 @@ pub fn parse(text: &str) -> Result<Tag, SnbtError> {
     Ok(value)
 }
 
-/// The entity data in `/data get entity` output ("Steve has the following
-/// entity data: {…}"), or `None` if the output is something else (no such
-/// entity, an unknown command).
-pub fn entity_data(output: &str) -> Option<Tag> {
+/// What `/data get entity` printed.
+#[derive(Debug, Clone, PartialEq)]
+pub enum DataGet {
+    /// The value at the path ("Steve has the following entity data: {…}").
+    Value(Tag),
+    /// The value, cut short with "...": Paper prints only the first few
+    /// tags of a long value. Holds the compound's entries that came through
+    /// whole, in order (none for a list or a cut-off first entry).
+    Truncated(Vec<(String, Tag)>),
+    /// The value, but in a form this parser doesn't know.
+    Unreadable(SnbtError),
+    /// "No entity was found": the player isn't online.
+    NoEntity,
+    /// Anything else, such as "Found no elements matching Inventory[5]".
+    Missing,
+}
+
+/// Reads `/data get entity` output.
+pub fn data_get(output: &str) -> DataGet {
     let marker = "entity data: ";
-    let start = output.find(marker)? + marker.len();
-    parse(output[start..].trim()).ok()
+    let Some(start) = output.find(marker) else {
+        return if output.contains("No entity was found") {
+            DataGet::NoEntity
+        } else {
+            DataGet::Missing
+        };
+    };
+    let text = output[start + marker.len()..].trim();
+    match parse(text) {
+        Ok(tag) => DataGet::Value(tag),
+        // A string may itself end in dots, so only a value that fails to
+        // parse counts as cut short.
+        Err(_) if text.ends_with("...") || text.ends_with('…') => {
+            DataGet::Truncated(whole_entries(text))
+        }
+        Err(e) => DataGet::Unreadable(e),
+    }
+}
+
+/// The entity data in `/data get entity` output, or `None` if the output is
+/// something else (no such entity, an unknown command, cut short).
+pub fn entity_data(output: &str) -> Option<Tag> {
+    match data_get(output) {
+        DataGet::Value(tag) => Some(tag),
+        _ => None,
+    }
+}
+
+/// The leading entries of a cut-off compound that were printed in full:
+/// `{count: 1, Slot: 0b, components: {"minecraft:custom_na...` gives
+/// `count` and `Slot`. An entry counts only once the `,` after it is seen,
+/// so a cut-off number ("3...") is never taken for a whole one.
+fn whole_entries(text: &str) -> Vec<(String, Tag)> {
+    let mut p = Parser {
+        s: text.as_bytes(),
+        i: 0,
+        depth: 1,
+    };
+    let mut entries = Vec::new();
+    if !p.eat(b'{') {
+        return entries;
+    }
+    loop {
+        p.ws();
+        let key = match p.peek() {
+            Some(b'"' | b'\'') => p.quoted(),
+            _ => p.bare(),
+        };
+        let Ok(key) = key else { break };
+        if !p.eat(b':') {
+            break;
+        }
+        let Ok(value) = p.value() else { break };
+        if !p.eat(b',') {
+            break;
+        }
+        entries.push((key, value));
+    }
+    entries
 }
 
 struct Parser<'a> {
@@ -281,5 +353,53 @@ mod tests {
         );
         assert_eq!(data.ender_chest[0].count, 16);
         assert_eq!(entity_data("No entity was found"), None);
+    }
+
+    #[test]
+    fn cut_short_output_is_told_apart() {
+        // Paper 1.21.4 prints only the first few tags of a long value.
+        let cut = "Steve has the following entity data: {count: 1, Slot: 0b, components: {\"minecraft:custom_name\": '\"Excalibur\"', \"minecraft:enchantments\": {levels: {\"minecraft:mending...";
+        assert_eq!(
+            data_get(cut),
+            DataGet::Truncated(vec![
+                ("count".into(), Tag::Int(1)),
+                ("Slot".into(), Tag::Byte(0)),
+            ])
+        );
+        assert_eq!(entity_data(cut), None);
+        // A number right before the cut may itself be cut ("30..."), so an
+        // entry counts only once the comma after it is printed.
+        let root = "Steve has the following entity data: {XpTotal: 0, playerGameType: 1, Invulnerable: 0b, ...";
+        assert_eq!(
+            data_get(root),
+            DataGet::Truncated(vec![
+                ("XpTotal".into(), Tag::Int(0)),
+                ("playerGameType".into(), Tag::Int(1)),
+                ("Invulnerable".into(), Tag::Byte(0)),
+            ])
+        );
+        assert_eq!(
+            whole_entries("{levels: {\"minecraft:power\": 5}, id: 3..."),
+            [(
+                "levels".to_owned(),
+                Tag::Compound(vec![("minecraft:power".into(), Tag::Int(5))])
+            )]
+        );
+        assert_eq!(whole_entries("{Health: 20..."), []);
+        assert_eq!(whole_entries("[{count: 1}, {cou..."), []);
+        // Dots inside a whole value are just text.
+        assert_eq!(
+            data_get("Steve has the following entity data: \"Wait...\""),
+            DataGet::Value(Tag::String("Wait...".into()))
+        );
+        assert!(matches!(
+            data_get("Steve has the following entity data: {a: 1"),
+            DataGet::Unreadable(_)
+        ));
+        assert_eq!(data_get("No entity was found"), DataGet::NoEntity);
+        assert_eq!(
+            data_get("Found no elements matching Inventory[5]"),
+            DataGet::Missing
+        );
     }
 }

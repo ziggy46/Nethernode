@@ -597,7 +597,15 @@ function Inventory({ serverId, uuid, online }: { serverId: string; uuid: string;
   return (
     <ItemIconsContext.Provider value={icons}>
       <div className="flex flex-col gap-4">
-        {d.live ? (
+        {d.live && d.partial ? (
+          <p className="flex items-start gap-1.5 text-meta text-text-muted">
+            <span aria-hidden className="mt-1.5 inline-block size-1.5 shrink-0 rounded-full bg-warning" />
+            <span>
+              Live, but incomplete: this server shortens long command output, so some items or enchantments
+              couldn't be read and may be missing below.
+            </span>
+          </p>
+        ) : d.live ? (
           <p className="flex items-center gap-1.5 text-meta text-text-muted">
             <span aria-hidden className="inline-block size-1.5 rounded-full bg-success" />
             Live: read from the running server every couple of seconds.

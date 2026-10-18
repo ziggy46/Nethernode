@@ -3,6 +3,7 @@
 
 pub mod commands;
 pub mod lists;
+pub mod live;
 pub mod mgmt;
 pub mod mojang;
 pub mod nbt;

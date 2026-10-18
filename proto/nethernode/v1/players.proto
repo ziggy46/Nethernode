@@ -180,6 +180,9 @@ message GetPlayerDataResponse {
   // Read from the running server just now (the player is online), rather
   // than from their saved file.
   bool live = 19;
+  // Read live, but not all of it: the server cut its output short and
+  // some items or details didn't fit in one read.
+  bool partial = 20;
 }
 
 message ResolvePlayerRequest {
