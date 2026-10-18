@@ -24,20 +24,22 @@ export type ItemIcon =
   | { kind: "flat"; texture: string; tint?: string }
   | { kind: "cube"; top: string; side: string; tint?: string }
   | {
-      /** Cut from a model's texture sheet (chests, shields). */
+      /** Cut from the textures of a model the game draws itself (chests, beds, heads, …). */
       kind: "sheet";
-      texture: string;
-      size: [number, number];
+      sheets: { texture: string; size: [number, number] }[];
       front: SheetPart[];
       top?: SheetPart[];
       side?: SheetPart[];
     };
 
-/** A rectangle of a texture sheet (`from`, in pixels) placed on a 16×16 face (`to`). */
+/** A rectangle of one of the sheets (`from`, in pixels) placed on a 16×16 face (`to`). */
 interface SheetPart {
+  sheet?: number;
   from: [number, number, number, number];
   to: [number, number, number, number];
   flip?: boolean;
+  /** A colour to multiply it by (a banner's dye). */
+  tint?: string;
 }
 
 export interface ItemIcons {
@@ -102,43 +104,60 @@ function Face({
   );
 }
 
-/** Parts of a texture sheet laid out on one 16×16 face. */
+/** Multiplies what it's applied to by `colour`, keeping transparency. */
+function TintFilter({ id, colour }: { id: string; colour: string }) {
+  return (
+    <filter id={id}>
+      <feFlood floodColor={colour} result="tint" />
+      <feComposite in="tint" in2="SourceAlpha" operator="in" result="tinted" />
+      <feBlend in="SourceGraphic" in2="tinted" mode="multiply" />
+    </filter>
+  );
+}
+
+/** Parts of an item's texture sheets laid out on one 16×16 face. */
 function SheetFace({
-  href,
-  size,
+  sheets,
   parts,
   transform,
   shade,
+  tintId,
 }: {
-  href: string;
-  size: [number, number];
+  sheets: { href: string; size: [number, number] }[];
   parts: SheetPart[];
   transform: string;
   shade?: number;
+  /** The filter id for a part's tint. */
+  tintId: (colour: string) => string;
 }) {
   return (
     <g transform={transform}>
-      {parts.map(({ from: [sx, sy, sw, sh], to: [x, y, w, h], flip }) => (
-        <svg
-          key={`${sx},${sy},${x},${y}`}
-          x={x}
-          y={y}
-          width={w}
-          height={h}
-          viewBox={`${sx} ${sy} ${sw} ${sh}`}
-          preserveAspectRatio="none"
-          overflow="hidden"
-          aria-hidden
-        >
-          <image
-            href={href}
-            width={size[0]}
-            height={size[1]}
-            transform={flip ? `translate(0 ${2 * sy + sh}) scale(1 -1)` : undefined}
-            style={{ imageRendering: "pixelated" }}
-          />
-        </svg>
-      ))}
+      {parts.map(({ sheet = 0, from: [sx, sy, sw, sh], to: [x, y, w, h], flip, tint }) => {
+        const source = sheets[sheet];
+        if (!source) return null;
+        return (
+          <svg
+            key={`${sheet},${sx},${sy},${x},${y}`}
+            x={x}
+            y={y}
+            width={w}
+            height={h}
+            viewBox={`${sx} ${sy} ${sw} ${sh}`}
+            preserveAspectRatio="none"
+            overflow="hidden"
+            aria-hidden
+          >
+            <image
+              href={source.href}
+              width={source.size[0]}
+              height={source.size[1]}
+              transform={flip ? `translate(0 ${2 * sy + sh}) scale(1 -1)` : undefined}
+              filter={tint ? `url(#${tintId(tint)})` : undefined}
+              style={{ imageRendering: "pixelated" }}
+            />
+          </svg>
+        );
+      })}
       {shade ? <rect width="16" height="16" fill="black" opacity={shade} /> : null}
     </g>
   );
@@ -151,11 +170,7 @@ function GameIcon({ icon, icons }: { icon: ItemIcon; icons: ItemIcons }) {
   const colour = icon.kind === "sheet" ? undefined : icon.tint;
   const tint = colour && (
     <defs>
-      <filter id={tintId}>
-        <feFlood floodColor={colour} result="tint" />
-        <feComposite in="tint" in2="SourceAlpha" operator="in" result="tinted" />
-        <feBlend in="SourceGraphic" in2="tinted" mode="multiply" />
-      </filter>
+      <TintFilter id={tintId} colour={colour} />
     </defs>
   );
   const filter = colour ? `url(#${tintId})` : undefined;
@@ -168,30 +183,42 @@ function GameIcon({ icon, icons }: { icon: ItemIcon; icons: ItemIcons }) {
     );
   }
   if (icon.kind === "sheet") {
-    const href = textureUrl(icons, icon.texture);
+    const sheets = icon.sheets.map((sheet) => ({ href: textureUrl(icons, sheet.texture), size: sheet.size }));
+    const parts = [...icon.front, ...(icon.top ?? []), ...(icon.side ?? [])];
+    const tints = [...new Set(parts.flatMap((part) => (part.tint ? [part.tint] : [])))];
+    const tintFor = (colour: string) => `${tintId}-${tints.indexOf(colour)}`;
+    const defs = tints.length > 0 && (
+      <defs>
+        {tints.map((colour) => (
+          <TintFilter key={colour} id={tintFor(colour)} colour={colour} />
+        ))}
+      </defs>
+    );
     if (!icon.top?.length) {
       return (
         <svg viewBox="0 0 16 16" className="size-[78%]" aria-hidden>
-          <SheetFace href={href} size={icon.size} parts={icon.front} transform="" />
+          {defs}
+          <SheetFace sheets={sheets} parts={icon.front} transform="" tintId={tintFor} />
         </svg>
       );
     }
     return (
       <svg viewBox="0 0 32 32" className="size-[82%]" aria-hidden>
-        <SheetFace href={href} size={icon.size} parts={icon.top} transform="matrix(1,0.5,-1,0.5,16,0)" />
+        {defs}
+        <SheetFace sheets={sheets} parts={icon.top} transform="matrix(1,0.5,-1,0.5,16,0)" tintId={tintFor} />
         <SheetFace
-          href={href}
-          size={icon.size}
+          sheets={sheets}
           parts={icon.front}
           transform="matrix(1,0.5,0,1,0,8)"
           shade={0.25}
+          tintId={tintFor}
         />
         <SheetFace
-          href={href}
-          size={icon.size}
+          sheets={sheets}
           parts={icon.side ?? []}
           transform="matrix(1,-0.5,0,1,16,16)"
           shade={0.45}
+          tintId={tintFor}
         />
       </svg>
     );

@@ -5,9 +5,10 @@
 //!
 //! Flat items (tools, food, ingots, …) use their item texture. Blocks are
 //! shown as a cube from their top and side textures, like the game's
-//! inventory does; odd shapes (stairs) get the closest cube. Chests and
-//! shields, which the game draws as models, are cut from their model
-//! textures.
+//! inventory does; odd shapes (stairs) get the closest cube. Items the
+//! game draws with its own models (chests, beds, banners, heads, shields,
+//! …) are cut from those models' textures: the item definitions say which
+//! model and texture, and `layout` knows each model's shape.
 
 use std::collections::{HashMap, HashSet};
 use std::io::Read;
@@ -48,13 +49,11 @@ pub enum Icon {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         tint: Option<String>,
     },
-    /// Cut from one texture sheet, for items the game draws as models
-    /// rather than from item textures (chests, shields).
+    /// Cut from texture sheets, for items the game draws with its own
+    /// models rather than item textures (chests, beds, heads, …).
     Sheet {
-        /// Texture path, like `entity/chest/normal`.
-        texture: String,
-        /// The sheet's size in pixels, `[width, height]`.
-        size: [u32; 2],
+        /// The sheets parts are cut from.
+        sheets: Vec<SheetTexture>,
         /// The whole icon when flat; the left face of a cube.
         front: Vec<Part>,
         /// For a cube, its top face; empty when flat.
@@ -66,9 +65,21 @@ pub enum Icon {
     },
 }
 
+/// A texture sheet an [`Icon::Sheet`] is cut from.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SheetTexture {
+    /// Texture path, like `entity/chest/normal`.
+    pub texture: String,
+    /// Its size in pixels, `[width, height]`.
+    pub size: [u32; 2],
+}
+
 /// A rectangle of a texture sheet, placed on a 16×16 face.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Part {
+    /// Which of the icon's sheets.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub sheet: usize,
     /// `[x, y, width, height]` on the sheet, in pixels.
     pub from: [u32; 4],
     /// `[x, y, width, height]` on the face, 0 to 16.
@@ -76,6 +87,13 @@ pub struct Part {
     /// Drawn upside down (the game keeps chest textures that way).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub flip: bool,
+    /// A colour to multiply it by (a banner's dye), like `#b02e26`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tint: Option<String>,
+}
+
+fn is_zero(n: &usize) -> bool {
+    *n == 0
 }
 
 /// The colours the game gives grey foliage textures in inventories.
@@ -510,33 +528,71 @@ fn resolve(assets: &mut Assets<'_>, id: &str) -> Option<Icon> {
     let special = match &definition {
         Some(definition) => special_model(definition),
         // Before 1.21.4 these were "builtin/entity", drawn by the game.
-        None if namespace == "minecraft" => match name.as_str() {
-            "chest" => Some(("chest".into(), Some("normal".into()))),
-            "trapped_chest" => Some(("chest".into(), Some("trapped".into()))),
-            "ender_chest" => Some(("chest".into(), Some("ender".into()))),
-            "shield" => Some(("shield".into(), None)),
-            _ => None,
-        },
+        None if namespace == "minecraft" => legacy_special(&name),
         None => None,
     };
-    if let Some((kind, texture)) = special
-        && let Some(icon) = sheet_icon(assets, &namespace, &kind, texture.as_deref())
-    {
-        return Some(icon);
+    let mut base = None;
+    if let Some(special) = special {
+        match layout(&special.kind, &special.fields) {
+            Some(layout) => {
+                if let Some(icon) = sheet_icon(assets, layout) {
+                    return Some(icon);
+                }
+            }
+            None => unknown_model(&special.kind, id),
+        }
+        base = special.base;
     }
-    let model = definition.as_ref().and_then(model_reference).or_else(|| {
-        let path = format!("item/{name}");
-        assets
-            .exists(&namespace, &format!("models/{path}.json"))
-            .then(|| format!("{namespace}:{path}"))
-    })?;
+    // Otherwise the item's plain model: for a model-drawn item, the one the
+    // game uses for its particles.
+    let model = base
+        .or_else(|| definition.as_ref().and_then(model_reference))
+        .or_else(|| {
+            let path = format!("item/{name}");
+            assets
+                .exists(&namespace, &format!("models/{path}.json"))
+                .then(|| format!("{namespace}:{path}"))
+        })?;
     model_icon(assets, &model)
 }
 
-/// The kind of a "special" model an item definition draws (`chest`,
-/// `shield`), and its texture if it names one. A chest's usual look (the
-/// `fallback` of its date switch) wins over its Christmas one.
-fn special_model(definition: &Value) -> Option<(String, Option<String>)> {
+/// Says once per kind that an item is drawn by a game model with no
+/// layout here yet (a newer version's, or a mod's), so it can be added.
+/// Until then the item shows its plain texture.
+fn unknown_model(kind: &str, item: &str) {
+    static SEEN: std::sync::LazyLock<Mutex<HashSet<String>>> =
+        std::sync::LazyLock::new(Mutex::default);
+    if SEEN
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .insert(kind.to_owned())
+    {
+        tracing::info!(
+            model = kind,
+            item,
+            "an item is drawn by a game model NetherNode can't draw yet; showing its plain texture"
+        );
+    }
+}
+
+type Fields = serde_json::Map<String, Value>;
+
+/// A "special" model an item definition draws.
+#[derive(Debug, PartialEq)]
+struct Special {
+    /// `chest`, `bed`, `head`, …
+    kind: String,
+    /// Its settings (texture, colour, …).
+    fields: Fields,
+    /// The plain model beside it, for particles.
+    base: Option<String>,
+}
+
+/// The "special" model an item definition draws (`chest`, `bed`, `head`,
+/// …): its kind and its settings (texture, colour). A chest's usual look
+/// (the `fallback` of its date switch) wins over its Christmas one, and a
+/// shield at rest over one in use.
+fn special_model(definition: &Value) -> Option<Special> {
     let map = definition.as_object()?;
     if map
         .get("type")
@@ -544,12 +600,11 @@ fn special_model(definition: &Value) -> Option<(String, Option<String>)> {
         .is_some_and(|t| location(t).1 == "special")
     {
         let model = map.get("model")?.as_object()?;
-        let kind = location(model.get("type")?.as_str()?).1;
-        let texture = model
-            .get("texture")
-            .and_then(Value::as_str)
-            .map(str::to_owned);
-        return Some((kind, texture));
+        return Some(Special {
+            kind: location(model.get("type")?.as_str()?).1,
+            fields: model.clone(),
+            base: map.get("base").and_then(Value::as_str).map(str::to_owned),
+        });
     }
     const FIRST: [&str; 3] = ["model", "fallback", "on_false"];
     let nested = |value: &Value| match value {
@@ -567,6 +622,76 @@ fn special_model(definition: &Value) -> Option<(String, Option<String>)> {
         })
 }
 
+/// What a 1.21.4 item definition would say for the game's model-drawn
+/// items in older versions, which have none.
+fn legacy_special(name: &str) -> Option<Special> {
+    let with = |kind: &str, key: &str, value: &str| {
+        let mut fields = Fields::new();
+        fields.insert(key.to_owned(), Value::String(value.to_owned()));
+        Some(Special {
+            kind: kind.to_owned(),
+            fields,
+            base: None,
+        })
+    };
+    let colour = |suffix: &str| {
+        name.strip_suffix(suffix)
+            .filter(|c| dye_colour(c).is_some())
+    };
+    match name {
+        "chest" => with("chest", "texture", "normal"),
+        "trapped_chest" => with("chest", "texture", "trapped"),
+        "ender_chest" => with("chest", "texture", "ender"),
+        "shulker_box" => with("shulker_box", "texture", "shulker"),
+        "shield" | "conduit" | "decorated_pot" => Some(Special {
+            kind: name.to_owned(),
+            fields: Fields::new(),
+            base: None,
+        }),
+        "skeleton_skull" => with("head", "kind", "skeleton"),
+        "wither_skeleton_skull" => with("head", "kind", "wither_skeleton"),
+        "zombie_head" => with("head", "kind", "zombie"),
+        "creeper_head" => with("head", "kind", "creeper"),
+        "player_head" => with("head", "kind", "player"),
+        "piglin_head" => with("head", "kind", "piglin"),
+        "dragon_head" => with("head", "kind", "dragon"),
+        _ => {
+            if let Some(c) = colour("_bed") {
+                with("bed", "texture", c)
+            } else if let Some(c) = colour("_shulker_box") {
+                with("shulker_box", "texture", &format!("shulker_{c}"))
+            } else if let Some(c) = colour("_banner") {
+                with("banner", "color", c)
+            } else {
+                None
+            }
+        }
+    }
+}
+
+/// The colour the game dyes things (banners) each colour.
+fn dye_colour(name: &str) -> Option<&'static str> {
+    Some(match name {
+        "white" => "#f9fffe",
+        "orange" => "#f9801d",
+        "magenta" => "#c74ebd",
+        "light_blue" => "#3ab3da",
+        "yellow" => "#fed83d",
+        "lime" => "#80c71f",
+        "pink" => "#f38baa",
+        "gray" => "#474f52",
+        "light_gray" => "#9d9d97",
+        "cyan" => "#169c9c",
+        "purple" => "#8932b8",
+        "blue" => "#3c44aa",
+        "brown" => "#835432",
+        "green" => "#5e7c16",
+        "red" => "#b02e26",
+        "black" => "#1d1d21",
+        _ => return None,
+    })
+}
+
 /// A sheet's size from its PNG header.
 fn png_size(assets: &mut Assets<'_>, namespace: &str, path: &str) -> Option<[u32; 2]> {
     let head = assets.read(namespace, &format!("textures/{path}.png"), 24)?;
@@ -578,68 +703,233 @@ fn png_size(assets: &mut Assets<'_>, namespace: &str, path: &str) -> Option<[u32
     (size[0] > 0 && size[1] > 0 && size[0] <= 4096 && size[1] <= 4096).then_some(size)
 }
 
-/// Icons for items the game draws as entity models. Sheets are laid out
-/// for 64×64 and scaled for bigger ones (high-resolution packs).
-fn sheet_icon(
-    assets: &mut Assets<'_>,
-    namespace: &str,
-    kind: &str,
-    texture: Option<&str>,
-) -> Option<Icon> {
-    let (sheet_namespace, path) = match kind {
-        "chest" => {
-            let (ns, name) = location(texture.unwrap_or("normal"));
-            (ns, format!("entity/chest/{name}"))
-        }
-        "shield" if namespace == "minecraft" => (
-            "minecraft".to_owned(),
-            "entity/shield_base_nopattern".to_owned(),
-        ),
-        _ => return None,
-    };
-    if !valid_namespace(&sheet_namespace) || !valid_path(&path) {
-        return None;
-    }
-    let size = png_size(assets, &sheet_namespace, &path)?;
-    let scale = size[0] / 64;
-    if scale == 0 || size[0] % 64 != 0 || size[1] != size[0] {
-        return None;
-    }
-    let part = |from: [u32; 4], to: [f32; 4], flip: bool| Part {
-        from: from.map(|v| v * scale),
+/// How a model-drawn item is cut from its sheets. Positions on a sheet are
+/// in the units of the game's own sheet (`width` wide); bigger sheets
+/// (high-resolution packs) are scaled to match.
+struct Layout {
+    /// (namespace, texture path, width the positions assume).
+    sheets: Vec<(String, String, u32)>,
+    front: Vec<Cut>,
+    top: Vec<Cut>,
+    side: Vec<Cut>,
+}
+
+struct Cut {
+    sheet: usize,
+    from: [u32; 4],
+    to: [f32; 4],
+    flip: bool,
+    tint: Option<String>,
+}
+
+const FACE: [f32; 4] = [0.0, 0.0, 16.0, 16.0];
+
+/// Part `from` of the first sheet, placed at `to`.
+fn cut(from: [u32; 4], to: [f32; 4]) -> Cut {
+    Cut {
+        sheet: 0,
+        from,
         to,
-        flip,
+        flip: false,
+        tint: None,
+    }
+}
+
+impl Cut {
+    fn flipped(self) -> Self {
+        Self { flip: true, ..self }
+    }
+
+    fn on(self, sheet: usize) -> Self {
+        Self { sheet, ..self }
+    }
+
+    fn tinted(self, tint: &str) -> Self {
+        Self {
+            tint: Some(tint.to_owned()),
+            ..self
+        }
+    }
+}
+
+/// The layout for a model kind with `fields` (texture, colour, …), or
+/// `None` for kinds this doesn't know.
+fn layout(kind: &str, fields: &Fields) -> Option<Layout> {
+    let field = |key: &str| fields.get(key).and_then(Value::as_str);
+    // A texture named in the definition, in its folder (`minecraft:red` →
+    // `entity/bed/red`).
+    let named = |default: &str, folder: &str| {
+        let (namespace, name) = location(field("texture").unwrap_or(default));
+        (namespace, format!("{folder}{name}"), 64)
     };
-    let texture = texture_name(&sheet_namespace, &path);
+    let game = |path: &str, width: u32| ("minecraft".to_owned(), path.to_owned(), width);
+    let flat = |sheet, front| Layout {
+        sheets: vec![sheet],
+        front,
+        top: Vec::new(),
+        side: Vec::new(),
+    };
+    let cube = |sheets, top, front, side| Layout {
+        sheets,
+        front,
+        top,
+        side,
+    };
     Some(match kind {
-        // The plate's front: 12×22 at (1, 1), centred.
-        "shield" => Icon::Sheet {
-            texture,
-            size,
-            front: vec![part([1, 1, 12, 22], [3.64, 0.0, 8.73, 16.0], false)],
-            top: Vec::new(),
-            side: Vec::new(),
-        },
         // A 14×14 box: the lid (5 high) on the base (10 high), stored
         // upside down. The front, with the latch, faces left.
-        _ => {
+        "chest" => {
             const LID: f32 = 16.0 * 5.0 / 15.0;
-            Icon::Sheet {
-                texture,
-                size,
-                top: vec![part([28, 0, 14, 14], [0.0, 0.0, 16.0, 16.0], false)],
-                front: vec![
-                    part([42, 14, 14, 5], [0.0, 0.0, 16.0, LID], true),
-                    part([42, 33, 14, 10], [0.0, LID, 16.0, 16.0 - LID], true),
+            cube(
+                vec![named("normal", "entity/chest/")],
+                vec![cut([28, 0, 14, 14], FACE)],
+                vec![
+                    cut([42, 14, 14, 5], [0.0, 0.0, 16.0, LID]).flipped(),
+                    cut([42, 33, 14, 10], [0.0, LID, 16.0, 16.0 - LID]).flipped(),
                     // The latch, over the seam.
-                    part([4, 1, 2, 4], [6.86, 3.43, 2.29, 4.57], true),
+                    cut([4, 1, 2, 4], [6.86, 3.43, 2.29, 4.57]).flipped(),
                 ],
-                side: vec![
-                    part([0, 14, 14, 5], [0.0, 0.0, 16.0, LID], true),
-                    part([0, 33, 14, 10], [0.0, LID, 16.0, 16.0 - LID], true),
+                vec![
+                    cut([0, 14, 14, 5], [0.0, 0.0, 16.0, LID]).flipped(),
+                    cut([0, 33, 14, 10], [0.0, LID, 16.0, 16.0 - LID]).flipped(),
                 ],
-            }
+            )
         }
+        // The shell's lid (12 high) over the bottom of its base.
+        "shulker_box" => {
+            let sides = |x: u32| {
+                vec![
+                    cut([x, 16, 16, 12], [0.0, 0.0, 16.0, 12.0]),
+                    cut([x, 48, 16, 4], [0.0, 12.0, 16.0, 4.0]),
+                ]
+            };
+            cube(
+                vec![named("shulker", "entity/shulker/")],
+                vec![cut([16, 0, 16, 16], FACE)],
+                sides(0),
+                sides(16),
+            )
+        }
+        // Seen from above: the pillow end, then the foot end.
+        "bed" => flat(
+            named("red", "entity/bed/"),
+            vec![
+                cut([6, 6, 16, 16], [4.0, 0.0, 8.0, 8.0]),
+                cut([6, 28, 16, 16], [4.0, 8.0, 8.0, 8.0]),
+            ],
+        ),
+        // The cloth (dyed) under its crossbar.
+        "banner" => {
+            let colour = dye_colour(field("color").unwrap_or("white"))?;
+            flat(
+                game("entity/banner_base", 64),
+                vec![
+                    cut([2, 44, 20, 2], [4.25, 0.0, 7.5, 0.75]),
+                    cut([1, 1, 20, 40], [4.25, 0.75, 7.5, 15.0]).tinted(colour),
+                ],
+            )
+        }
+        // The plate's front, 12×22.
+        "shield" => flat(
+            game("entity/shield_base_nopattern", 64),
+            vec![cut([1, 1, 12, 22], [3.64, 0.0, 8.73, 16.0])],
+        ),
+        // A mob's head: the 8×8×8 box at the sheet's corner, with the hat
+        // layer over it for players and zombies.
+        "head" => {
+            let (path, wide, hat) = match field("kind")? {
+                "skeleton" => ("entity/skeleton/skeleton", 8, false),
+                "wither_skeleton" => ("entity/skeleton/wither_skeleton", 8, false),
+                "zombie" => ("entity/zombie/zombie", 8, true),
+                "creeper" => ("entity/creeper/creeper", 8, false),
+                "piglin" => ("entity/piglin/piglin", 10, false),
+                "player" => ("entity/player/wide/steve", 8, true),
+                // The dragon's 16×16×16 head box, at (112, 30).
+                "dragon" => {
+                    return Some(cube(
+                        vec![game("entity/enderdragon/dragon", 256)],
+                        vec![cut([128, 30, 16, 16], FACE)],
+                        vec![cut([128, 46, 16, 16], FACE)],
+                        vec![cut([144, 46, 16, 16], FACE)],
+                    ));
+                }
+                _ => return None,
+            };
+            let mut top = vec![cut([8, 0, wide, 8], FACE)];
+            let mut front = vec![cut([8, 8, wide, 8], FACE)];
+            let mut side = vec![cut([8 + wide, 8, 8, 8], FACE)];
+            if hat {
+                top.push(cut([40, 0, 8, 8], FACE));
+                front.push(cut([40, 8, 8, 8], FACE));
+                side.push(cut([48, 8, 8, 8], FACE));
+            }
+            cube(vec![game(path, 64)], top, front, side)
+        }
+        // The 6×6×6 shell.
+        "conduit" => cube(
+            vec![game("entity/conduit/base", 32)],
+            vec![cut([6, 0, 6, 6], FACE)],
+            vec![cut([6, 6, 6, 6], FACE)],
+            vec![cut([12, 6, 6, 6], FACE)],
+        ),
+        // The body: its top from the pot's sheet, its sides plain.
+        "decorated_pot" => cube(
+            vec![
+                game("entity/decorated_pot/decorated_pot_base", 32),
+                game("entity/decorated_pot/decorated_pot_side", 16),
+            ],
+            vec![cut([0, 13, 14, 14], FACE)],
+            vec![cut([1, 0, 14, 16], FACE).on(1)],
+            vec![cut([1, 0, 14, 16], FACE).on(1)],
+        ),
+        _ => return None,
+    })
+}
+
+/// Cuts a [`Layout`] from its sheets, if they're all there and the parts
+/// fit them.
+fn sheet_icon(assets: &mut Assets<'_>, layout: Layout) -> Option<Icon> {
+    let mut sheets = Vec::new();
+    let mut scales = Vec::new();
+    for (namespace, path, width) in &layout.sheets {
+        if !valid_namespace(namespace) || !valid_path(path) {
+            return None;
+        }
+        let size = png_size(assets, namespace, path)?;
+        if size[0] % width != 0 {
+            return None;
+        }
+        scales.push(size[0] / width);
+        sheets.push(SheetTexture {
+            texture: texture_name(namespace, path),
+            size,
+        });
+    }
+    let place = |cuts: Vec<Cut>| -> Option<Vec<Part>> {
+        cuts.into_iter()
+            .map(|c| {
+                let (scale, size) = (*scales.get(c.sheet)?, sheets.get(c.sheet)?.size);
+                let from = c.from.map(|v| v * scale);
+                (from[0] + from[2] <= size[0] && from[1] + from[3] <= size[1]).then_some(Part {
+                    sheet: c.sheet,
+                    from,
+                    to: c.to,
+                    flip: c.flip,
+                    tint: c.tint,
+                })
+            })
+            .collect()
+    };
+    let (front, top, side) = (
+        place(layout.front)?,
+        place(layout.top)?,
+        place(layout.side)?,
+    );
+    Some(Icon::Sheet {
+        sheets,
+        front,
+        top,
+        side,
     })
 }
 
@@ -901,34 +1191,66 @@ mod tests {
     }
 
     #[test]
-    fn chests_and_shields_are_cut_from_their_model_textures() {
+    fn model_drawn_items_are_cut_from_their_sheets() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("client.jar");
         let mut writer = zip::ZipWriter::new(std::fs::File::create(&path).unwrap());
         let options = zip::write::SimpleFileOptions::default();
         let sheet = png_header(64, 64);
         let big = png_header(128, 128);
-        for (name, body) in [
-            ("assets/minecraft/textures/entity/chest/normal.png", &sheet[..]),
-            ("assets/minecraft/textures/entity/chest/christmas.png", &sheet[..]),
-            ("assets/minecraft/textures/entity/chest/ender.png", &big[..]),
-            ("assets/minecraft/textures/entity/chest/trapped.png", &sheet[..]),
-            ("assets/minecraft/textures/entity/shield_base_nopattern.png", &sheet[..]),
+        let half = png_header(64, 32);
+        let special = |model: &str| {
+            format!(
+                r#"{{"model":{{"type":"minecraft:special","base":"minecraft:item/x","model":{model}}}}}"#
+            )
+        };
+        let files: Vec<(&str, Vec<u8>)> = vec![
+            ("assets/minecraft/textures/entity/chest/normal.png", sheet.clone()),
+            ("assets/minecraft/textures/entity/chest/christmas.png", sheet.clone()),
+            ("assets/minecraft/textures/entity/chest/ender.png", big.clone()),
+            ("assets/minecraft/textures/entity/chest/trapped.png", sheet.clone()),
+            ("assets/minecraft/textures/entity/shield_base_nopattern.png", sheet.clone()),
+            ("assets/minecraft/textures/entity/bed/red.png", sheet.clone()),
+            ("assets/minecraft/textures/entity/banner_base.png", sheet.clone()),
+            ("assets/minecraft/textures/entity/skeleton/skeleton.png", half.clone()),
+            ("assets/minecraft/textures/entity/player/wide/steve.png", sheet.clone()),
             (
                 "assets/minecraft/items/chest.json",
-                br#"{"model":{"type":"minecraft:select","property":"minecraft:local_time","cases":[{"when":["12-24"],"model":{"type":"minecraft:special","base":"minecraft:item/chest","model":{"type":"minecraft:chest","texture":"minecraft:christmas"}}}],"fallback":{"type":"minecraft:special","base":"minecraft:item/chest","model":{"type":"minecraft:chest","texture":"minecraft:normal"}}}}"#,
+                br#"{"model":{"type":"minecraft:select","property":"minecraft:local_time","cases":[{"when":["12-24"],"model":{"type":"minecraft:special","base":"minecraft:item/chest","model":{"type":"minecraft:chest","texture":"minecraft:christmas"}}}],"fallback":{"type":"minecraft:special","base":"minecraft:item/chest","model":{"type":"minecraft:chest","texture":"minecraft:normal"}}}}"#.to_vec(),
             ),
             (
                 "assets/minecraft/items/ender_chest.json",
-                br#"{"model":{"type":"minecraft:special","base":"minecraft:item/ender_chest","model":{"type":"minecraft:chest","texture":"minecraft:ender"}}}"#,
+                special(r#"{"type":"minecraft:chest","texture":"minecraft:ender"}"#).into_bytes(),
             ),
             (
                 "assets/minecraft/items/shield.json",
-                br#"{"model":{"type":"minecraft:condition","property":"minecraft:using_item","on_false":{"type":"minecraft:special","base":"minecraft:item/shield","model":{"type":"minecraft:shield"}},"on_true":{"type":"minecraft:special","base":"minecraft:item/shield_blocking","model":{"type":"minecraft:shield"}}}}"#,
+                br#"{"model":{"type":"minecraft:condition","property":"minecraft:using_item","on_false":{"type":"minecraft:special","base":"minecraft:item/shield","model":{"type":"minecraft:shield"}},"on_true":{"type":"minecraft:special","base":"minecraft:item/shield_blocking","model":{"type":"minecraft:shield"}}}}"#.to_vec(),
             ),
-        ] {
+            (
+                "assets/minecraft/items/red_banner.json",
+                special(r#"{"type":"minecraft:banner","color":"red"}"#).into_bytes(),
+            ),
+            (
+                "assets/minecraft/items/skeleton_skull.json",
+                special(r#"{"type":"minecraft:head","kind":"skeleton"}"#).into_bytes(),
+            ),
+            (
+                "assets/minecraft/items/player_head.json",
+                special(r#"{"type":"minecraft:head","kind":"player"}"#).into_bytes(),
+            ),
+            (
+                "assets/minecraft/items/copper_golem_statue.json",
+                special(r#"{"type":"minecraft:copper_golem_statue"}"#).into_bytes(),
+            ),
+            (
+                "assets/minecraft/models/item/x.json",
+                br#"{"parent":"builtin/entity","textures":{"particle":"block/copper_block"}}"#.to_vec(),
+            ),
+            ("assets/minecraft/textures/block/copper_block.png", sheet.clone()),
+        ];
+        for (name, body) in files {
             writer.start_file(name, options).unwrap();
-            writer.write_all(body).unwrap();
+            writer.write_all(&body).unwrap();
         }
         writer.finish().unwrap();
         let mut vanilla = zip::ZipArchive::new(std::fs::File::open(&path).unwrap()).unwrap();
@@ -936,49 +1258,71 @@ mod tests {
             vanilla: &mut vanilla,
             mods: Vec::new(),
         };
-
-        let Some(Icon::Sheet {
-            texture,
-            size,
-            front,
-            top,
-            side,
-        }) = resolve(&mut assets, "minecraft:chest")
-        else {
-            panic!("a chest is cut from its sheet");
+        let sheet_of = |icon: Option<Icon>| match icon {
+            Some(Icon::Sheet {
+                sheets,
+                front,
+                top,
+                side,
+            }) => (sheets, front, top, side),
+            other => panic!("not cut from a sheet: {other:?}"),
         };
-        assert_eq!(texture, "entity/chest/normal", "not the Christmas one");
-        assert_eq!(size, [64, 64]);
+
+        let (sheets, front, top, side) = sheet_of(resolve(&mut assets, "minecraft:chest"));
+        assert_eq!(
+            sheets[0].texture, "entity/chest/normal",
+            "not the Christmas one"
+        );
+        assert_eq!(sheets[0].size, [64, 64]);
         assert_eq!(top[0].from, [28, 0, 14, 14]);
         assert_eq!(front.len(), 3, "lid, base, and latch");
         assert!(front.iter().all(|p| p.flip));
         assert_eq!(side.len(), 2);
 
-        let Some(Icon::Sheet { front, size, .. }) = resolve(&mut assets, "ender_chest") else {
-            panic!("an ender chest is a chest");
-        };
-        assert_eq!(size, [128, 128]);
+        let (sheets, front, ..) = sheet_of(resolve(&mut assets, "ender_chest"));
+        assert_eq!(sheets[0].size, [128, 128]);
         assert_eq!(front[0].from, [84, 28, 28, 10], "scaled for a bigger sheet");
 
-        let Some(Icon::Sheet {
-            texture,
-            front,
-            top,
-            ..
-        }) = resolve(&mut assets, "minecraft:shield")
-        else {
-            panic!("a shield is cut from its sheet");
-        };
-        assert_eq!(texture, "entity/shield_base_nopattern");
+        let (sheets, front, top, _) = sheet_of(resolve(&mut assets, "minecraft:shield"));
+        assert_eq!(sheets[0].texture, "entity/shield_base_nopattern");
         assert_eq!(front[0].from, [1, 1, 12, 22]);
         assert!(top.is_empty(), "drawn flat");
 
+        let (_, front, ..) = sheet_of(resolve(&mut assets, "red_banner"));
+        assert_eq!(
+            front[1].tint.as_deref(),
+            Some("#b02e26"),
+            "the cloth is dyed"
+        );
+
+        let (sheets, front, ..) = sheet_of(resolve(&mut assets, "skeleton_skull"));
+        assert_eq!(sheets[0].size, [64, 32]);
+        assert_eq!(front.len(), 1, "no hat layer");
+        let (_, front, ..) = sheet_of(resolve(&mut assets, "player_head"));
+        assert_eq!(front.len(), 2, "with the hat layer");
+
         // Before 1.21.4 there are no item definitions; the names say it.
-        let Some(Icon::Sheet { texture, .. }) = resolve(&mut assets, "minecraft:trapped_chest")
-        else {
-            panic!("an old trapped chest is found by its name");
-        };
-        assert_eq!(texture, "entity/chest/trapped");
+        let (sheets, ..) = sheet_of(resolve(&mut assets, "minecraft:trapped_chest"));
+        assert_eq!(sheets[0].texture, "entity/chest/trapped");
+        let (sheets, front, ..) = sheet_of(resolve(&mut assets, "red_bed"));
+        assert_eq!(sheets[0].texture, "entity/bed/red");
+        assert_eq!(front.len(), 2, "pillow end and foot end");
+        assert_eq!(
+            legacy_special("purple_shulker_box").unwrap().fields["texture"],
+            "shulker_purple"
+        );
+        assert_eq!(legacy_special("not_a_bed"), None);
+
+        // A kind with no layout yet shows its plain texture.
+        assert_eq!(
+            resolve(&mut assets, "copper_golem_statue"),
+            Some(Icon::Cube {
+                top: "block/copper_block".into(),
+                side: "block/copper_block".into(),
+                tint: None
+            }),
+            "from its base model"
+        );
     }
 
     #[test]
