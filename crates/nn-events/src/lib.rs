@@ -168,6 +168,15 @@ pub enum Event {
         /// 0–100.
         percent: u8,
     },
+    /// A newer version of a server's modpack was found (once per version).
+    ModpackUpdateAvailable {
+        /// The server.
+        server_id: String,
+        /// The pack's name.
+        pack: String,
+        /// The newer version's name.
+        version: String,
+    },
     /// A background file job finished.
     FileJobFinished {
         /// Server whose files are involved.

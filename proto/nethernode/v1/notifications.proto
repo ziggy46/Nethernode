@@ -37,6 +37,8 @@ message NotificationEvents {
   bool crash = 2;
   bool player_join = 3;
   bool backup_failed = 4;
+  // Newer modpack versions, and modpack updates that finish or fail.
+  bool modpack_updates = 5;
 }
 
 message GetNotificationsRequest {}

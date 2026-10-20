@@ -6,7 +6,9 @@
 //! version installed). An update stops the server, backs it up, pins the new
 //! version, and starts it again. Every backup of a modpack server records
 //! its pack version, so restoring the one made first puts the old version
-//! back.
+//! back. If an update can't go ahead, the server is started again on the
+//! version it had. Newer versions and failed updates show under the bell
+//! and go out as notifications (see `notify`).
 
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex};
@@ -14,6 +16,7 @@ use std::time::Duration;
 
 use connectrpc::ConnectError;
 use nn_catalog::{ProjectVersion, compare_versions};
+use nn_events::Event;
 use nn_orchestrator::spec::{MODPACK_LOADERS, Modpack};
 use nn_store::{Backup, Server, ServerSettings};
 
@@ -27,6 +30,11 @@ use crate::content::modpacks::newest_game_version;
 const CHECK_EVERY: Duration = Duration::from_secs(24 * 60 * 60);
 /// Most newer versions listed.
 const MAX_NEWER: usize = 10;
+/// How long a failed update stays under the bell.
+const FAILURE_SHOWN_MS: i64 = 24 * 60 * 60 * 1000;
+/// Which newer version was announced for each server (server ID → version
+/// ID), so each is announced once.
+const ANNOUNCED_SETTING: &str = "modpacks.announced";
 const NO_CURSEFORGE_KEY: &str =
     "Add a CurseForge API key in Settings to look up newer versions of this pack.";
 
@@ -55,6 +63,26 @@ static FOUND: LazyLock<Mutex<HashMap<String, Found>>> = LazyLock::new(Default::d
 
 fn found() -> std::sync::MutexGuard<'static, HashMap<String, Found>> {
     FOUND.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+/// An update that went wrong.
+#[derive(Debug, Clone)]
+pub(crate) struct Failure {
+    pub message: String,
+    /// Unix ms.
+    pub at_ms: i64,
+}
+
+static FAILED: LazyLock<Mutex<HashMap<String, Failure>>> = LazyLock::new(Default::default);
+
+fn failed() -> std::sync::MutexGuard<'static, HashMap<String, Failure>> {
+    FAILED.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+/// A server's last pack update, if it failed in the last day.
+pub(crate) fn failure(server_id: &str) -> Option<Failure> {
+    let failure = failed().get(server_id).cloned()?;
+    (nn_store::now_ms() - failure.at_ms < FAILURE_SHOWN_MS).then_some(failure)
 }
 
 /// The modpack a server is installed from, if it is one.
@@ -197,23 +225,47 @@ pub(crate) async fn check(state: &AppState, server: &Server) -> Result<Check, Co
         None => version(state, &pack, installed).await.ok(),
     };
     out.newer = newer_versions(all, installed, out.current.as_ref(), &server.mc_version);
-    let mut cache = found();
     match out.newer.first() {
         // Only when the installed version is known to be older.
         Some(newest) if out.current.is_some() => {
-            cache.insert(
+            found().insert(
                 server.id.clone(),
                 Found {
                     installed: installed.to_owned(),
                     version_name: newest.version_number.clone(),
                 },
             );
+            announce(state, server, &pack, newest).await;
         }
         _ => {
-            cache.remove(&server.id);
+            found().remove(&server.id);
         }
     }
     Ok(out)
+}
+
+/// Tells notification channels about a newer version, once per version.
+async fn announce(state: &AppState, server: &Server, pack: &Modpack, newest: &ProjectVersion) {
+    let store = state.auth.store();
+    let mut announced: HashMap<String, String> = store
+        .get_setting(ANNOUNCED_SETTING)
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or_default();
+    if announced.get(&server.id) == Some(&newest.id) {
+        return;
+    }
+    announced.insert(server.id.clone(), newest.id.clone());
+    if let Err(e) = store.set_setting(ANNOUNCED_SETTING, &announced).await {
+        tracing::warn!(error = %e, "couldn't record an announced modpack version");
+        return;
+    }
+    state.events.publish(Event::ModpackUpdateAvailable {
+        server_id: server.id.clone(),
+        pack: pack.title.clone(),
+        version: newest.version_number.clone(),
+    });
 }
 
 /// The newer version's name, if the last check found one for the version
@@ -311,9 +363,33 @@ pub(crate) fn start(state: &AppState, server: Server, plan: Plan, user_id: &str)
     let (state, job, user) = (state.clone(), job_id.clone(), user_id.to_owned());
     tokio::spawn(async move {
         let result = run(&state, &server, plan, &user).await;
+        match &result {
+            Ok(_) => {
+                failed().remove(&server.id);
+            }
+            Err(message) => {
+                failed().insert(
+                    server.id.clone(),
+                    Failure {
+                        message: message.clone(),
+                        at_ms: nn_store::now_ms(),
+                    },
+                );
+            }
+        }
         backups::finished(&state, &server.id, &job, "modpack-update", &result);
     });
     job_id
+}
+
+/// `text` ending in a full stop.
+fn sentence(text: &str) -> String {
+    let text = text.trim_end();
+    if text.ends_with(['.', '!', '?']) {
+        text.to_owned()
+    } else {
+        format!("{text}.")
+    }
 }
 
 async fn run(
@@ -325,37 +401,68 @@ async fn run(
     let node = state.nodes.for_server(server);
     let was_running = matches!(server.status.as_str(), "running" | "starting");
     if !matches!(server.status.as_str(), "stopped" | "crashed") {
-        node.stop(&server.id, false)
-            .await
-            .map_err(|e| format!("couldn't stop the server: {e}"))?;
+        node.stop(&server.id, false).await.map_err(|e| {
+            format!(
+                "{} couldn't be stopped, so its pack wasn't updated: {e}",
+                server.name
+            )
+        })?;
     }
     let (from, to) = (version_label(&plan.from), version_label(&plan.to));
+    if let Err(e) = switch(state, server, &plan, user_id, &from, &to).await {
+        // Nothing changed: back to how it was.
+        let mut message = format!("{} The pack wasn't updated.", sentence(&e));
+        if was_running {
+            match node.start(&server.id).await {
+                Ok(()) => {
+                    message.push_str(&format!(" {} was started again on {from}.", server.name))
+                }
+                Err(e) => {
+                    message.push_str(&format!(" {} couldn't be started again: {e}", server.name))
+                }
+            }
+        }
+        return Err(message);
+    }
+    found().remove(&server.id);
+    if was_running && let Err(e) = node.start(&server.id).await {
+        return Err(format!(
+            "{} was switched to {to}, but it didn't start: {e} To go back, restore the backup made before the update.",
+            server.name
+        ));
+    }
+    Ok(format!(
+        "{} moves from {from} to {to} as it starts. A backup of the old version was made first.",
+        server.name
+    ))
+}
+
+/// Backs the server up, then pins the new version. Nothing is changed if
+/// either fails.
+async fn switch(
+    state: &AppState,
+    server: &Server,
+    plan: &Plan,
+    user_id: &str,
+    from: &str,
+    to: &str,
+) -> Result<(), String> {
     let label = format!("Before updating {} from {from} to {to}", plan.from.title);
     backups::labelled_backup_and_wait(state, server, user_id, &label).await?;
-
     let current = state
         .auth
         .store()
         .find_server(&server.id)
         .await
         .map_err(|e| e.to_string())?
-        .ok_or("the server was deleted")?;
+        .ok_or("The server was deleted.")?;
     let mut settings = current.settings();
     settings.modpack_json = Some(serde_json::to_string(&plan.to).map_err(|e| e.to_string())?);
-    settings.mc_version = plan.mc_version;
+    settings.mc_version = plan.mc_version.clone();
     apply(state, &current, settings)
         .await
-        .map_err(|e| format!("The backup was made, but the version couldn't be switched: {e}"))?;
-    found().remove(&server.id);
-
-    let message = format!(
-        "{} moves from {from} to {to} as it starts. A backup of the old version was made first.",
-        server.name
-    );
-    if was_running && let Err(e) = node.start(&server.id).await {
-        return Ok(format!("{message} It didn't start again: {e}"));
-    }
-    Ok(message)
+        .map_err(|e| format!("The new version couldn't be saved: {e}"))?;
+    Ok(())
 }
 
 /// Saves a server's settings on its machine (and the panel's copy for
@@ -496,6 +603,15 @@ mod tests {
             page_url: None,
         })
         .unwrap()
+    }
+
+    #[test]
+    fn messages_end_in_one_full_stop() {
+        assert_eq!(
+            sentence("The backup failed: disk full"),
+            "The backup failed: disk full."
+        );
+        assert_eq!(sentence("Done. "), "Done.");
     }
 
     #[test]

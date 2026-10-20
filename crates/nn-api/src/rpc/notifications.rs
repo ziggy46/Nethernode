@@ -35,6 +35,7 @@ impl pb::NotificationService for NotificationRpc {
                 crash: status.toggles.crash,
                 player_join: status.toggles.player_join,
                 backup_failed: status.toggles.backup_failed,
+                modpack_updates: status.toggles.modpack_updates,
                 ..Default::default()
             }
             .into(),
@@ -161,6 +162,7 @@ impl pb::NotificationService for NotificationRpc {
             crash: events.is_some_and(|e| e.crash),
             player_join: events.is_some_and(|e| e.player_join),
             backup_failed: events.is_some_and(|e| e.backup_failed),
+            modpack_updates: events.is_some_and(|e| e.modpack_updates),
         };
         self.state
             .notifier

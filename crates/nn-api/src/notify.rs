@@ -1,5 +1,9 @@
 //! Discord webhook notifications: servers starting, stopping, and crashing,
-//! players joining, and backups failing.
+//! players joining, backups failing, and modpack updates.
+//!
+//! Everything sent comes from events on the bus, and [`Toggles`] holds the
+//! choice of which, so another way of being notified can listen the same
+//! way.
 //!
 //! Events are gathered for a few seconds and sent as one message, so a
 //! restart or a burst of joins doesn't flood the channel (or Discord's rate
@@ -36,6 +40,8 @@ pub struct Toggles {
     pub player_join: bool,
     /// Backups failing.
     pub backup_failed: bool,
+    /// Newer modpack versions, and modpack updates finishing or failing.
+    pub modpack_updates: bool,
 }
 
 impl Default for Toggles {
@@ -45,6 +51,7 @@ impl Default for Toggles {
             crash: true,
             player_join: false,
             backup_failed: true,
+            modpack_updates: true,
         }
     }
 }
@@ -303,12 +310,21 @@ const COLOR_INFO: u32 = 0x5b_8d_ef;
 const COLOR_MUTED: u32 = 0x80_80_80;
 const COLOR_BAD: u32 = 0xe0_4b_3c;
 
+/// Something about a server's modpack.
+#[derive(Debug)]
+enum PackNote {
+    Available { pack: String, version: String },
+    Updated(String),
+    Failed(String),
+}
+
 /// What happened to one server during a batch.
 #[derive(Debug, Default)]
 struct ServerBatch {
     statuses: Vec<String>,
     joined: Vec<String>,
     failures: Vec<String>,
+    packs: Vec<PackNote>,
 }
 
 /// Turns a batch into Discord embeds, at most ten.
@@ -354,6 +370,13 @@ fn embeds(
         }
         for failure in &b.failures {
             out.push(json!({ "title": format!("{name} backup failed"), "description": truncate(failure, 300), "color": COLOR_BAD }));
+        }
+        for note in &b.packs {
+            out.push(match note {
+                PackNote::Available { pack, version } => json!({ "title": format!("{pack} {version} is available for {name}"), "description": "Update it from the server's Mods tab; a backup is made first.", "color": COLOR_INFO }),
+                PackNote::Updated(message) => json!({ "title": format!("{name}'s modpack was updated"), "description": truncate(message, 300), "color": COLOR_OK }),
+                PackNote::Failed(message) => json!({ "title": format!("{name}'s modpack update failed"), "description": truncate(message, 300), "color": COLOR_BAD }),
+            });
         }
     }
     out.truncate(MAX_EMBEDS);
@@ -470,6 +493,36 @@ fn note(batch: &mut BTreeMap<String, ServerBatch>, event: &Event, toggles: Toggl
                 .push(message.clone());
             true
         }
+        Event::FileJobFinished {
+            server_id,
+            kind,
+            message,
+            failed,
+            ..
+        } if kind == "modpack-update" && toggles.modpack_updates => {
+            let note = if *failed {
+                PackNote::Failed(message.clone())
+            } else {
+                PackNote::Updated(message.clone())
+            };
+            batch.entry(server_id.clone()).or_default().packs.push(note);
+            true
+        }
+        Event::ModpackUpdateAvailable {
+            server_id,
+            pack,
+            version,
+        } if toggles.modpack_updates => {
+            batch
+                .entry(server_id.clone())
+                .or_default()
+                .packs
+                .push(PackNote::Available {
+                    pack: pack.clone(),
+                    version: version.clone(),
+                });
+            true
+        }
         _ => false,
     }
 }
@@ -580,6 +633,32 @@ mod tests {
             failed: true,
         };
         assert_eq!(titles(&[failed], all), ["SMP backup failed"]);
+
+        let pack_job = |failed| Event::FileJobFinished {
+            server_id: "a".into(),
+            job_id: "j".into(),
+            kind: "modpack-update".into(),
+            message: "msg".into(),
+            failed,
+        };
+        let available = Event::ModpackUpdateAvailable {
+            server_id: "a".into(),
+            pack: "Pack".into(),
+            version: "2.0".into(),
+        };
+        assert_eq!(
+            titles(&[available.clone(), pack_job(false), pack_job(true)], all),
+            [
+                "Pack 2.0 is available for SMP",
+                "SMP's modpack was updated",
+                "SMP's modpack update failed"
+            ]
+        );
+        let off = Toggles {
+            modpack_updates: false,
+            ..Toggles::default()
+        };
+        assert!(titles(&[available, pack_job(true)], off).is_empty());
     }
 
     /// A stand-in for Discord that rate-limits the first request.

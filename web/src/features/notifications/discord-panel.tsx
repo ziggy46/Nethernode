@@ -27,6 +27,11 @@ const EVENTS: { key: Toggle; title: string; description: string }[] = [
     description: "Joins a few seconds apart are sent together.",
   },
   { key: "backupFailed", title: "Failed backups", description: "Scheduled or manual." },
+  {
+    key: "modpackUpdates",
+    title: "Modpack updates",
+    description: "A newer version of a server's pack, and updates that finish or fail.",
+  },
 ];
 
 /** Discord webhook settings. Administrators and owners. */
@@ -60,6 +65,7 @@ export default function DiscordPanel() {
     startStop: events?.startStop ?? false,
     playerJoin: events?.playerJoin ?? false,
     backupFailed: events?.backupFailed ?? false,
+    modpackUpdates: events?.modpackUpdates ?? false,
   };
 
   return (

@@ -266,6 +266,15 @@ async fn gather(state: &AppState, admin: bool) -> Vec<Notice> {
 
     let checking = update_check_on(state).await;
     for server in store.list_servers().await.unwrap_or_default() {
+        if let Some(failure) = crate::modpack_updates::failure(&server.id) {
+            out.push(Notice {
+                id: format!("modpack-failed:{}:{}", server.id, failure.at_ms),
+                level: "danger",
+                title: format!("{}'s modpack update failed", server.name),
+                detail: failure.message,
+                link: Some(format!("/servers/{}", server.id)),
+            });
+        }
         if checking && let Some(version) = crate::modpack_updates::available(&server) {
             out.push(Notice {
                 id: format!("modpack:{}:{version}", server.id),
