@@ -4,8 +4,8 @@ name: Publish
 # Registry as ghcr.io/<owner>/nethernode, with a GitHub Release holding the
 # static binaries (copied out of the image builds):
 #   a tag like v0.1.0      -> 0.1.0, 0.1, latest, and a release
-#   a push to edge         -> an edge build, 0.1.1-edge.<run>: images
-#                             0.1.1-edge.<run>, edge and sha-<commit>, and a
+#   a push to edge, once   -> an edge build, 0.1.1-edge.<run>: images
+#   CI passes on it           0.1.1-edge.<run>, edge and sha-<commit>, and a
 #                             pre-release (its tag is made here)
 # On the edge branch, Cargo.toml holds the next release's version, so edge
 # builds sort between the last release and the next. Panels on the edge
@@ -14,31 +14,57 @@ name: Publish
 
 on:
   push:
-    branches: [edge]
     tags: ["v*"]
+  # Edge builds only from commits CI passed. (This file is read from main.)
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [edge]
   workflow_dispatch:
 
 permissions:
   contents: read
 
+env:
+  # The commit being published: the one CI checked, for edge builds.
+  SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
 concurrency:
-  group: publish-${{ github.ref }}
+  group: publish-${{ github.event.workflow_run.head_branch || github.ref }}
   cancel-in-progress: false
 
 jobs:
   version:
     name: Version
+    # From a workflow run: only a green CI run of a push to this repository's
+    # edge branch (never a pull request, whose branch could share the name).
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-24.04
     outputs:
       version: ${{ steps.version.outputs.version }}
       edge: ${{ steps.version.outputs.edge }}
       minor: ${{ steps.version.outputs.minor }}
+      short: ${{ steps.version.outputs.short }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.SHA }}
       - name: Work out the version
         id: version
+        env:
+          EVENT: ${{ github.event_name }}
+          RUN_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
           base=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n1)
+          echo "short=${SHA:0:7}" >> "$GITHUB_OUTPUT"
+          if [ "$EVENT" = workflow_run ]; then
+            GITHUB_REF_TYPE=branch
+            GITHUB_REF_NAME="$RUN_BRANCH"
+          fi
           if [ "$GITHUB_REF_TYPE" = tag ]; then
             version="${GITHUB_REF_NAME#v}"
             if [ "$version" != "$base" ]; then
@@ -76,6 +102,8 @@ jobs:
       VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.SHA }}
       - name: Stamp the edge version
         if: needs.version.outputs.edge == 'true'
         run: python3 .github/scripts/set-version.py "$VERSION"
@@ -161,7 +189,7 @@ jobs:
           tags: |
             type=raw,value=${{ needs.version.outputs.version }}
             type=raw,value=edge,enable=${{ needs.version.outputs.edge == 'true' }}
-            type=sha,enable=${{ needs.version.outputs.edge == 'true' }}
+            type=raw,value=sha-${{ needs.version.outputs.short }},enable=${{ needs.version.outputs.edge == 'true' }}
             type=raw,value=${{ needs.version.outputs.minor }},enable=${{ needs.version.outputs.edge != 'true' }}
             type=raw,value=latest,enable=${{ needs.version.outputs.edge != 'true' }}
       - name: Create the multi-arch tags
@@ -193,6 +221,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
+          ref: ${{ env.SHA }}
           fetch-depth: 0
       - uses: actions/download-artifact@v4
         with:
@@ -245,7 +274,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.VERSION }}
-          target_commitish: ${{ github.sha }}
+          target_commitish: ${{ env.SHA }}
           name: Edge build ${{ env.VERSION }}
           prerelease: true
           body_path: notes.md
