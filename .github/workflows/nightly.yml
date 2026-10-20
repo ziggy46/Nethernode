@@ -1,8 +1,8 @@
 name: Nightly
 
 # Slow checks: the orchestrator starting and stopping real Minecraft server
-# containers, and a minute of fuzzing for each parser that reads untrusted
-# input.
+# containers (on main and on edge), and a minute of fuzzing for each parser
+# that reads untrusted input.
 
 on:
   schedule:
@@ -18,11 +18,17 @@ env:
 
 jobs:
   docker:
-    name: Real Docker integration
+    name: Real Docker integration (${{ matrix.branch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: [main, edge]
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ matrix.branch }}
       - run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
       - uses: dtolnay/rust-toolchain@master
         with:

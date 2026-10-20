@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file nethernode/v1/notifications.proto.
  */
 export const file_nethernode_v1_notifications: GenFile = /*@__PURE__*/
-  fileDesc("CiFuZXRoZXJub2RlL3YxL25vdGlmaWNhdGlvbnMucHJvdG8SDW5ldGhlcm5vZGUudjEifAoSTm90aWZpY2F0aW9uRXZlbnRzEhIKCnN0YXJ0X3N0b3AYASABKAgSDQoFY3Jhc2gYAiABKAgSEwoLcGxheWVyX2pvaW4YAyABKAgSFQoNYmFja3VwX2ZhaWxlZBgEIAEoCBIXCg9tb2RwYWNrX3VwZGF0ZXMYBSABKAgiGQoXR2V0Tm90aWZpY2F0aW9uc1JlcXVlc3QimgIKGEdldE5vdGlmaWNhdGlvbnNSZXNwb25zZRIZCgx3ZWJob29rX2hpbnQYASABKAlIAIgBARIxCgZldmVudHMYAiABKAsyIS5uZXRoZXJub2RlLnYxLk5vdGlmaWNhdGlvbkV2ZW50cxISCgpsYXN0X2Vycm9yGAMgASgJEhkKDGxhc3Rfc2VudF9tcxgEIAEoA0gBiAEBEhQKDHVwZGF0ZV9jaGVjaxgFIAEoCBIWCg5sYXRlc3RfdmVyc2lvbhgGIAEoCRIXCg9jdXJyZW50X3ZlcnNpb24YByABKAkSGAoQdXBkYXRlX2F2YWlsYWJsZRgIIAEoCEIPCg1fd2ViaG9va19oaW50Qg8KDV9sYXN0X3NlbnRfbXMieQoaVXBkYXRlTm90aWZpY2F0aW9uc1JlcXVlc3QSGAoLd2ViaG9va191cmwYASABKAlIAIgBARIxCgZldmVudHMYAiABKAsyIS5uZXRoZXJub2RlLnYxLk5vdGlmaWNhdGlvbkV2ZW50c0IOCgxfd2ViaG9va191cmwiHQobVXBkYXRlTm90aWZpY2F0aW9uc1Jlc3BvbnNlIh0KG1NlbmRUZXN0Tm90aWZpY2F0aW9uUmVxdWVzdCIeChxTZW5kVGVzdE5vdGlmaWNhdGlvblJlc3BvbnNlIigKFVNldFVwZGF0ZUNoZWNrUmVxdWVzdBIPCgdlbmFibGVkGAEgASgIIhgKFlNldFVwZGF0ZUNoZWNrUmVzcG9uc2UiFwoVQ2hlY2tGb3JVcGRhdGVSZXF1ZXN0IkoKFkNoZWNrRm9yVXBkYXRlUmVzcG9uc2USFgoObGF0ZXN0X3ZlcnNpb24YASABKAkSGAoQdXBkYXRlX2F2YWlsYWJsZRgCIAEoCCIUChJVcGRhdGVQYW5lbFJlcXVlc3QiJgoTVXBkYXRlUGFuZWxSZXNwb25zZRIPCgd2ZXJzaW9uGAEgASgJMvIEChNOb3RpZmljYXRpb25TZXJ2aWNlEmgKEEdldE5vdGlmaWNhdGlvbnMSJi5uZXRoZXJub2RlLnYxLkdldE5vdGlmaWNhdGlvbnNSZXF1ZXN0GicubmV0aGVybm9kZS52MS5HZXROb3RpZmljYXRpb25zUmVzcG9uc2UiA5ACARJsChNVcGRhdGVOb3RpZmljYXRpb25zEikubmV0aGVybm9kZS52MS5VcGRhdGVOb3RpZmljYXRpb25zUmVxdWVzdBoqLm5ldGhlcm5vZGUudjEuVXBkYXRlTm90aWZpY2F0aW9uc1Jlc3BvbnNlEm8KFFNlbmRUZXN0Tm90aWZpY2F0aW9uEioubmV0aGVybm9kZS52MS5TZW5kVGVzdE5vdGlmaWNhdGlvblJlcXVlc3QaKy5uZXRoZXJub2RlLnYxLlNlbmRUZXN0Tm90aWZpY2F0aW9uUmVzcG9uc2USXQoOU2V0VXBkYXRlQ2hlY2sSJC5uZXRoZXJub2RlLnYxLlNldFVwZGF0ZUNoZWNrUmVxdWVzdBolLm5ldGhlcm5vZGUudjEuU2V0VXBkYXRlQ2hlY2tSZXNwb25zZRJdCg5DaGVja0ZvclVwZGF0ZRIkLm5ldGhlcm5vZGUudjEuQ2hlY2tGb3JVcGRhdGVSZXF1ZXN0GiUubmV0aGVybm9kZS52MS5DaGVja0ZvclVwZGF0ZVJlc3BvbnNlElQKC1VwZGF0ZVBhbmVsEiEubmV0aGVybm9kZS52MS5VcGRhdGVQYW5lbFJlcXVlc3QaIi5uZXRoZXJub2RlLnYxLlVwZGF0ZVBhbmVsUmVzcG9uc2ViBnByb3RvMw");
+  fileDesc("CiFuZXRoZXJub2RlL3YxL25vdGlmaWNhdGlvbnMucHJvdG8SDW5ldGhlcm5vZGUudjEifAoSTm90aWZpY2F0aW9uRXZlbnRzEhIKCnN0YXJ0X3N0b3AYASABKAgSDQoFY3Jhc2gYAiABKAgSEwoLcGxheWVyX2pvaW4YAyABKAgSFQoNYmFja3VwX2ZhaWxlZBgEIAEoCBIXCg9tb2RwYWNrX3VwZGF0ZXMYBSABKAgiGQoXR2V0Tm90aWZpY2F0aW9uc1JlcXVlc3QizAIKGEdldE5vdGlmaWNhdGlvbnNSZXNwb25zZRIZCgx3ZWJob29rX2hpbnQYASABKAlIAIgBARIxCgZldmVudHMYAiABKAsyIS5uZXRoZXJub2RlLnYxLk5vdGlmaWNhdGlvbkV2ZW50cxISCgpsYXN0X2Vycm9yGAMgASgJEhkKDGxhc3Rfc2VudF9tcxgEIAEoA0gBiAEBEhQKDHVwZGF0ZV9jaGVjaxgFIAEoCBIWCg5sYXRlc3RfdmVyc2lvbhgGIAEoCRIXCg9jdXJyZW50X3ZlcnNpb24YByABKAkSGAoQdXBkYXRlX2F2YWlsYWJsZRgIIAEoCBIWCg51cGRhdGVfY2hhbm5lbBgJIAEoCRIYChB1cGRhdGVfaXNfc3dpdGNoGAogASgIQg8KDV93ZWJob29rX2hpbnRCDwoNX2xhc3Rfc2VudF9tcyJ5ChpVcGRhdGVOb3RpZmljYXRpb25zUmVxdWVzdBIYCgt3ZWJob29rX3VybBgBIAEoCUgAiAEBEjEKBmV2ZW50cxgCIAEoCzIhLm5ldGhlcm5vZGUudjEuTm90aWZpY2F0aW9uRXZlbnRzQg4KDF93ZWJob29rX3VybCIdChtVcGRhdGVOb3RpZmljYXRpb25zUmVzcG9uc2UiHQobU2VuZFRlc3ROb3RpZmljYXRpb25SZXF1ZXN0Ih4KHFNlbmRUZXN0Tm90aWZpY2F0aW9uUmVzcG9uc2UiKAoVU2V0VXBkYXRlQ2hlY2tSZXF1ZXN0Eg8KB2VuYWJsZWQYASABKAgiGAoWU2V0VXBkYXRlQ2hlY2tSZXNwb25zZSIXChVDaGVja0ZvclVwZGF0ZVJlcXVlc3QiZAoWQ2hlY2tGb3JVcGRhdGVSZXNwb25zZRIWCg5sYXRlc3RfdmVyc2lvbhgBIAEoCRIYChB1cGRhdGVfYXZhaWxhYmxlGAIgASgIEhgKEHVwZGF0ZV9pc19zd2l0Y2gYAyABKAgiKgoXU2V0VXBkYXRlQ2hhbm5lbFJlcXVlc3QSDwoHY2hhbm5lbBgBIAEoCSIaChhTZXRVcGRhdGVDaGFubmVsUmVzcG9uc2UiFAoSVXBkYXRlUGFuZWxSZXF1ZXN0IiYKE1VwZGF0ZVBhbmVsUmVzcG9uc2USDwoHdmVyc2lvbhgBIAEoCTLXBQoTTm90aWZpY2F0aW9uU2VydmljZRJoChBHZXROb3RpZmljYXRpb25zEiYubmV0aGVybm9kZS52MS5HZXROb3RpZmljYXRpb25zUmVxdWVzdBonLm5ldGhlcm5vZGUudjEuR2V0Tm90aWZpY2F0aW9uc1Jlc3BvbnNlIgOQAgESbAoTVXBkYXRlTm90aWZpY2F0aW9ucxIpLm5ldGhlcm5vZGUudjEuVXBkYXRlTm90aWZpY2F0aW9uc1JlcXVlc3QaKi5uZXRoZXJub2RlLnYxLlVwZGF0ZU5vdGlmaWNhdGlvbnNSZXNwb25zZRJvChRTZW5kVGVzdE5vdGlmaWNhdGlvbhIqLm5ldGhlcm5vZGUudjEuU2VuZFRlc3ROb3RpZmljYXRpb25SZXF1ZXN0GisubmV0aGVybm9kZS52MS5TZW5kVGVzdE5vdGlmaWNhdGlvblJlc3BvbnNlEl0KDlNldFVwZGF0ZUNoZWNrEiQubmV0aGVybm9kZS52MS5TZXRVcGRhdGVDaGVja1JlcXVlc3QaJS5uZXRoZXJub2RlLnYxLlNldFVwZGF0ZUNoZWNrUmVzcG9uc2USXQoOQ2hlY2tGb3JVcGRhdGUSJC5uZXRoZXJub2RlLnYxLkNoZWNrRm9yVXBkYXRlUmVxdWVzdBolLm5ldGhlcm5vZGUudjEuQ2hlY2tGb3JVcGRhdGVSZXNwb25zZRJjChBTZXRVcGRhdGVDaGFubmVsEiYubmV0aGVybm9kZS52MS5TZXRVcGRhdGVDaGFubmVsUmVxdWVzdBonLm5ldGhlcm5vZGUudjEuU2V0VXBkYXRlQ2hhbm5lbFJlc3BvbnNlElQKC1VwZGF0ZVBhbmVsEiEubmV0aGVybm9kZS52MS5VcGRhdGVQYW5lbFJlcXVlc3QaIi5uZXRoZXJub2RlLnYxLlVwZGF0ZVBhbmVsUmVzcG9uc2ViBnByb3RvMw");
 
 /**
  * @generated from message nethernode.v1.NotificationEvents
@@ -114,11 +114,27 @@ export type GetNotificationsResponse = Message<"nethernode.v1.GetNotificationsRe
   currentVersion: string;
 
   /**
-   * The newest release is newer than this panel.
+   * The newest release is newer than this panel, or (on the stable channel)
+   * it's the release to go back to from an edge build.
    *
    * @generated from field: bool update_available = 8;
    */
   updateAvailable: boolean;
+
+  /**
+   * "stable" or "edge".
+   *
+   * @generated from field: string update_channel = 9;
+   */
+  updateChannel: string;
+
+  /**
+   * Updating goes back to an older version: from an edge build to the
+   * newest stable release.
+   *
+   * @generated from field: bool update_is_switch = 10;
+   */
+  updateIsSwitch: boolean;
 };
 
 /**
@@ -239,18 +255,23 @@ export const CheckForUpdateRequestSchema: GenMessage<CheckForUpdateRequest> = /*
  */
 export type CheckForUpdateResponse = Message<"nethernode.v1.CheckForUpdateResponse"> & {
   /**
-   * The newest release, like "0.2.4".
+   * The newest release on the panel's channel, like "0.2.4".
    *
    * @generated from field: string latest_version = 1;
    */
   latestVersion: string;
 
   /**
-   * It's newer than this panel.
+   * The panel can move to it (see GetNotificationsResponse).
    *
    * @generated from field: bool update_available = 2;
    */
   updateAvailable: boolean;
+
+  /**
+   * @generated from field: bool update_is_switch = 3;
+   */
+  updateIsSwitch: boolean;
 };
 
 /**
@@ -259,6 +280,38 @@ export type CheckForUpdateResponse = Message<"nethernode.v1.CheckForUpdateRespon
  */
 export const CheckForUpdateResponseSchema: GenMessage<CheckForUpdateResponse> = /*@__PURE__*/
   messageDesc(file_nethernode_v1_notifications, 10);
+
+/**
+ * @generated from message nethernode.v1.SetUpdateChannelRequest
+ */
+export type SetUpdateChannelRequest = Message<"nethernode.v1.SetUpdateChannelRequest"> & {
+  /**
+   * "stable" or "edge".
+   *
+   * @generated from field: string channel = 1;
+   */
+  channel: string;
+};
+
+/**
+ * Describes the message nethernode.v1.SetUpdateChannelRequest.
+ * Use `create(SetUpdateChannelRequestSchema)` to create a new message.
+ */
+export const SetUpdateChannelRequestSchema: GenMessage<SetUpdateChannelRequest> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_notifications, 11);
+
+/**
+ * @generated from message nethernode.v1.SetUpdateChannelResponse
+ */
+export type SetUpdateChannelResponse = Message<"nethernode.v1.SetUpdateChannelResponse"> & {
+};
+
+/**
+ * Describes the message nethernode.v1.SetUpdateChannelResponse.
+ * Use `create(SetUpdateChannelResponseSchema)` to create a new message.
+ */
+export const SetUpdateChannelResponseSchema: GenMessage<SetUpdateChannelResponse> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_notifications, 12);
 
 /**
  * @generated from message nethernode.v1.UpdatePanelRequest
@@ -271,7 +324,7 @@ export type UpdatePanelRequest = Message<"nethernode.v1.UpdatePanelRequest"> & {
  * Use `create(UpdatePanelRequestSchema)` to create a new message.
  */
 export const UpdatePanelRequestSchema: GenMessage<UpdatePanelRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_notifications, 11);
+  messageDesc(file_nethernode_v1_notifications, 13);
 
 /**
  * @generated from message nethernode.v1.UpdatePanelResponse
@@ -290,7 +343,7 @@ export type UpdatePanelResponse = Message<"nethernode.v1.UpdatePanelResponse"> &
  * Use `create(UpdatePanelResponseSchema)` to create a new message.
  */
 export const UpdatePanelResponseSchema: GenMessage<UpdatePanelResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_notifications, 12);
+  messageDesc(file_nethernode_v1_notifications, 14);
 
 /**
  * Discord webhook notifications. Administrators and owners.
@@ -349,6 +402,18 @@ export const NotificationService: GenService<{
     methodKind: "unary";
     input: typeof CheckForUpdateRequestSchema;
     output: typeof CheckForUpdateResponseSchema;
+  },
+  /**
+   * Which releases the panel follows: "stable" (releases only, the
+   * default) or "edge" (edge builds of new features too). Checks again
+   * right away.
+   *
+   * @generated from rpc nethernode.v1.NotificationService.SetUpdateChannel
+   */
+  setUpdateChannel: {
+    methodKind: "unary";
+    input: typeof SetUpdateChannelRequestSchema;
+    output: typeof SetUpdateChannelResponseSchema;
   },
   /**
    * Updates the panel to the newest release: in Docker, a copy of its

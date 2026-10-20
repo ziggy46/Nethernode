@@ -39,13 +39,57 @@ impl Next {
     }
 }
 
-/// Whether `version` looks like `1.2.3`.
+/// A NetherNode version: a release, `1.2.3`, or an edge build,
+/// `1.2.3-edge.4` (built from the edge branch on its way to 1.2.3, so it
+/// comes before it).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Version {
+    pub major: u64,
+    pub minor: u64,
+    pub patch: u64,
+    /// `None` for a release, which sorts after every edge build of it
+    /// (`None` > `Some`, the reverse of `Option`'s order, hence `Reverse`).
+    edge: std::cmp::Reverse<Option<std::cmp::Reverse<u64>>>,
+}
+
+impl Version {
+    /// Reads `1.2.3` or `1.2.3-edge.4`.
+    pub fn parse(version: &str) -> Option<Self> {
+        let number = |p: &str| {
+            (!p.is_empty() && p.len() <= 6 && p.bytes().all(|b| b.is_ascii_digit()))
+                .then(|| p.parse::<u64>().ok())
+                .flatten()
+        };
+        let (release, edge) = match version.split_once('-') {
+            Some((release, build)) => (release, Some(number(build.strip_prefix("edge.")?)?)),
+            None => (version, None),
+        };
+        let mut parts = release.split('.');
+        let (major, minor, patch) = (
+            number(parts.next()?)?,
+            number(parts.next()?)?,
+            number(parts.next()?)?,
+        );
+        if parts.next().is_some() {
+            return None;
+        }
+        Some(Self {
+            major,
+            minor,
+            patch,
+            edge: std::cmp::Reverse(edge.map(std::cmp::Reverse)),
+        })
+    }
+
+    /// Whether this is an edge build.
+    pub fn is_edge(&self) -> bool {
+        self.edge.0.is_some()
+    }
+}
+
+/// Whether `version` looks like `1.2.3` or `1.2.3-edge.4`.
 pub fn valid_version(version: &str) -> bool {
-    let parts: Vec<&str> = version.split('.').collect();
-    parts.len() == 3
-        && parts
-            .iter()
-            .all(|p| !p.is_empty() && p.len() <= 6 && p.bytes().all(|b| b.is_ascii_digit()))
+    Version::parse(version).is_some()
 }
 
 /// Gets ready to run `version`, from `current`.
@@ -214,8 +258,11 @@ mod tests {
     #[test]
     fn versions_and_checksums() {
         assert!(valid_version("0.2.1"));
+        assert!(valid_version("0.2.10-edge.41"));
         assert!(!valid_version("0.2"));
         assert!(!valid_version("0.2.1-rc.1"));
+        assert!(!valid_version("0.2.1-edge"));
+        assert!(!valid_version("0.2.1.4"));
         assert!(!valid_version("../../x.y.z"));
         let sums = format!(
             "{a}  ./nethernode-v0.2.1-linux-amd64.tar.gz\n{b}  ./nethernode-v0.2.1-linux-arm64.tar.gz\n",
@@ -230,6 +277,19 @@ mod tests {
             checksum_for(&sums, "nethernode-v0.2.1-linux-riscv.tar.gz"),
             None
         );
+    }
+
+    #[test]
+    fn edge_builds_come_before_their_release() {
+        let v = |s| Version::parse(s).unwrap();
+        assert!(v("0.2.8") < v("0.2.9-edge.1"));
+        assert!(v("0.2.9-edge.1") < v("0.2.9-edge.2"));
+        assert!(v("0.2.9-edge.9") < v("0.2.9-edge.10"));
+        assert!(v("0.2.9-edge.40") < v("0.2.9"));
+        assert!(v("0.2.9") < v("0.2.10-edge.1"));
+        assert!(v("0.9.0") < v("0.10.0"));
+        assert!(v("0.2.9-edge.3").is_edge());
+        assert!(!v("0.2.9").is_edge());
     }
 
     #[test]

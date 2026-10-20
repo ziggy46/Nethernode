@@ -84,6 +84,7 @@ const LABELS: Record<string, string> = {
   "settings.notifications": "Changed Discord notifications",
   "settings.install_count": "Changed whether this install is counted",
   "settings.update_check": "Changed checking for new versions",
+  "settings.update_channel": "Changed the update channel",
   "settings.update_panel": "Updated NetherNode",
 };
 

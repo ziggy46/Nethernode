@@ -108,8 +108,16 @@ impl Store {
     }
 
     /// Applies any pending migrations.
+    ///
+    /// Migrations this build doesn't have are allowed: an edge build may
+    /// have applied newer ones before the panel went back to a stable
+    /// release. Every migration adds tables or columns that older code
+    /// ignores, and new migrations land on the edge branch first, so a
+    /// release never reuses one's number.
     pub async fn migrate(&self) -> Result<()> {
-        MIGRATOR.run(&self.pool).await?;
+        let mut migrator = sqlx::migrate!("./migrations");
+        migrator.set_ignore_missing(true);
+        migrator.run(&self.pool).await?;
         Ok(())
     }
 
@@ -163,6 +171,20 @@ pub(crate) async fn test_store() -> Store {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn newer_migrations_from_an_edge_build_are_allowed() {
+        let store = test_store().await;
+        // As if an edge build had applied a migration this build lacks.
+        sqlx::query(
+            "INSERT INTO _sqlx_migrations (version, description, success, checksum, execution_time)
+             VALUES (99999, 'from an edge build', 1, x'00', 0)",
+        )
+        .execute(store.pool())
+        .await
+        .unwrap();
+        store.migrate().await.expect("a newer database still opens");
+    }
 
     #[tokio::test]
     async fn pragmas_are_applied_to_file_databases() {

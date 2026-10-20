@@ -107,8 +107,10 @@ server. To let friends join from outside your network, point a hostname at the
 machine (or forward port 25565 on your router) and add a route on the
 **Proxy & routes** page; it lists the DNS records each route needs.
 
-Images are tagged `latest` and by version (`0.2.6`, `0.2`); `edge` follows
-the main branch. NetherNode can also run as a plain binary from the releases
+Images are tagged `latest` and by version (`0.2.6`, `0.2`). New features
+come out first as edge builds (`edge`, or `0.2.10-edge.41`) from the `edge`
+branch; switch a panel between stable releases and edge builds in **Settings ›
+Notifications**. NetherNode can also run as a plain binary from the releases
 page.
 
 > [!IMPORTANT]

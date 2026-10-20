@@ -24,6 +24,11 @@ service NotificationService {
   // why, if GitHub can't be reached.
   rpc CheckForUpdate(CheckForUpdateRequest) returns (CheckForUpdateResponse);
 
+  // Which releases the panel follows: "stable" (releases only, the
+  // default) or "edge" (edge builds of new features too). Checks again
+  // right away.
+  rpc SetUpdateChannel(SetUpdateChannelRequest) returns (SetUpdateChannelResponse);
+
   // Updates the panel to the newest release: in Docker, a copy of its
   // container on the new image takes over; as a binary, it downloads the
   // release (checked against its checksums) and restarts. The panel goes
@@ -56,8 +61,14 @@ message GetNotificationsResponse {
   string latest_version = 6;
   // This panel's version.
   string current_version = 7;
-  // The newest release is newer than this panel.
+  // The newest release is newer than this panel, or (on the stable channel)
+  // it's the release to go back to from an edge build.
   bool update_available = 8;
+  // "stable" or "edge".
+  string update_channel = 9;
+  // Updating goes back to an older version: from an edge build to the
+  // newest stable release.
+  bool update_is_switch = 10;
 }
 
 message UpdateNotificationsRequest {
@@ -81,11 +92,19 @@ message SetUpdateCheckResponse {}
 message CheckForUpdateRequest {}
 
 message CheckForUpdateResponse {
-  // The newest release, like "0.2.4".
+  // The newest release on the panel's channel, like "0.2.4".
   string latest_version = 1;
-  // It's newer than this panel.
+  // The panel can move to it (see GetNotificationsResponse).
   bool update_available = 2;
+  bool update_is_switch = 3;
 }
+
+message SetUpdateChannelRequest {
+  // "stable" or "edge".
+  string channel = 1;
+}
+
+message SetUpdateChannelResponse {}
 
 message UpdatePanelRequest {}
 

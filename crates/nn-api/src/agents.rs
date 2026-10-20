@@ -39,7 +39,7 @@ const MAX_HANDSHAKES: usize = 16;
 const SILENCE: Duration = Duration::from_secs(30);
 /// This panel's version, which agents are updated to.
 const VERSION: &str = env!("CARGO_PKG_VERSION");
-/// Whether the panel updates agents older than itself on its own.
+/// Whether the panel updates agents on another version to its own.
 const AUTO_UPDATE_SETTING: &str = "nodes.auto_update";
 /// How long an agent may take to answer an update (pulling an image can be
 /// slow on a home connection).
@@ -304,9 +304,11 @@ impl Agents {
             .await;
         self.publish(&node.id, true);
         tracing::info!(node = %node.id, %version, "an agent connected");
+        // Agents follow the panel's version either way, so they come back
+        // with it when it switches from edge builds to releases.
         if version == VERSION {
             self.updates().entry(node.id.clone()).or_default().error = None;
-        } else if older(&version, VERSION) {
+        } else if nn_node::update::valid_version(&version) {
             let (agents, id) = (self.clone(), node.id.clone());
             tokio::spawn(async move { agents.auto_update(&id).await });
         }
@@ -724,8 +726,8 @@ impl Agents {
         self.updates().get(node_id).cloned().unwrap_or_default()
     }
 
-    /// Whether agents older than the panel are updated automatically (on
-    /// unless turned off).
+    /// Whether agents on another version than the panel are updated to
+    /// it automatically (on unless turned off).
     pub async fn auto_updates(&self) -> bool {
         match &self.store {
             Some(store) => store
@@ -746,7 +748,7 @@ impl Agents {
         }
     }
 
-    /// Updates a node that just connected on an older version, if that's
+    /// Updates a node that just connected on another version, if that's
     /// on and it wasn't tried within the hour.
     async fn auto_update(self: &Arc<Self>, node_id: &str) {
         if !self.auto_updates().await {
@@ -856,18 +858,10 @@ impl Agents {
     }
 }
 
-/// Whether version `a` is older than `b` (`x.y.z`; anything after a `-`
-/// is ignored).
+/// Whether version `a` is older than `b` (see [`nn_node::update::Version`]).
 pub(crate) fn older(a: &str, b: &str) -> bool {
-    let parse = |v: &str| -> Option<(u64, u64, u64)> {
-        let mut parts = v
-            .split('-')
-            .next()?
-            .split('.')
-            .map(|p| p.parse::<u64>().ok());
-        Some((parts.next()??, parts.next()??, parts.next()??))
-    };
-    matches!((parse(a), parse(b)), (Some(a), Some(b)) if a < b)
+    use nn_node::update::Version;
+    matches!((Version::parse(a), Version::parse(b)), (Some(a), Some(b)) if a < b)
 }
 
 #[cfg(test)]
@@ -881,6 +875,8 @@ mod tests {
         assert!(!super::older("0.2.1", "0.2.1"));
         assert!(!super::older("0.3.0", "0.2.9"));
         assert!(!super::older("dev", "0.2.1"));
+        assert!(super::older("0.2.9-edge.3", "0.2.9-edge.12"));
+        assert!(super::older("0.2.9-edge.12", "0.2.9"));
     }
 
     #[test]

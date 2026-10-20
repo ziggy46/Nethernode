@@ -1,15 +1,20 @@
 name: Publish
 
 # Builds the image from the Dockerfile and publishes it to GitHub Container
-# Registry as ghcr.io/<owner>/nethernode:
-#   a push to main      -> edge, sha-<commit>
-#   a tag like v0.1.0   -> 0.1.0, 0.1, latest, and a GitHub Release with the
-#                          static binaries (copied out of the image builds)
-# Each architecture builds natively on its own runner.
+# Registry as ghcr.io/<owner>/nethernode, with a GitHub Release holding the
+# static binaries (copied out of the image builds):
+#   a tag like v0.1.0      -> 0.1.0, 0.1, latest, and a release
+#   a push to edge         -> an edge build, 0.1.1-edge.<run>: images
+#                             0.1.1-edge.<run>, edge and sha-<commit>, and a
+#                             pre-release (its tag is made here)
+# On the edge branch, Cargo.toml holds the next release's version, so edge
+# builds sort between the last release and the next. Panels on the edge
+# update channel follow edge builds. Each architecture builds natively on
+# its own runner.
 
 on:
   push:
-    branches: [main]
+    branches: [edge]
     tags: ["v*"]
   workflow_dispatch:
 
@@ -18,11 +23,44 @@ permissions:
 
 concurrency:
   group: publish-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref_type == 'branch' }}
+  cancel-in-progress: false
 
 jobs:
+  version:
+    name: Version
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      edge: ${{ steps.version.outputs.edge }}
+      minor: ${{ steps.version.outputs.minor }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Work out the version
+        id: version
+        run: |
+          base=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n1)
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            version="${GITHUB_REF_NAME#v}"
+            if [ "$version" != "$base" ]; then
+              echo "::error::$GITHUB_REF_NAME doesn't match Cargo.toml's version $base"
+              exit 1
+            fi
+            edge=false
+          elif [ "$GITHUB_REF_NAME" = edge ]; then
+            version="$base-edge.$GITHUB_RUN_NUMBER"
+            edge=true
+          else
+            echo "::error::only the edge branch and v* tags are published"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "edge=$edge" >> "$GITHUB_OUTPUT"
+          echo "minor=${base%.*}" >> "$GITHUB_OUTPUT"
+          echo "Publishing $version"
+
   build:
     name: Image (${{ matrix.arch }})
+    needs: version
     strategy:
       matrix:
         include:
@@ -34,8 +72,13 @@ jobs:
     permissions:
       contents: read
       packages: write
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@v5
+      - name: Stamp the edge version
+        if: needs.version.outputs.edge == 'true'
+        run: python3 .github/scripts/set-version.py "$VERSION"
       - name: Image name
         id: name
         run: echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/nethernode" >> "$GITHUB_OUTPUT"
@@ -49,7 +92,9 @@ jobs:
         id: meta
         with:
           images: ${{ steps.name.outputs.image }}
-          labels: org.opencontainers.image.licenses=MIT
+          labels: |
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.version=${{ env.VERSION }}
       - uses: docker/build-push-action@v6
         id: build
         with:
@@ -71,25 +116,24 @@ jobs:
           path: digests/*
           if-no-files-found: error
           retention-days: 1
-      # For a release: the same build again, answered from this runner's build
-      # cache, written out as files instead of an image.
+      # The same build again, answered from this runner's build cache,
+      # written out as files instead of an image.
       - name: Copy out the binary
-        if: github.ref_type == 'tag'
         run: |
           docker buildx build --platform "linux/${{ matrix.arch }}" --output type=local,dest=image .
           mkdir -p out
           cp image/nethernode "out/nethernode-${{ matrix.arch }}"
-          "out/nethernode-${{ matrix.arch }}" --version
+          "out/nethernode-${{ matrix.arch }}" --version | grep -qx "nethernode $VERSION"
       - uses: actions/upload-artifact@v4
-        if: github.ref_type == 'tag'
         with:
           name: binary-${{ matrix.arch }}
           path: out/nethernode-${{ matrix.arch }}
           if-no-files-found: error
+          retention-days: 3
 
   tags:
     name: Image tags
-    needs: build
+    needs: [version, build]
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -113,11 +157,13 @@ jobs:
         id: meta
         with:
           images: ${{ steps.name.outputs.image }}
+          flavor: latest=false
           tags: |
-            type=raw,value=edge,enable={{is_default_branch}}
-            type=sha,enable=${{ github.ref_type == 'branch' }}
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=${{ needs.version.outputs.version }}
+            type=raw,value=edge,enable=${{ needs.version.outputs.edge == 'true' }}
+            type=sha,enable=${{ needs.version.outputs.edge == 'true' }}
+            type=raw,value=${{ needs.version.outputs.minor }},enable=${{ needs.version.outputs.edge != 'true' }}
+            type=raw,value=latest,enable=${{ needs.version.outputs.edge != 'true' }}
       - name: Create the multi-arch tags
         working-directory: digests
         run: |
@@ -133,15 +179,17 @@ jobs:
         run: docker buildx imagetools inspect "$IMAGE:$VERSION"
         env:
           IMAGE: ${{ steps.name.outputs.image }}
-          VERSION: ${{ steps.meta.outputs.version }}
+          VERSION: ${{ needs.version.outputs.version }}
 
   release:
     name: GitHub Release
-    if: github.ref_type == 'tag'
-    needs: tags
+    needs: [version, tags]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      EDGE: ${{ needs.version.outputs.edge }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -156,19 +204,60 @@ jobs:
         run: |
           for arch in amd64 arm64; do
             mv "nethernode-$arch" nethernode && chmod +x nethernode
-            tar -czf "nethernode-${GITHUB_REF_NAME}-linux-$arch.tar.gz" nethernode
+            tar -czf "nethernode-v$VERSION-linux-$arch.tar.gz" nethernode
             rm nethernode
           done
           sha256sum ./*.tar.gz > SHA256SUMS
           cat SHA256SUMS
       - uses: orhun/git-cliff-action@v4
+        if: env.EDGE != 'true'
         id: changelog
         with:
           config: cliff.toml
           args: --latest --strip header
-      - uses: softprops/action-gh-release@v2
+      - name: Edge build notes
+        if: env.EDGE == 'true'
+        run: |
+          # What's new since the last edge build (or release) before this one.
+          previous=$(git tag --merged HEAD --sort=-creatordate --list 'v*' | head -n1)
+          {
+            echo "An edge build from the \`edge\` branch: new features before they're released."
+            echo "Panels on the Edge update channel (Settings › Notifications) offer it."
+            echo
+            if [ -n "$previous" ]; then
+              echo "Since $previous:"
+              git log --no-merges --format='- %s' "$previous..HEAD"
+            else
+              git log --no-merges --format='- %s' -20
+            fi
+          } > notes.md
+          cat notes.md
+      - name: Release
+        if: env.EDGE != 'true'
+        uses: softprops/action-gh-release@v2
         with:
           body: ${{ steps.changelog.outputs.content }}
           files: |
             out/*.tar.gz
             out/SHA256SUMS
+      - name: Edge pre-release
+        if: env.EDGE == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          target_commitish: ${{ github.sha }}
+          name: Edge build ${{ env.VERSION }}
+          prerelease: true
+          body_path: notes.md
+          files: |
+            out/*.tar.gz
+            out/SHA256SUMS
+      - name: Keep the ten newest edge builds
+        if: env.EDGE == 'true'
+        run: |
+          gh release list --limit 100 --json tagName,isPrerelease \
+            --jq '.[] | select(.isPrerelease and (.tagName | test("-edge\\."))) | .tagName' |
+            sort -t. -k4,4nr | tail -n +11 |
+            while read -r tag; do gh release delete "$tag" --cleanup-tag --yes; done
+        env:
+          GH_TOKEN: ${{ github.token }}

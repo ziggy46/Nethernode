@@ -32,5 +32,7 @@ commit_parsers = [
     { message = "^(test|chore|style)", skip = true },
 ]
 protect_breaking_commits = true
-tag_pattern = "v[0-9].*"
+# Releases only: edge builds' tags (v1.2.3-edge.4) don't split a
+# release's changes.
+tag_pattern = "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
 sort_commits = "oldest"

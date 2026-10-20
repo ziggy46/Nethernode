@@ -47,7 +47,13 @@ impl pb::NotificationService for NotificationRpc {
                 .unwrap_or_default(),
             current_version: env!("CARGO_PKG_VERSION").to_owned(),
             update_available: crate::notices::latest_release()
-                .is_some_and(|r| crate::notices::newer(&r)),
+                .is_some_and(|r| crate::notices::offered(&r)),
+            update_is_switch: crate::notices::latest_release()
+                .is_some_and(|r| crate::notices::is_switch(&r)),
+            update_channel: crate::notices::channel(&self.state)
+                .await
+                .as_str()
+                .to_owned(),
             ..Default::default()
         })
     }
@@ -58,11 +64,14 @@ impl pb::NotificationService for NotificationRpc {
         _request: ServiceRequest<'_, pb::CheckForUpdateRequest>,
     ) -> ServiceResult<pb::CheckForUpdateResponse> {
         require(&ctx, Permission::ManageSettings)?;
-        let release = crate::notices::check_regardless().await.map_err(|e| {
-            ConnectError::unavailable(format!("Couldn't reach GitHub to check: {e}"))
-        })?;
+        let release = crate::notices::check_regardless(&self.state)
+            .await
+            .map_err(|e| {
+                ConnectError::unavailable(format!("Couldn't reach GitHub to check: {e}"))
+            })?;
         Response::ok(pb::CheckForUpdateResponse {
-            update_available: crate::notices::newer(&release),
+            update_available: crate::notices::offered(&release),
+            update_is_switch: crate::notices::is_switch(&release),
             latest_version: release.version,
             ..Default::default()
         })
@@ -74,13 +83,16 @@ impl pb::NotificationService for NotificationRpc {
         _request: ServiceRequest<'_, pb::UpdatePanelRequest>,
     ) -> ServiceResult<pb::UpdatePanelResponse> {
         let user = require(&ctx, Permission::ManageSettings)?.clone();
-        let release = match crate::notices::latest_release() {
+        let channel = crate::notices::channel(&self.state).await;
+        let release = match crate::notices::latest_release().filter(|r| r.channel == channel) {
             Some(release) => release,
-            None => crate::notices::check_regardless().await.map_err(|e| {
-                ConnectError::unavailable(format!("Couldn't reach GitHub to check: {e}"))
-            })?,
+            None => crate::notices::check_regardless(&self.state)
+                .await
+                .map_err(|e| {
+                    ConnectError::unavailable(format!("Couldn't reach GitHub to check: {e}"))
+                })?,
         };
-        if !crate::notices::newer(&release) {
+        if !crate::notices::offered(&release) {
             return Err(ConnectError::failed_precondition(
                 "This panel already runs the newest release.",
             ));
@@ -99,7 +111,7 @@ impl pb::NotificationService for NotificationRpc {
             &user,
             "settings.update_panel",
             ("settings", "updates"),
-            json!({ "from": env!("CARGO_PKG_VERSION"), "to": release.version }),
+            json!({ "from": env!("CARGO_PKG_VERSION"), "to": release.version, "channel": release.channel.as_str() }),
         )
         .await;
         tracing::info!(to = %release.version, "updating the panel");
@@ -148,6 +160,38 @@ impl pb::NotificationService for NotificationRpc {
         let state = self.state.clone();
         tokio::spawn(async move { crate::notices::check_now(&state).await });
         Response::ok(pb::SetUpdateCheckResponse::default())
+    }
+
+    async fn set_update_channel(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::SetUpdateChannelRequest>,
+    ) -> ServiceResult<pb::SetUpdateChannelResponse> {
+        use crate::notices::Channel;
+        let user = require(&ctx, Permission::ManageSettings)?.clone();
+        let channel = match request.channel {
+            "stable" => Channel::Stable,
+            "edge" => Channel::Edge,
+            _ => return Err(ConnectError::invalid_argument("choose stable or edge")),
+        };
+        self.state
+            .auth
+            .store()
+            .set_setting(crate::notices::CHANNEL_SETTING, &channel)
+            .await
+            .map_err(crate::rpc::store_error)?;
+        audit(
+            &self.state,
+            &user,
+            "settings.update_channel",
+            ("settings", "updates"),
+            json!({ "channel": channel.as_str() }),
+        )
+        .await;
+        // What was found before was for the other channel.
+        crate::notices::forget_latest();
+        crate::notices::check_now(&self.state).await;
+        Response::ok(pb::SetUpdateChannelResponse::default())
     }
 
     async fn update_notifications(

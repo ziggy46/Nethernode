@@ -10,9 +10,15 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { NotificationService } from "@/gen/nethernode/v1/notifications_pb";
 import { errorMessage, transport } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 const client = createClient(NotificationService, transport);
 const key = ["notifications"] as const;
+
+const CHANNELS = [
+  { value: "stable", label: "Stable" },
+  { value: "edge", label: "Edge" },
+] as const;
 
 /** New NetherNode versions: whether to look for them, and installing one. */
 export default function UpdateCheckPanel() {
@@ -30,12 +36,21 @@ export default function UpdateCheckPanel() {
     onSuccess: refresh,
     onError: (e) => toast.error(errorMessage(e)),
   });
+  const channel = useMutation({
+    mutationFn: (value: string) => client.setUpdateChannel({ channel: value }),
+    onSuccess: refresh,
+    onError: (e) => toast.error(errorMessage(e)),
+  });
   const check = useMutation({
     mutationFn: () => client.checkForUpdate({}),
     onSuccess: (r) => {
       refresh();
       toast.success(
-        r.updateAvailable ? `NetherNode ${r.latestVersion} is available.` : "You're on the newest version.",
+        !r.updateAvailable
+          ? "You're on the newest version."
+          : r.updateIsSwitch
+            ? `NetherNode ${r.latestVersion} is the stable release to go back to.`
+            : `NetherNode ${r.latestVersion} is available.`,
       );
     },
     onError: (e) => toast.error(errorMessage(e)),
@@ -52,24 +67,30 @@ export default function UpdateCheckPanel() {
   if (!settings) return null;
   const on = set.isPending ? Boolean(set.variables) : settings.updateCheck;
   const latest = settings.latestVersion;
+  const current = channel.isPending ? channel.variables : settings.updateChannel || "stable";
+  const switching = settings.updateAvailable && settings.updateIsSwitch;
   return (
     <Panel>
       <PanelHeader title="New versions" icon={<RefreshCw />} />
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-divider border-b pb-4">
         <div className="text-label">
           <p className="font-[550]">
-            {settings.updateAvailable
-              ? `NetherNode ${latest} is available`
-              : latest
-                ? "You're on the newest version"
-                : `This panel runs NetherNode ${settings.currentVersion}`}
+            {switching
+              ? `NetherNode ${latest} is the stable release to go back to`
+              : settings.updateAvailable
+                ? `NetherNode ${latest} is available`
+                : latest
+                  ? "You're on the newest version"
+                  : `This panel runs NetherNode ${settings.currentVersion}`}
           </p>
           <p className="mt-[3px] text-meta text-text-muted">
-            {settings.updateAvailable
-              ? `This panel runs ${settings.currentVersion}. Updating restarts the panel for a minute or so; servers keep running, and nodes on other machines follow on their own.`
-              : latest
-                ? `${settings.currentVersion} is the newest release.`
-                : "Check now to see if there's a newer one."}
+            {switching
+              ? `This panel runs the edge build ${settings.currentVersion}. Going back restarts the panel for a minute or so; servers keep running, and nodes on other machines follow.`
+              : settings.updateAvailable
+                ? `This panel runs ${settings.currentVersion}. Updating restarts the panel for a minute or so; servers keep running, and nodes on other machines follow on their own.`
+                : latest
+                  ? `${settings.currentVersion} is the newest ${current === "edge" ? "build" : "release"}.`
+                  : "Check now to see if there's a newer one."}
           </p>
         </div>
         <div className="flex gap-2">
@@ -80,9 +101,50 @@ export default function UpdateCheckPanel() {
           {settings.updateAvailable && (
             <Button size="mini" variant="primary" onClick={() => setConfirm(true)}>
               <Download />
-              Update now
+              {switching ? "Go back to stable" : "Update now"}
             </Button>
           )}
+        </div>
+      </div>
+      <div className="mb-4 flex items-center justify-between gap-5 border-divider border-b pb-4 below-sm:flex-col below-sm:items-start">
+        <div className="min-w-0 text-label">
+          <p className="font-[550]" id={`${id}-channel`}>
+            Update channel
+          </p>
+          <p className="mt-[3px] text-meta text-text-muted">
+            {current === "edge"
+              ? "Edge builds: new features as soon as they're built, before they're released. They can have rough edges. Switch back to Stable any time."
+              : "Stable releases only."}
+          </p>
+        </div>
+        <div
+          role="radiogroup"
+          aria-labelledby={`${id}-channel`}
+          className="flex shrink-0 rounded-md border border-border-strong bg-field p-0.5"
+        >
+          {CHANNELS.map((c) => (
+            <label
+              key={c.value}
+              className={cn(
+                "flex cursor-pointer items-center gap-1.5 rounded-[5px] px-2.5 py-1 text-label transition-colors duration-(--nn-transition)",
+                "has-focus-visible:outline-2 has-focus-visible:outline-primary",
+                current === c.value
+                  ? "bg-nav-active text-nav-active-foreground"
+                  : "text-text-secondary hover:bg-button-quiet-hover hover:text-text-primary",
+              )}
+            >
+              <input
+                type="radio"
+                name="update-channel"
+                value={c.value}
+                checked={current === c.value}
+                disabled={channel.isPending}
+                onChange={() => channel.mutate(c.value)}
+                className="sr-only"
+              />
+              {c.label}
+            </label>
+          ))}
         </div>
       </div>
       <div className="flex items-start justify-between gap-5">
@@ -102,9 +164,13 @@ export default function UpdateCheckPanel() {
           setConfirm(open);
           if (!open) update.reset();
         }}
-        title={`Update NetherNode to ${latest}?`}
-        description="The panel downloads the new version and restarts, which takes a minute or so. Minecraft servers keep running and players stay connected to them; the panel is unavailable meanwhile."
-        confirmLabel={update.isPending ? "Starting…" : "Update now"}
+        title={switching ? `Go back to NetherNode ${latest}?` : `Update NetherNode to ${latest}?`}
+        description={
+          switching
+            ? "The panel goes back to the newest stable release and restarts, which takes a minute or so. Minecraft servers keep running. Anything that only edge builds have (such as modules) stops being managed until you switch to Edge again; its settings and files are kept."
+            : "The panel downloads the new version and restarts, which takes a minute or so. Minecraft servers keep running and players stay connected to them; the panel is unavailable meanwhile."
+        }
+        confirmLabel={update.isPending ? "Starting…" : switching ? "Go back" : "Update now"}
         pending={update.isPending}
         error={update.error ? errorMessage(update.error) : undefined}
         onConfirm={() => update.mutate()}
