@@ -45,6 +45,10 @@ pub struct BackupReport {
     pub bytes: u64,
     /// Symlinks left out.
     pub skipped_links: u64,
+    /// Files that were gone by the time they were read: written and
+    /// removed meanwhile, like the temporary files a game saves through.
+    #[serde(default)]
+    pub vanished: u64,
 }
 
 impl ServerFiles {
@@ -67,10 +71,12 @@ impl ServerFiles {
         let mut files: Vec<(PathBuf, u64)> = Vec::new();
         let mut stack = vec![PathBuf::from(".")];
         while let Some(dir) = stack.pop() {
-            let entries = self
-                .dir()
-                .read_dir(&dir)
-                .map_err(|e| FileError::at(&dir.to_string_lossy(), e))?;
+            let entries = match self.dir().read_dir(&dir) {
+                Ok(entries) => entries,
+                // Removed since its parent was listed.
+                Err(e) if e.kind() == io::ErrorKind::NotFound => continue,
+                Err(e) => return Err(FileError::at(&dir.to_string_lossy(), e)),
+            };
             for item in entries {
                 let item = item?;
                 let Ok(name) = item.file_name().into_string() else {
@@ -93,7 +99,11 @@ impl ServerFiles {
                     dirs.push(path.clone());
                     stack.push(path);
                 } else if kind.is_file() {
-                    files.push((path, item.metadata()?.len()));
+                    match item.metadata() {
+                        Ok(meta) => files.push((path, meta.len())),
+                        Err(e) if e.kind() == io::ErrorKind::NotFound => report.vanished += 1,
+                        Err(e) => return Err(e.into()),
+                    }
                 }
             }
         }
@@ -113,7 +123,17 @@ impl ServerFiles {
         let mut done = 0;
         for (path, _) in &files {
             let at = |e| FileError::at(&path.to_string_lossy(), e);
-            let file = self.dir().open(path).map_err(at)?;
+            // Saving is paused during a backup, but mods can still write
+            // through temporary files (level<random>.dat) that are renamed
+            // away before they're reached: those are left out.
+            let file = match self.dir().open(path) {
+                Ok(file) => file,
+                Err(e) if e.kind() == io::ErrorKind::NotFound => {
+                    report.vanished += 1;
+                    continue;
+                }
+                Err(e) => return Err(at(e)),
+            };
             let meta = file.metadata().map_err(at)?;
             let mut header = tar::Header::new_gnu();
             header.set_entry_type(tar::EntryType::Regular);
@@ -360,6 +380,26 @@ mod tests {
         assert_eq!(std::fs::read(out.join("mods/a.jar")).unwrap(), b"jar");
         assert!(!out.join("libraries").exists());
         assert!(!out.join("world/escape").exists());
+    }
+
+    #[test]
+    fn files_that_vanish_meanwhile_are_left_out() {
+        let tmp = tempfile::tempdir().unwrap();
+        let files = server(tmp.path());
+        let temp = tmp.path().join("smp/world/level16320903414563858133.dat");
+        std::fs::write(&temp, b"half-saved").unwrap();
+        // The folder is listed before progress starts; the game finishes
+        // saving (and removes its temporary file) before it's read.
+        let mut first = true;
+        let (_, report) = files
+            .backup_to(Vec::new(), &mut |_, _| {
+                if std::mem::take(&mut first) {
+                    std::fs::remove_file(&temp).unwrap();
+                }
+            })
+            .unwrap();
+        assert_eq!(report.vanished, 1);
+        assert_eq!(report.files, 4, "everything else is there");
     }
 
     #[test]
