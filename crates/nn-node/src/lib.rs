@@ -217,7 +217,10 @@ impl Node {
     pub async fn start(&self, id: &str) -> Result<()> {
         match self {
             Self::Local(node) => Ok(node.orchestrator()?.start(id).await?),
-            Self::Remote(node) => node.call(Request::Start { id: id.into() }).await,
+            Self::Remote(node) => {
+                node.before_start(id).await;
+                node.call(Request::Start { id: id.into() }).await
+            }
         }
     }
 
@@ -225,7 +228,10 @@ impl Node {
     pub async fn wake(&self, id: &str) -> Result<()> {
         match self {
             Self::Local(node) => Ok(node.orchestrator()?.wake(id).await?),
-            Self::Remote(node) => node.call(Request::Wake { id: id.into() }).await,
+            Self::Remote(node) => {
+                node.before_start(id).await;
+                node.call(Request::Wake { id: id.into() }).await
+            }
         }
     }
 
@@ -577,6 +583,13 @@ pub struct Nodes {
     remotes: Arc<std::sync::Mutex<std::collections::HashMap<String, Arc<RemoteNode>>>>,
     store: Option<Store>,
     moving: Arc<std::sync::Mutex<std::collections::HashSet<String>>>,
+    before_start: Arc<std::sync::OnceLock<StartHook>>,
+}
+
+/// Work the panel does before a server on another machine starts.
+pub(crate) struct StartHook {
+    pub(crate) store: Store,
+    pub(crate) hook: Arc<dyn BeforeStart>,
 }
 
 /// A server being moved between machines; the move ends when this drops.
@@ -605,6 +618,21 @@ impl Nodes {
             remotes: Arc::default(),
             store,
             moving: Arc::default(),
+            before_start: Arc::default(),
+        }
+    }
+
+    /// Sets the work to do before each server starts, on every machine:
+    /// this one's orchestrator runs it itself; for other machines the panel
+    /// runs it (over the link) before asking their agent to start the
+    /// server. Only the first call counts.
+    pub fn set_before_start(&self, hook: Arc<dyn BeforeStart>) {
+        self.local_node.set_before_start(hook.clone());
+        if let Some(store) = &self.store {
+            let _ = self.before_start.set(StartHook {
+                store: store.clone(),
+                hook,
+            });
         }
     }
 
@@ -643,7 +671,7 @@ impl Nodes {
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .entry(node_id.to_owned())
-            .or_insert_with(|| Arc::new(RemoteNode::new(node_id)))
+            .or_insert_with(|| Arc::new(RemoteNode::new(node_id, self.before_start.clone())))
             .clone()
     }
 

@@ -80,6 +80,7 @@ const LABELS: Record<string, string> = {
   "schedule.run_now": "Ran a schedule by hand",
   "schedule.run": "Ran a schedule",
   "proxy.listener.upsert": "Saved a proxy listener",
+  "proxy.server_port.add": "Gave a server its own port",
   "proxy.listener.delete": "Deleted a proxy listener",
   "proxy.route.upsert": "Saved a route",
   "proxy.route.delete": "Deleted a route",

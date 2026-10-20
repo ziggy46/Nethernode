@@ -22,6 +22,10 @@ service ProxyService {
   rpc UpsertRoute(UpsertRouteRequest) returns (UpsertRouteResponse);
   // Deletes a route.
   rpc DeleteRoute(DeleteRouteRequest) returns (DeleteRouteResponse);
+  // Gives a server a port of its own: a listener with a `*` route to the
+  // server on it, made together (both or neither). Deleting the server
+  // removes the listener too, unless other routes use it.
+  rpc AddServerPort(AddServerPortRequest) returns (AddServerPortResponse);
 
   // Domains the admin owns, like example.com. New servers get names under
   // them (smp.example.com).
@@ -140,6 +144,18 @@ message UpsertRouteRequest {
 
 message UpsertRouteResponse {
   Route route = 1;
+}
+
+message AddServerPortRequest {
+  string server_id = 1;
+  uint32 port = 2;
+  // Empty: 0.0.0.0.
+  string bind_addr = 3;
+}
+
+message AddServerPortResponse {
+  Listener listener = 1;
+  Route route = 2;
 }
 
 message DeleteRouteRequest {

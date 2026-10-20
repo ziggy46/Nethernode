@@ -1,8 +1,8 @@
 //! Hostname → server resolution.
 //!
 //! Lookup order: exact hostname, then wildcards (longest suffix first), then
-//! the default route `*`. Within a kind, a higher `priority` wins, then a
-//! route restricted to this listener beats an unrestricted one. Routes whose
+//! the default route `*`. Within a kind, a route restricted to this listener
+//! beats one for every listener, then a higher `priority` wins. Routes whose
 //! server no longer exists are skipped.
 
 use std::collections::HashMap;
@@ -114,10 +114,13 @@ impl RouteTable {
             }
         }
 
+        // A listener's own route first (a server's port of its own), then
+        // priority.
         let order = |a: &Candidate, b: &Candidate| {
-            b.priority
-                .cmp(&a.priority)
-                .then(b.listener_id.is_some().cmp(&a.listener_id.is_some()))
+            b.listener_id
+                .is_some()
+                .cmp(&a.listener_id.is_some())
+                .then(b.priority.cmp(&a.priority))
         };
         for candidates in table.exact.values_mut() {
             candidates.sort_by(order);
@@ -304,6 +307,25 @@ mod tests {
         also.id = "also".into();
         let table = RouteTable::build(&[also, high], &backends, &[]);
         assert_eq!(resolve(&table, "x.example.com").as_deref(), Some("c"));
+
+        // A listener's own route beats a higher-priority one for every
+        // listener, on that listener only.
+        let mut everywhere = route("*", Some("b"));
+        everywhere.priority = 10;
+        let mut own = route("*", Some("c"));
+        own.id = "own".into();
+        own.listener_id = Some("own-port".into());
+        let table = RouteTable::build(&[everywhere, own], &backends, &[]);
+        assert_eq!(
+            table
+                .resolve("own-port", "x")
+                .unwrap()
+                .backend
+                .spec
+                .server_id,
+            "c"
+        );
+        assert_eq!(resolve(&table, "x").as_deref(), Some("b"));
     }
 
     #[test]

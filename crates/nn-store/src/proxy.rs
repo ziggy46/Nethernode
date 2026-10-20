@@ -124,6 +124,54 @@ impl Store {
         Ok(result.rows_affected() > 0)
     }
 
+    /// Gives a server a port of its own: a listener on `bind_addr:port`
+    /// made for it, with a `*` route sending everyone on it to the server.
+    /// Both are made or neither is. Returns the listener's and route's IDs.
+    pub async fn add_server_port(
+        &self,
+        server_id: &str,
+        bind_addr: &str,
+        port: i64,
+    ) -> Result<(String, String)> {
+        let (listener, route) = (new_id(), new_id());
+        let mut tx = self.pool().begin().await?;
+        sqlx::query!(
+            r#"INSERT INTO proxy_listeners (id, bind_addr, port, enabled, proxy_protocol, made_for_server)
+               VALUES (?1, ?2, ?3, 1, 0, ?4)"#,
+            listener,
+            bind_addr,
+            port,
+            server_id,
+        )
+        .execute(&mut *tx)
+        .await?;
+        sqlx::query!(
+            r#"INSERT INTO routes (id, server_id, hostname, listener_id, priority)
+               VALUES (?1, ?2, '*', ?3, 0)"#,
+            route,
+            server_id,
+            listener,
+        )
+        .execute(&mut *tx)
+        .await?;
+        tx.commit().await?;
+        Ok((listener, route))
+    }
+
+    /// Removes listeners made for `server_id` that no route uses any more
+    /// (once the server is deleted, its routes are gone). Returns how many.
+    pub async fn remove_unused_server_ports(&self, server_id: &str) -> Result<u64> {
+        let result = sqlx::query!(
+            r#"DELETE FROM proxy_listeners
+               WHERE made_for_server = ?1
+                 AND NOT EXISTS (SELECT 1 FROM routes WHERE routes.listener_id = proxy_listeners.id)"#,
+            server_id,
+        )
+        .execute(self.pool())
+        .await?;
+        Ok(result.rows_affected())
+    }
+
     /// Creates the default listener if no listeners exist. Returns whether one was created.
     pub async fn ensure_default_listener(&self, bind_addr: &str, port: i64) -> Result<bool> {
         let id = new_id();
@@ -273,6 +321,84 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn servers_get_ports_of_their_own() {
+        let store = test_store().await;
+        let a = store.insert_server(test_server("a", 30001)).await.unwrap();
+        let b = store.insert_server(test_server("b", 30002)).await.unwrap();
+        // A `*` route for all listeners already exists.
+        store
+            .upsert_route(
+                None,
+                RouteInput {
+                    server_id: Some(&a.id),
+                    hostname: "*",
+                    listener_id: None,
+                    priority: 0,
+                },
+            )
+            .await
+            .unwrap();
+        let (port_a, _) = store
+            .add_server_port(&a.id, "0.0.0.0", 25566)
+            .await
+            .unwrap();
+        let (port_b, _) = store
+            .add_server_port(&b.id, "0.0.0.0", 25567)
+            .await
+            .unwrap();
+        let routes = store.list_routes().await.unwrap();
+        assert_eq!(routes.iter().filter(|r| r.hostname == "*").count(), 3);
+
+        // A taken port makes neither the listener nor the route.
+        assert!(
+            store
+                .add_server_port(&b.id, "0.0.0.0", 25566)
+                .await
+                .is_err()
+        );
+        assert_eq!(store.list_listeners().await.unwrap().len(), 2);
+        assert_eq!(store.list_routes().await.unwrap().len(), 3);
+
+        // Still in use by another server's route: kept.
+        store
+            .upsert_route(
+                None,
+                RouteInput {
+                    server_id: Some(&a.id),
+                    hostname: "a.example.com",
+                    listener_id: Some(&port_b),
+                    priority: 0,
+                },
+            )
+            .await
+            .unwrap();
+        sqlx::query("DELETE FROM servers WHERE id = ?1")
+            .bind(&b.id)
+            .execute(store.pool())
+            .await
+            .unwrap();
+        assert_eq!(store.remove_unused_server_ports(&b.id).await.unwrap(), 0);
+        sqlx::query("DELETE FROM servers WHERE id = ?1")
+            .bind(&a.id)
+            .execute(store.pool())
+            .await
+            .unwrap();
+        assert_eq!(store.remove_unused_server_ports(&a.id).await.unwrap(), 1);
+        assert_eq!(store.remove_unused_server_ports(&b.id).await.unwrap(), 1);
+        let left: Vec<String> = store
+            .list_listeners()
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|l| l.id)
+            .collect();
+        assert!(
+            !left.contains(&port_a) && !left.contains(&port_b),
+            "{left:?}"
+        );
+    }
+
+    #[tokio::test]
     async fn route_crud_and_constraints() {
         let store = test_store().await;
         let server = store
@@ -298,7 +424,7 @@ mod tests {
                 .upsert_route(None, route("smp.example.com"))
                 .await
                 .is_err(),
-            "unique hostname"
+            "unique hostname (for all listeners)"
         );
 
         // Slug wildcards may omit the server; other patterns may not.

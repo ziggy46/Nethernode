@@ -56,6 +56,7 @@ mod spa;
 pub mod stats_history;
 pub mod uploads;
 
+pub use files::spawn_trash_cleanup;
 pub use middleware::{CurrentUser, PUBLIC_PROCEDURES, SETUP_REQUIRED_HEADER};
 pub use proxy_runtime::{ProxyRuntime, StoreProxyHooks};
 pub use request_meta::RequestMeta;

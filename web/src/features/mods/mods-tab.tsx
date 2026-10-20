@@ -53,7 +53,7 @@ export default function ModsTab({ server }: { server: Server }) {
   const running = server.status === ServerStatus.RUNNING;
 
   const upload = (files: File[], dir = "mods") => {
-    const jars = files.filter((f) => f.name.endsWith(".jar") || f.name.endsWith(".zip"));
+    const jars = files.filter((f) => f.name.endsWith(".jar"));
     if (jars.length < files.length)
       toast.warning("Only .jar files go in the mods folder; the rest were skipped.");
     if (jars.length > 0)

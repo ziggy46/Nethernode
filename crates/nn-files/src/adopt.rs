@@ -15,7 +15,7 @@ use crate::sandbox::{ServerFiles, temp_name};
 pub enum OnConflict {
     /// Keep both: the upload becomes `name (1).ext`.
     Rename,
-    /// Replace the existing file (never a folder).
+    /// Replace the existing file (never a folder), which goes to the trash.
     Overwrite,
     /// Keep the existing file and discard the upload.
     Skip,
@@ -100,6 +100,11 @@ impl ServerFiles {
         let file = src_dir.open(&src_name).map_err(at)?;
         self.prepare(&file, old.as_ref()).map_err(at)?;
         drop(file);
+        // What it replaces goes to the trash, so it can be got back. (Its
+        // permissions and owner were read through `old`, still open.)
+        if old.is_some() {
+            self.delete(&target)?;
+        }
         match src_dir.rename(&src_name, &pdir, &final_name) {
             Ok(()) => {}
             Err(e) if e.kind() == io::ErrorKind::CrossesDevices => {
@@ -265,6 +270,14 @@ mod tests {
             b"four"
         );
         assert!(std::fs::read_dir(&uploads).unwrap().next().is_none());
+        // The replaced file is in the trash and can be restored.
+        let trash = files.trash().unwrap();
+        assert_eq!(trash.len(), 1);
+        assert_eq!(trash[0].original, "world/level.dat");
+        assert_eq!(
+            std::fs::read(root.join(".trash").join(&trash[0].id).join("level.dat")).unwrap(),
+            b"one"
+        );
 
         #[cfg(unix)]
         {

@@ -85,6 +85,11 @@ export const MORE_SOFTWARE: { id: Software; name: string; blurb: string; memoryM
   { id: "quilt", name: "Quilt", blurb: "A Fabric fork; runs most Fabric mods.", memoryMb: 4096 },
 ];
 
+/** A kind of server software, from either list. */
+export function softwareInfo(id: Software) {
+  return [...SOFTWARE, ...MORE_SOFTWARE].find((s) => s.id === id);
+}
+
 /**
  * The DNS-safe slug the server gets from its name (as the server makes it;
  * a number is added if it's taken).
