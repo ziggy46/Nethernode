@@ -44,8 +44,11 @@ impl Next {
 /// comes before it).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Version {
+    /// The first number.
     pub major: u64,
+    /// The second number.
     pub minor: u64,
+    /// The third number.
     pub patch: u64,
     /// `None` for a release, which sorts after every edge build of it
     /// (`None` > `Some`, the reverse of `Option`'s order, hence `Reverse`).
