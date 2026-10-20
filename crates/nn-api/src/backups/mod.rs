@@ -145,8 +145,18 @@ pub(crate) async fn record(
     let store = state.auth.store();
     match made {
         Ok(Archive { size, report }) => {
-            let note = (report.skipped_links > 0)
-                .then(|| format!("{} links left out", report.skipped_links));
+            let mut notes = Vec::new();
+            if report.skipped_links > 0 {
+                notes.push(format!("{} links left out", report.skipped_links));
+            }
+            if report.vanished > 0 {
+                notes.push(format!(
+                    "{} file{} the server removed while it was being made left out",
+                    report.vanished,
+                    if report.vanished == 1 { "" } else { "s" }
+                ));
+            }
+            let note = (!notes.is_empty()).then(|| notes.join("; "));
             if let Err(e) = store
                 .finish_backup(
                     backup_id,
