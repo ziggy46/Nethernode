@@ -161,7 +161,7 @@ fn newer_versions(
         .into_iter()
         .filter(|v| v.id != installed && refusal(mc_version, current, v).is_none())
         .collect();
-    newer.sort_by(|a, b| b.published_ms.cmp(&a.published_ms));
+    newer.sort_by_key(|v| std::cmp::Reverse(v.published_ms));
     newer.truncate(MAX_NEWER);
     newer
 }
