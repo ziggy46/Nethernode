@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file nethernode/v1/proxy.proto.
  */
 export const file_nethernode_v1_proxy: GenFile = /*@__PURE__*/
-  fileDesc("ChluZXRoZXJub2RlL3YxL3Byb3h5LnByb3RvEg1uZXRoZXJub2RlLnYxIpwBCghMaXN0ZW5lchIKCgJpZBgBIAEoCRIRCgliaW5kX2FkZHIYAiABKAkSDAoEcG9ydBgDIAEoDRIPCgdlbmFibGVkGAQgASgIEhYKDnByb3h5X3Byb3RvY29sGAUgASgIEisKBXN0YXRlGAYgASgOMhwubmV0aGVybm9kZS52MS5MaXN0ZW5lclN0YXRlEg0KBWVycm9yGAcgASgJIhYKFExpc3RMaXN0ZW5lcnNSZXF1ZXN0IkMKFUxpc3RMaXN0ZW5lcnNSZXNwb25zZRIqCglsaXN0ZW5lcnMYASADKAsyFy5uZXRoZXJub2RlLnYxLkxpc3RlbmVyInkKFVVwc2VydExpc3RlbmVyUmVxdWVzdBIPCgJpZBgBIAEoCUgAiAEBEhEKCWJpbmRfYWRkchgCIAEoCRIMCgRwb3J0GAMgASgNEg8KB2VuYWJsZWQYBCABKAgSFgoOcHJveHlfcHJvdG9jb2wYBSABKAhCBQoDX2lkIkMKFlVwc2VydExpc3RlbmVyUmVzcG9uc2USKQoIbGlzdGVuZXIYASABKAsyFy5uZXRoZXJub2RlLnYxLkxpc3RlbmVyIiMKFURlbGV0ZUxpc3RlbmVyUmVxdWVzdBIKCgJpZBgBIAEoCSIYChZEZWxldGVMaXN0ZW5lclJlc3BvbnNlItkBCgVSb3V0ZRIKCgJpZBgBIAEoCRIQCghob3N0bmFtZRgCIAEoCRImCgRraW5kGAMgASgOMhgubmV0aGVybm9kZS52MS5Sb3V0ZUtpbmQSFgoJc2VydmVyX2lkGAQgASgJSACIAQESGAoLbGlzdGVuZXJfaWQYBSABKAlIAYgBARIQCghwcmlvcml0eRgGIAEoAxITCgtzZXJ2ZXJfbmFtZRgHIAEoCRITCgtzZXJ2ZXJfc2x1ZxgIIAEoCUIMCgpfc2VydmVyX2lkQg4KDF9saXN0ZW5lcl9pZCITChFMaXN0Um91dGVzUmVxdWVzdCI6ChJMaXN0Um91dGVzUmVzcG9uc2USJAoGcm91dGVzGAEgAygLMhQubmV0aGVybm9kZS52MS5Sb3V0ZSKgAQoSVXBzZXJ0Um91dGVSZXF1ZXN0Eg8KAmlkGAEgASgJSACIAQESEAoIaG9zdG5hbWUYAiABKAkSFgoJc2VydmVyX2lkGAMgASgJSAGIAQESGAoLbGlzdGVuZXJfaWQYBCABKAlIAogBARIQCghwcmlvcml0eRgFIAEoA0IFCgNfaWRCDAoKX3NlcnZlcl9pZEIOCgxfbGlzdGVuZXJfaWQiOgoTVXBzZXJ0Um91dGVSZXNwb25zZRIjCgVyb3V0ZRgBIAEoCzIULm5ldGhlcm5vZGUudjEuUm91dGUiIAoSRGVsZXRlUm91dGVSZXF1ZXN0EgoKAmlkGAEgASgJIhUKE0RlbGV0ZVJvdXRlUmVzcG9uc2UiIwoPQ2hlY2tEbnNSZXF1ZXN0EhAKCGhvc3RuYW1lGAEgASgJIksKEENoZWNrRG5zUmVzcG9uc2USFQoNcmVzb2x2ZWRfbmFtZRgBIAEoCRIRCglhZGRyZXNzZXMYAiADKAkSDQoFZXJyb3IYAyABKAkiuAEKCkNvbm5lY3Rpb24SEQoJY2xpZW50X2lwGAEgASgJEhAKCGhvc3RuYW1lGAIgASgJEhEKCXNlcnZlcl9pZBgDIAEoCRITCgtzZXJ2ZXJfbmFtZRgEIAEoCRIVCgh1c2VybmFtZRgFIAEoCUgAiAEBEhUKDXN0YXJ0ZWRfYXRfbXMYBiABKAMSEwoLbGlzdGVuZXJfaWQYByABKAkSDQoFcm91dGUYCCABKAlCCwoJX3VzZXJuYW1lIhgKFkxpc3RDb25uZWN0aW9uc1JlcXVlc3QiSQoXTGlzdENvbm5lY3Rpb25zUmVzcG9uc2USLgoLY29ubmVjdGlvbnMYASADKAsyGS5uZXRoZXJub2RlLnYxLkNvbm5lY3Rpb24iFAoSTGlzdERvbWFpbnNSZXF1ZXN0IiYKE0xpc3REb21haW5zUmVzcG9uc2USDwoHZG9tYWlucxgBIAMoCSIkChFTZXREb21haW5zUmVxdWVzdBIPCgdkb21haW5zGAEgAygJIiUKElNldERvbWFpbnNSZXNwb25zZRIPCgdkb21haW5zGAEgAygJKqgBCg1MaXN0ZW5lclN0YXRlEh4KGkxJU1RFTkVSX1NUQVRFX1VOU1BFQ0lGSUVEEAASHAoYTElTVEVORVJfU1RBVEVfTElTVEVOSU5HEAESGQoVTElTVEVORVJfU1RBVEVfRkFJTEVEEAISGwoXTElTVEVORVJfU1RBVEVfRElTQUJMRUQQAxIhCh1MSVNURU5FUl9TVEFURV9QUk9YWV9ESVNBQkxFRBAEKm4KCVJvdXRlS2luZBIaChZST1VURV9LSU5EX1VOU1BFQ0lGSUVEEAASFAoQUk9VVEVfS0lORF9FWEFDVBABEhcKE1JPVVRFX0tJTkRfV0lMRENBUkQQAhIWChJST1VURV9LSU5EX0RFRkFVTFQQAzKYBwoMUHJveHlTZXJ2aWNlEl8KDUxpc3RMaXN0ZW5lcnMSIy5uZXRoZXJub2RlLnYxLkxpc3RMaXN0ZW5lcnNSZXF1ZXN0GiQubmV0aGVybm9kZS52MS5MaXN0TGlzdGVuZXJzUmVzcG9uc2UiA5ACARJdCg5VcHNlcnRMaXN0ZW5lchIkLm5ldGhlcm5vZGUudjEuVXBzZXJ0TGlzdGVuZXJSZXF1ZXN0GiUubmV0aGVybm9kZS52MS5VcHNlcnRMaXN0ZW5lclJlc3BvbnNlEl0KDkRlbGV0ZUxpc3RlbmVyEiQubmV0aGVybm9kZS52MS5EZWxldGVMaXN0ZW5lclJlcXVlc3QaJS5uZXRoZXJub2RlLnYxLkRlbGV0ZUxpc3RlbmVyUmVzcG9uc2USVgoKTGlzdFJvdXRlcxIgLm5ldGhlcm5vZGUudjEuTGlzdFJvdXRlc1JlcXVlc3QaIS5uZXRoZXJub2RlLnYxLkxpc3RSb3V0ZXNSZXNwb25zZSIDkAIBElQKC1Vwc2VydFJvdXRlEiEubmV0aGVybm9kZS52MS5VcHNlcnRSb3V0ZVJlcXVlc3QaIi5uZXRoZXJub2RlLnYxLlVwc2VydFJvdXRlUmVzcG9uc2USVAoLRGVsZXRlUm91dGUSIS5uZXRoZXJub2RlLnYxLkRlbGV0ZVJvdXRlUmVxdWVzdBoiLm5ldGhlcm5vZGUudjEuRGVsZXRlUm91dGVSZXNwb25zZRJZCgtMaXN0RG9tYWlucxIhLm5ldGhlcm5vZGUudjEuTGlzdERvbWFpbnNSZXF1ZXN0GiIubmV0aGVybm9kZS52MS5MaXN0RG9tYWluc1Jlc3BvbnNlIgOQAgESUQoKU2V0RG9tYWlucxIgLm5ldGhlcm5vZGUudjEuU2V0RG9tYWluc1JlcXVlc3QaIS5uZXRoZXJub2RlLnYxLlNldERvbWFpbnNSZXNwb25zZRJQCghDaGVja0RucxIeLm5ldGhlcm5vZGUudjEuQ2hlY2tEbnNSZXF1ZXN0Gh8ubmV0aGVybm9kZS52MS5DaGVja0Ruc1Jlc3BvbnNlIgOQAgESZQoPTGlzdENvbm5lY3Rpb25zEiUubmV0aGVybm9kZS52MS5MaXN0Q29ubmVjdGlvbnNSZXF1ZXN0GiYubmV0aGVybm9kZS52MS5MaXN0Q29ubmVjdGlvbnNSZXNwb25zZSIDkAIBYgZwcm90bzM");
+  fileDesc("ChluZXRoZXJub2RlL3YxL3Byb3h5LnByb3RvEg1uZXRoZXJub2RlLnYxIpwBCghMaXN0ZW5lchIKCgJpZBgBIAEoCRIRCgliaW5kX2FkZHIYAiABKAkSDAoEcG9ydBgDIAEoDRIPCgdlbmFibGVkGAQgASgIEhYKDnByb3h5X3Byb3RvY29sGAUgASgIEisKBXN0YXRlGAYgASgOMhwubmV0aGVybm9kZS52MS5MaXN0ZW5lclN0YXRlEg0KBWVycm9yGAcgASgJIhYKFExpc3RMaXN0ZW5lcnNSZXF1ZXN0IkMKFUxpc3RMaXN0ZW5lcnNSZXNwb25zZRIqCglsaXN0ZW5lcnMYASADKAsyFy5uZXRoZXJub2RlLnYxLkxpc3RlbmVyInkKFVVwc2VydExpc3RlbmVyUmVxdWVzdBIPCgJpZBgBIAEoCUgAiAEBEhEKCWJpbmRfYWRkchgCIAEoCRIMCgRwb3J0GAMgASgNEg8KB2VuYWJsZWQYBCABKAgSFgoOcHJveHlfcHJvdG9jb2wYBSABKAhCBQoDX2lkIkMKFlVwc2VydExpc3RlbmVyUmVzcG9uc2USKQoIbGlzdGVuZXIYASABKAsyFy5uZXRoZXJub2RlLnYxLkxpc3RlbmVyIiMKFURlbGV0ZUxpc3RlbmVyUmVxdWVzdBIKCgJpZBgBIAEoCSIYChZEZWxldGVMaXN0ZW5lclJlc3BvbnNlItkBCgVSb3V0ZRIKCgJpZBgBIAEoCRIQCghob3N0bmFtZRgCIAEoCRImCgRraW5kGAMgASgOMhgubmV0aGVybm9kZS52MS5Sb3V0ZUtpbmQSFgoJc2VydmVyX2lkGAQgASgJSACIAQESGAoLbGlzdGVuZXJfaWQYBSABKAlIAYgBARIQCghwcmlvcml0eRgGIAEoAxITCgtzZXJ2ZXJfbmFtZRgHIAEoCRITCgtzZXJ2ZXJfc2x1ZxgIIAEoCUIMCgpfc2VydmVyX2lkQg4KDF9saXN0ZW5lcl9pZCITChFMaXN0Um91dGVzUmVxdWVzdCI6ChJMaXN0Um91dGVzUmVzcG9uc2USJAoGcm91dGVzGAEgAygLMhQubmV0aGVybm9kZS52MS5Sb3V0ZSKgAQoSVXBzZXJ0Um91dGVSZXF1ZXN0Eg8KAmlkGAEgASgJSACIAQESEAoIaG9zdG5hbWUYAiABKAkSFgoJc2VydmVyX2lkGAMgASgJSAGIAQESGAoLbGlzdGVuZXJfaWQYBCABKAlIAogBARIQCghwcmlvcml0eRgFIAEoA0IFCgNfaWRCDAoKX3NlcnZlcl9pZEIOCgxfbGlzdGVuZXJfaWQiOgoTVXBzZXJ0Um91dGVSZXNwb25zZRIjCgVyb3V0ZRgBIAEoCzIULm5ldGhlcm5vZGUudjEuUm91dGUiSgoUQWRkU2VydmVyUG9ydFJlcXVlc3QSEQoJc2VydmVyX2lkGAEgASgJEgwKBHBvcnQYAiABKA0SEQoJYmluZF9hZGRyGAMgASgJImcKFUFkZFNlcnZlclBvcnRSZXNwb25zZRIpCghsaXN0ZW5lchgBIAEoCzIXLm5ldGhlcm5vZGUudjEuTGlzdGVuZXISIwoFcm91dGUYAiABKAsyFC5uZXRoZXJub2RlLnYxLlJvdXRlIiAKEkRlbGV0ZVJvdXRlUmVxdWVzdBIKCgJpZBgBIAEoCSIVChNEZWxldGVSb3V0ZVJlc3BvbnNlIiMKD0NoZWNrRG5zUmVxdWVzdBIQCghob3N0bmFtZRgBIAEoCSJLChBDaGVja0Ruc1Jlc3BvbnNlEhUKDXJlc29sdmVkX25hbWUYASABKAkSEQoJYWRkcmVzc2VzGAIgAygJEg0KBWVycm9yGAMgASgJIrgBCgpDb25uZWN0aW9uEhEKCWNsaWVudF9pcBgBIAEoCRIQCghob3N0bmFtZRgCIAEoCRIRCglzZXJ2ZXJfaWQYAyABKAkSEwoLc2VydmVyX25hbWUYBCABKAkSFQoIdXNlcm5hbWUYBSABKAlIAIgBARIVCg1zdGFydGVkX2F0X21zGAYgASgDEhMKC2xpc3RlbmVyX2lkGAcgASgJEg0KBXJvdXRlGAggASgJQgsKCV91c2VybmFtZSIYChZMaXN0Q29ubmVjdGlvbnNSZXF1ZXN0IkkKF0xpc3RDb25uZWN0aW9uc1Jlc3BvbnNlEi4KC2Nvbm5lY3Rpb25zGAEgAygLMhkubmV0aGVybm9kZS52MS5Db25uZWN0aW9uIhQKEkxpc3REb21haW5zUmVxdWVzdCImChNMaXN0RG9tYWluc1Jlc3BvbnNlEg8KB2RvbWFpbnMYASADKAkiJAoRU2V0RG9tYWluc1JlcXVlc3QSDwoHZG9tYWlucxgBIAMoCSIlChJTZXREb21haW5zUmVzcG9uc2USDwoHZG9tYWlucxgBIAMoCSqoAQoNTGlzdGVuZXJTdGF0ZRIeChpMSVNURU5FUl9TVEFURV9VTlNQRUNJRklFRBAAEhwKGExJU1RFTkVSX1NUQVRFX0xJU1RFTklORxABEhkKFUxJU1RFTkVSX1NUQVRFX0ZBSUxFRBACEhsKF0xJU1RFTkVSX1NUQVRFX0RJU0FCTEVEEAMSIQodTElTVEVORVJfU1RBVEVfUFJPWFlfRElTQUJMRUQQBCpuCglSb3V0ZUtpbmQSGgoWUk9VVEVfS0lORF9VTlNQRUNJRklFRBAAEhQKEFJPVVRFX0tJTkRfRVhBQ1QQARIXChNST1VURV9LSU5EX1dJTERDQVJEEAISFgoSUk9VVEVfS0lORF9ERUZBVUxUEAMy9AcKDFByb3h5U2VydmljZRJfCg1MaXN0TGlzdGVuZXJzEiMubmV0aGVybm9kZS52MS5MaXN0TGlzdGVuZXJzUmVxdWVzdBokLm5ldGhlcm5vZGUudjEuTGlzdExpc3RlbmVyc1Jlc3BvbnNlIgOQAgESXQoOVXBzZXJ0TGlzdGVuZXISJC5uZXRoZXJub2RlLnYxLlVwc2VydExpc3RlbmVyUmVxdWVzdBolLm5ldGhlcm5vZGUudjEuVXBzZXJ0TGlzdGVuZXJSZXNwb25zZRJdCg5EZWxldGVMaXN0ZW5lchIkLm5ldGhlcm5vZGUudjEuRGVsZXRlTGlzdGVuZXJSZXF1ZXN0GiUubmV0aGVybm9kZS52MS5EZWxldGVMaXN0ZW5lclJlc3BvbnNlElYKCkxpc3RSb3V0ZXMSIC5uZXRoZXJub2RlLnYxLkxpc3RSb3V0ZXNSZXF1ZXN0GiEubmV0aGVybm9kZS52MS5MaXN0Um91dGVzUmVzcG9uc2UiA5ACARJUCgtVcHNlcnRSb3V0ZRIhLm5ldGhlcm5vZGUudjEuVXBzZXJ0Um91dGVSZXF1ZXN0GiIubmV0aGVybm9kZS52MS5VcHNlcnRSb3V0ZVJlc3BvbnNlElQKC0RlbGV0ZVJvdXRlEiEubmV0aGVybm9kZS52MS5EZWxldGVSb3V0ZVJlcXVlc3QaIi5uZXRoZXJub2RlLnYxLkRlbGV0ZVJvdXRlUmVzcG9uc2USWgoNQWRkU2VydmVyUG9ydBIjLm5ldGhlcm5vZGUudjEuQWRkU2VydmVyUG9ydFJlcXVlc3QaJC5uZXRoZXJub2RlLnYxLkFkZFNlcnZlclBvcnRSZXNwb25zZRJZCgtMaXN0RG9tYWlucxIhLm5ldGhlcm5vZGUudjEuTGlzdERvbWFpbnNSZXF1ZXN0GiIubmV0aGVybm9kZS52MS5MaXN0RG9tYWluc1Jlc3BvbnNlIgOQAgESUQoKU2V0RG9tYWlucxIgLm5ldGhlcm5vZGUudjEuU2V0RG9tYWluc1JlcXVlc3QaIS5uZXRoZXJub2RlLnYxLlNldERvbWFpbnNSZXNwb25zZRJQCghDaGVja0RucxIeLm5ldGhlcm5vZGUudjEuQ2hlY2tEbnNSZXF1ZXN0Gh8ubmV0aGVybm9kZS52MS5DaGVja0Ruc1Jlc3BvbnNlIgOQAgESZQoPTGlzdENvbm5lY3Rpb25zEiUubmV0aGVybm9kZS52MS5MaXN0Q29ubmVjdGlvbnNSZXF1ZXN0GiYubmV0aGVybm9kZS52MS5MaXN0Q29ubmVjdGlvbnNSZXNwb25zZSIDkAIBYgZwcm90bzM");
 
 /**
  * A TCP port players connect to.
@@ -334,6 +334,57 @@ export const UpsertRouteResponseSchema: GenMessage<UpsertRouteResponse> = /*@__P
   messageDesc(file_nethernode_v1_proxy, 11);
 
 /**
+ * @generated from message nethernode.v1.AddServerPortRequest
+ */
+export type AddServerPortRequest = Message<"nethernode.v1.AddServerPortRequest"> & {
+  /**
+   * @generated from field: string server_id = 1;
+   */
+  serverId: string;
+
+  /**
+   * @generated from field: uint32 port = 2;
+   */
+  port: number;
+
+  /**
+   * Empty: 0.0.0.0.
+   *
+   * @generated from field: string bind_addr = 3;
+   */
+  bindAddr: string;
+};
+
+/**
+ * Describes the message nethernode.v1.AddServerPortRequest.
+ * Use `create(AddServerPortRequestSchema)` to create a new message.
+ */
+export const AddServerPortRequestSchema: GenMessage<AddServerPortRequest> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_proxy, 12);
+
+/**
+ * @generated from message nethernode.v1.AddServerPortResponse
+ */
+export type AddServerPortResponse = Message<"nethernode.v1.AddServerPortResponse"> & {
+  /**
+   * @generated from field: nethernode.v1.Listener listener = 1;
+   */
+  listener?: Listener | undefined;
+
+  /**
+   * @generated from field: nethernode.v1.Route route = 2;
+   */
+  route?: Route | undefined;
+};
+
+/**
+ * Describes the message nethernode.v1.AddServerPortResponse.
+ * Use `create(AddServerPortResponseSchema)` to create a new message.
+ */
+export const AddServerPortResponseSchema: GenMessage<AddServerPortResponse> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_proxy, 13);
+
+/**
  * @generated from message nethernode.v1.DeleteRouteRequest
  */
 export type DeleteRouteRequest = Message<"nethernode.v1.DeleteRouteRequest"> & {
@@ -348,7 +399,7 @@ export type DeleteRouteRequest = Message<"nethernode.v1.DeleteRouteRequest"> & {
  * Use `create(DeleteRouteRequestSchema)` to create a new message.
  */
 export const DeleteRouteRequestSchema: GenMessage<DeleteRouteRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_proxy, 12);
+  messageDesc(file_nethernode_v1_proxy, 14);
 
 /**
  * @generated from message nethernode.v1.DeleteRouteResponse
@@ -361,7 +412,7 @@ export type DeleteRouteResponse = Message<"nethernode.v1.DeleteRouteResponse"> &
  * Use `create(DeleteRouteResponseSchema)` to create a new message.
  */
 export const DeleteRouteResponseSchema: GenMessage<DeleteRouteResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_proxy, 13);
+  messageDesc(file_nethernode_v1_proxy, 15);
 
 /**
  * @generated from message nethernode.v1.CheckDnsRequest
@@ -380,7 +431,7 @@ export type CheckDnsRequest = Message<"nethernode.v1.CheckDnsRequest"> & {
  * Use `create(CheckDnsRequestSchema)` to create a new message.
  */
 export const CheckDnsRequestSchema: GenMessage<CheckDnsRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_proxy, 14);
+  messageDesc(file_nethernode_v1_proxy, 16);
 
 /**
  * @generated from message nethernode.v1.CheckDnsResponse
@@ -413,7 +464,7 @@ export type CheckDnsResponse = Message<"nethernode.v1.CheckDnsResponse"> & {
  * Use `create(CheckDnsResponseSchema)` to create a new message.
  */
 export const CheckDnsResponseSchema: GenMessage<CheckDnsResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_proxy, 15);
+  messageDesc(file_nethernode_v1_proxy, 17);
 
 /**
  * A player connected through the proxy.
@@ -475,7 +526,7 @@ export type Connection = Message<"nethernode.v1.Connection"> & {
  * Use `create(ConnectionSchema)` to create a new message.
  */
 export const ConnectionSchema: GenMessage<Connection> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_proxy, 16);
+  messageDesc(file_nethernode_v1_proxy, 18);
 
 /**
  * @generated from message nethernode.v1.ListConnectionsRequest
@@ -488,7 +539,7 @@ export type ListConnectionsRequest = Message<"nethernode.v1.ListConnectionsReque
  * Use `create(ListConnectionsRequestSchema)` to create a new message.
  */
 export const ListConnectionsRequestSchema: GenMessage<ListConnectionsRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_proxy, 17);
+  messageDesc(file_nethernode_v1_proxy, 19);
 
 /**
  * @generated from message nethernode.v1.ListConnectionsResponse
@@ -505,7 +556,7 @@ export type ListConnectionsResponse = Message<"nethernode.v1.ListConnectionsResp
  * Use `create(ListConnectionsResponseSchema)` to create a new message.
  */
 export const ListConnectionsResponseSchema: GenMessage<ListConnectionsResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_proxy, 18);
+  messageDesc(file_nethernode_v1_proxy, 20);
 
 /**
  * @generated from message nethernode.v1.ListDomainsRequest
@@ -518,7 +569,7 @@ export type ListDomainsRequest = Message<"nethernode.v1.ListDomainsRequest"> & {
  * Use `create(ListDomainsRequestSchema)` to create a new message.
  */
 export const ListDomainsRequestSchema: GenMessage<ListDomainsRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_proxy, 19);
+  messageDesc(file_nethernode_v1_proxy, 21);
 
 /**
  * @generated from message nethernode.v1.ListDomainsResponse
@@ -537,7 +588,7 @@ export type ListDomainsResponse = Message<"nethernode.v1.ListDomainsResponse"> &
  * Use `create(ListDomainsResponseSchema)` to create a new message.
  */
 export const ListDomainsResponseSchema: GenMessage<ListDomainsResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_proxy, 20);
+  messageDesc(file_nethernode_v1_proxy, 22);
 
 /**
  * @generated from message nethernode.v1.SetDomainsRequest
@@ -554,7 +605,7 @@ export type SetDomainsRequest = Message<"nethernode.v1.SetDomainsRequest"> & {
  * Use `create(SetDomainsRequestSchema)` to create a new message.
  */
 export const SetDomainsRequestSchema: GenMessage<SetDomainsRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_proxy, 21);
+  messageDesc(file_nethernode_v1_proxy, 23);
 
 /**
  * @generated from message nethernode.v1.SetDomainsResponse
@@ -573,7 +624,7 @@ export type SetDomainsResponse = Message<"nethernode.v1.SetDomainsResponse"> & {
  * Use `create(SetDomainsResponseSchema)` to create a new message.
  */
 export const SetDomainsResponseSchema: GenMessage<SetDomainsResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_proxy, 22);
+  messageDesc(file_nethernode_v1_proxy, 24);
 
 /**
  * @generated from enum nethernode.v1.ListenerState
@@ -722,6 +773,18 @@ export const ProxyService: GenService<{
     methodKind: "unary";
     input: typeof DeleteRouteRequestSchema;
     output: typeof DeleteRouteResponseSchema;
+  },
+  /**
+   * Gives a server a port of its own: a listener with a `*` route to the
+   * server on it, made together (both or neither). Deleting the server
+   * removes the listener too, unless other routes use it.
+   *
+   * @generated from rpc nethernode.v1.ProxyService.AddServerPort
+   */
+  addServerPort: {
+    methodKind: "unary";
+    input: typeof AddServerPortRequestSchema;
+    output: typeof AddServerPortResponseSchema;
   },
   /**
    * Domains the admin owns, like example.com. New servers get names under

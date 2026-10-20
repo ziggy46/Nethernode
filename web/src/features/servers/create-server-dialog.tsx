@@ -159,8 +159,7 @@ export function CreateServerDialog({
             serverId: server.id,
           });
         } else if (draft.network === "port") {
-          const { listener } = await proxyClient.upsertListener({ bindAddr: "0.0.0.0", port, enabled: true });
-          await proxyClient.upsertRoute({ hostname: "*", serverId: server.id, listenerId: listener?.id });
+          await proxyClient.addServerPort({ serverId: server.id, port });
         }
       } catch (err) {
         toast.error(`${server.name} was created, but its address couldn't be set up: ${errorMessage(err)}`, {
@@ -192,7 +191,10 @@ export function CreateServerDialog({
             draft.pack?.loader && loaderName(draft.pack.loader),
           ]
             .filter(Boolean)
-            .join(" · ") || "Newest"
+            .join(" · ") ||
+          // The server pins the version it installs, so "newest" is only
+          // true on the day it's made.
+          (draft.pack?.versionId ? "The version chosen" : "The newest when it's created, then kept")
         : `${draft.mcVersion}${draft.loaderVersion ? ` · ${loaderName(draft.software)} ${draft.loaderVersion}` : ""}`,
     ],
     ...(machines.length > 1 ? ([["Machine", machine?.name ?? "This machine"]] as [string, string][]) : []),

@@ -331,3 +331,35 @@ async fn bans_are_enforced_by_the_proxy_hooks() {
             .is_none()
     );
 }
+
+#[tokio::test]
+async fn an_ip_ban_without_a_known_ip_still_records_the_ban() {
+    let h = harness().await;
+    // Known to NetherNode, but never joined through it (no IP).
+    h.store
+        .cache_profile("Notch", Some(NOTCH), Some("Notch"))
+        .await
+        .unwrap();
+    let body = json!({
+        "player": { "name": "Notch" },
+        "reason": "x",
+        "banIp": true,
+        "durationSeconds": 3600,
+    });
+    let (status, reply) = h.call("BanPlayer", body, &h.owner).await;
+    assert_eq!(status, StatusCode::OK, "{reply}");
+    let warnings = reply["warnings"].as_array().unwrap();
+    assert!(
+        warnings
+            .iter()
+            .any(|w| w.as_str().unwrap().contains("by name only")),
+        "{warnings:?}"
+    );
+    let bans = h.store.active_player_bans(None).await.unwrap();
+    let ban = bans
+        .iter()
+        .find(|b| b.uuid.as_deref() == Some(NOTCH))
+        .expect("the ban is recorded, so a timed one is lifted later");
+    assert_eq!(ban.ip, None);
+    assert!(ban.expires_at.is_some());
+}

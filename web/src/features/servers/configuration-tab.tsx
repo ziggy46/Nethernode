@@ -266,7 +266,10 @@ export function ConfigurationTab({ server }: { server: Server }) {
                 <Field
                   label="Loader or build version"
                   className="[&_input]:font-mono"
-                  hint="Leave empty for the recommended or latest build."
+                  hint={
+                    isModpack ? "Set by the modpack." : "Leave empty for the recommended or latest build."
+                  }
+                  disabled={isModpack}
                   value={form.loaderVersion}
                   onChange={(e) => set("loaderVersion", e.target.value)}
                 />

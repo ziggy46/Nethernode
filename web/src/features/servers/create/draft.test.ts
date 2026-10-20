@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { curseForgeSlug, domainAddress, newDraft, slugPreview, subdomainError } from "./draft";
+import { curseForgeSlug, domainAddress, newDraft, slugPreview, softwareInfo, subdomainError } from "./draft";
 
 describe("slugPreview", () => {
   it("matches the server's slugs", () => {
@@ -41,5 +41,13 @@ describe("domainAddress", () => {
     expect(subdomainError("eu.smp")).toBeUndefined();
     expect(subdomainError("-smp")).toBeDefined();
     expect(subdomainError("my server")).toBeDefined();
+  });
+});
+
+describe("softwareInfo", () => {
+  it("knows the software under More too", () => {
+    expect(softwareInfo("purpur")?.memoryMb).toBe(4096);
+    expect(softwareInfo("quilt")?.memoryMb).toBe(4096);
+    expect(softwareInfo("paper")?.name).toBe("Paper");
   });
 });

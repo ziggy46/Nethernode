@@ -16,12 +16,11 @@ const EXPIRY_INTERVAL: Duration = Duration::from_secs(30);
 
 /// Starts the background tasks.
 pub fn spawn(state: AppState) {
-    state
-        .nodes
-        .local_node()
-        .set_before_start(Arc::new(GlobalBans {
-            state: state.clone(),
-        }));
+    // On every machine: other machines' servers get it from the panel,
+    // through the link, before their agent starts them.
+    state.nodes.set_before_start(Arc::new(GlobalBans {
+        state: state.clone(),
+    }));
 
     let expiry = state.clone();
     tokio::spawn(async move {

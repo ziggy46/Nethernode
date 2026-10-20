@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM proxy_listeners\n               WHERE made_for_server = ?1\n                 AND NOT EXISTS (SELECT 1 FROM routes WHERE routes.listener_id = proxy_listeners.id)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "ac280da9a3eadf0bdf7385b6e20b8e61793dce24f0f5195864cbf095f2684553"
+}

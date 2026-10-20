@@ -146,7 +146,7 @@ export function ModpackCard({ server }: { server: Server }) {
           })}
         </ul>
       )}
-      {data && data.current && data.newer.length === 0 && !data.unavailable && !check.isFetching && (
+      {data?.current && data.newer.length === 0 && !data.unavailable && !check.isFetching && (
         <p className="flex items-center gap-1.5 border-divider border-t px-3.5 py-2 text-meta text-text-muted">
           <CircleCheck className="size-3.5 text-success" aria-hidden />
           No newer version for this server's Minecraft version.

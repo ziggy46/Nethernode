@@ -395,8 +395,9 @@ function RawEditor({ serverId, onSaved }: { serverId: string; onSaved: () => voi
         </ErrorAlert>
       )}
       <p className="mb-2 text-meta text-text-muted">
-        NetherNode resets the port, RCON, message of the day, and player limit on every start. Change the
-        message and player limit under Server configuration above.
+        NetherNode resets the port, RCON, the management-server-* keys (its player management), message of the
+        day, and player limit on every start. Change the message and player limit under Server configuration
+        above.
       </p>
       <div className="h-[420px] overflow-hidden rounded-md border border-border">
         <Suspense fallback={<div className="h-full animate-pulse bg-console" aria-busy />}>

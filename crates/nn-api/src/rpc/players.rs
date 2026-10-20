@@ -338,6 +338,13 @@ impl PlayerRpc {
     }
 }
 
+/// Why an IP ban was left out.
+fn ip_unknown(name: &str) -> String {
+    format!(
+        "{name} was banned by name only: no IP address is known for them yet (they haven't joined through NetherNode)."
+    )
+}
+
 #[allow(refining_impl_trait)]
 impl pb::PlayerService for PlayerRpc {
     async fn list_players(
@@ -591,7 +598,7 @@ impl pb::PlayerService for PlayerRpc {
                 ));
             }
         };
-        let (profile, warnings) = self
+        let (profile, mut warnings) = self
             .each_server(request.server_id, &player, |ctx, profile| {
                 let why = why.clone();
                 Box::pin(async move {
@@ -602,18 +609,18 @@ impl pb::PlayerService for PlayerRpc {
             })
             .await?;
         let store = self.state.auth.store();
+        // The ban is in place on the servers by now, so it's recorded
+        // (and a timed one lifted later) even when the IP can't be added.
         let ip = if request.ban_ip {
             let known = store
                 .player_summary(&profile.uuid)
                 .await
                 .map_err(store_error)?
                 .and_then(|s| s.last_ip);
-            Some(known.ok_or_else(|| {
-                ConnectError::failed_precondition(format!(
-                    "{} was banned, but no IP address is known for them yet (they haven't joined through NetherNode).",
-                    profile.name
-                ))
-            })?)
+            if known.is_none() {
+                warnings.push(ip_unknown(&profile.name));
+            }
+            known
         } else {
             None
         };

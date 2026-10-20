@@ -46,6 +46,9 @@ pub struct RemoteNode {
     outdated: Mutex<Option<String>>,
     host: Mutex<Option<RemoteHost>>,
     cache: Mutex<HashMap<String, Cached>>,
+    /// The panel's work before a server here starts (see
+    /// [`crate::Nodes::set_before_start`]).
+    before_start: Arc<std::sync::OnceLock<crate::StartHook>>,
 }
 
 fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -53,7 +56,7 @@ fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
 }
 
 impl RemoteNode {
-    pub(crate) fn new(id: &str) -> Self {
+    pub(crate) fn new(id: &str, before_start: Arc<std::sync::OnceLock<crate::StartHook>>) -> Self {
         Self {
             id: id.to_owned(),
             name: Mutex::new(id.to_owned()),
@@ -61,6 +64,20 @@ impl RemoteNode {
             outdated: Mutex::default(),
             host: Mutex::default(),
             cache: Mutex::default(),
+            before_start,
+        }
+    }
+
+    /// Runs the panel's work before server `id` starts here, while it's
+    /// still stopped (its files are reached over the link).
+    pub(crate) async fn before_start(&self, id: &str) {
+        let Some(hook) = self.before_start.get() else {
+            return;
+        };
+        if let Ok(Some(server)) = hook.store.find_server(id).await
+            && !matches!(server.status.as_str(), "running" | "starting")
+        {
+            hook.hook.before_start(&server).await;
         }
     }
 

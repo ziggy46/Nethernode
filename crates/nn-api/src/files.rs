@@ -51,3 +51,27 @@ pub(crate) fn file_error(err: FileError) -> ConnectError {
         }
     }
 }
+
+/// Once a day, empties what's been in each server's trash longer than
+/// [`nn_files::TRASH_RETENTION`]. (Opening the trash or deleting something
+/// does it too, but a server nobody touches would otherwise keep it all.)
+pub fn spawn_trash_cleanup(state: AppState) {
+    tokio::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_secs(10 * 60)).await;
+        loop {
+            for server in state.auth.store().list_servers().await.unwrap_or_default() {
+                if state.nodes.is_moving(&server.id) {
+                    continue;
+                }
+                // Machines that are offline are tried again tomorrow.
+                let Ok(folder) = state.nodes.for_server(&server).folder(&server).await else {
+                    continue;
+                };
+                if let Err(e) = folder.trash(nn_files::TRASH_RETENTION).await {
+                    tracing::debug!(server = %server.id, error = %e, "couldn't empty old items from the trash");
+                }
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(24 * 3600)).await;
+        }
+    });
+}

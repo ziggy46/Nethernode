@@ -52,6 +52,8 @@ const FILTERS = {
   banned: ["Banned", (p) => p.ban !== undefined],
 } satisfies Record<string, [string, (p: PlayerRow) => boolean]>;
 type Filter = keyof typeof FILTERS;
+/** Operators and allowlists belong to each server, so they're only known on a server's own page. */
+const PER_SERVER: Filter[] = ["operators", "allowlisted"];
 
 const VALID_NAME = /^[A-Za-z0-9_]{1,16}$/;
 
@@ -273,11 +275,13 @@ export function PlayersView({ serverId, serverName }: { serverId?: string; serve
           value={filter}
           onChange={(e) => setFilter(e.target.value as Filter)}
         >
-          {Object.entries(FILTERS).map(([value, [label]]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
+          {Object.entries(FILTERS)
+            .filter(([value]) => serverId || !PER_SERVER.includes(value as Filter))
+            .map(([value, [label]]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
         </Select>
         {serverId && serverName && caps?.allowlist && canModerate && (
           <Button onClick={() => setAllowlistOpen(true)}>

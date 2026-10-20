@@ -146,13 +146,15 @@ message ServerSettings {
   string loader = 3;
   // Loader or build pin; empty for the default.
   string loader_version = 4;
-  // Container image; empty to pick the default for the Java version.
-  string image = 5;
+  // Container image. Empty: the default for the Java version. When
+  // updating, leave it unset to keep the current one.
+  optional string image = 5;
   // Java major version override.
   optional uint32 java_version = 6;
   // Java heap in MiB.
   uint32 memory_mb = 7;
-  // CPU limit in cores.
+  // CPU limit in cores. When updating, leave it unset to keep the current
+  // one; 0 removes it.
   optional double cpu_limit = 8;
   bool auto_start = 9;
   bool sleep_when_empty = 10;

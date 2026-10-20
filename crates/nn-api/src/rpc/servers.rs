@@ -430,7 +430,7 @@ fn proto_settings(s: &ServerSettings) -> pb::ServerSettings {
         mc_version: s.mc_version.clone(),
         loader: s.loader.clone(),
         loader_version: s.loader_version.clone().unwrap_or_default(),
-        image: s.image.clone(),
+        image: Some(s.image.clone()),
         java_version: s.java_version.and_then(|j| u32::try_from(j).ok()),
         memory_mb: u32::try_from(s.memory_mb).unwrap_or_default(),
         cpu_limit: s.cpu_limit,
@@ -446,6 +446,23 @@ fn proto_settings(s: &ServerSettings) -> pb::ServerSettings {
     }
 }
 
+/// Keeps what a client left out of an update as it is: the image and the
+/// CPU limit (the Configuration tab has no CPU limit field). An image sent
+/// empty is the default one; a CPU limit sent as 0 is none.
+fn keep_unsent(
+    settings: &mut ServerSettings,
+    current: &nn_store::Server,
+    image_sent: bool,
+    cpu_sent: bool,
+) {
+    if !image_sent {
+        settings.image = current.image.clone();
+    }
+    if !cpu_sent {
+        settings.cpu_limit = current.cpu_limit;
+    }
+}
+
 fn settings_from_proto(s: &pb::ServerSettingsView<'_>) -> ServerSettings {
     let text = |v: &str| Some(v.trim().to_owned()).filter(|v| !v.is_empty());
     ServerSettings {
@@ -453,10 +470,11 @@ fn settings_from_proto(s: &pb::ServerSettingsView<'_>) -> ServerSettings {
         mc_version: s.mc_version.trim().to_owned(),
         loader: s.loader.trim().to_ascii_lowercase(),
         loader_version: text(s.loader_version),
-        image: s.image.trim().to_owned(),
+        image: s.image.unwrap_or_default().trim().to_owned(),
         java_version: s.java_version.map(i64::from),
         memory_mb: i64::from(s.memory_mb),
-        cpu_limit: s.cpu_limit,
+        // 0 (or less) removes the limit.
+        cpu_limit: s.cpu_limit.filter(|c| *c > 0.0),
         auto_start: s.auto_start,
         sleep_when_empty: s.sleep_when_empty,
         auto_stop_idle_minutes: s.idle_minutes.map(i64::from),
@@ -627,6 +645,14 @@ impl pb::ServerService for ServerRpc {
             .as_option()
             .map(settings_from_proto)
             .ok_or_else(|| ConnectError::invalid_argument("settings are required"))?;
+        if let Some(sent) = request.settings.as_option() {
+            keep_unsent(
+                &mut settings,
+                &current,
+                sent.image.is_some(),
+                sent.cpu_limit.is_some(),
+            );
+        }
         settings.modpack_json = current.modpack_json;
         let (mut server, _) = node
             .update(request.id, settings)
@@ -678,6 +704,16 @@ impl pb::ServerService for ServerRpc {
                 server_id: server.id.clone(),
                 status: "deleted".into(),
             });
+        }
+        // Its own port, unless other routes use that listener now.
+        if let Err(e) = self
+            .state
+            .auth
+            .store()
+            .remove_unused_server_ports(&server.id)
+            .await
+        {
+            tracing::warn!(server = %server.id, error = %e, "couldn't remove a deleted server's port");
         }
         self.state.proxy.reload().await.map_err(store_error)?;
         let details = json!({ "name": server.name, "deleted_data": request.delete_data });
@@ -1144,5 +1180,46 @@ impl pb::ServerService for ServerRpc {
             properties: properties_response(read_properties(&files).await?).into(),
             ..Default::default()
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn server() -> nn_store::Server {
+        serde_json::from_value(serde_json::json!({
+            "id": "s", "name": "SMP", "slug": "smp", "status": "stopped", "mc_version": "1.21.4",
+            "loader": "paper", "loader_version": null, "image": "ghcr.io/me/custom:1",
+            "java_version": null, "memory_mb": 2048, "cpu_limit": 2.0, "internal_port": 30000,
+            "public_port": null, "hostname": null, "auto_start": false,
+            "auto_stop_idle_minutes": null, "sleep_when_empty": false, "restart_on_crash": true,
+            "use_aikar_flags": true, "motd": null, "max_players": 20, "card_theme": "nether",
+            "container_id": null, "rcon_port": null, "rcon_password_enc": null,
+            "eula_accepted_at": null, "last_started_at": null, "created_at": 0, "updated_at": 0,
+            "env_json": "{}", "mgmt_port": null, "mgmt_secret_enc": null, "modpack_json": null,
+            "node_id": "local"
+        }))
+        .unwrap()
+    }
+
+    #[test]
+    fn updates_keep_what_isnt_sent() {
+        let current = server();
+        let mut settings = current.settings();
+        settings.image = String::new();
+        settings.cpu_limit = None;
+        // The Configuration tab: the image sent empty, no CPU limit.
+        let mut from_tab = settings.clone();
+        keep_unsent(&mut from_tab, &current, true, false);
+        assert_eq!(from_tab.image, "", "empty means the default image");
+        assert_eq!(from_tab.cpu_limit, Some(2.0), "the CPU limit stays");
+        // Neither sent: both stay.
+        let mut neither = settings.clone();
+        keep_unsent(&mut neither, &current, false, false);
+        assert_eq!(neither.image, "ghcr.io/me/custom:1");
+        // Both sent: as sent.
+        keep_unsent(&mut settings, &current, true, true);
+        assert_eq!((settings.image.as_str(), settings.cpu_limit), ("", None));
     }
 }

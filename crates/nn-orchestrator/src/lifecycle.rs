@@ -1010,11 +1010,8 @@ impl Orchestrator {
     ) -> Result<(Server, bool)> {
         let rt = self.runtime(id);
         let _op = rt.op.lock().await;
-        let current = self.load(id).await?;
-        let mut settings = settings;
-        if settings.image.is_empty() {
-            settings.image = current.image.clone();
-        }
+        self.load(id).await?;
+        // An empty image is the default one for the Java version.
         let settings = self.validated_settings(settings)?;
         self.store.update_server_settings(id, &settings).await?;
         let server = self.load(id).await?;

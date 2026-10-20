@@ -254,6 +254,53 @@ impl pb::ProxyService for ProxyRpc {
         })
     }
 
+    async fn add_server_port(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::AddServerPortRequest>,
+    ) -> ServiceResult<pb::AddServerPortResponse> {
+        let user = require(&ctx, Permission::ManageProxy)?.clone();
+        let store = self.state.auth.store();
+        let server = store
+            .find_server(request.server_id)
+            .await
+            .map_err(store_error)?
+            .ok_or_else(|| ConnectError::not_found("server not found"))?;
+        let bind = match request.bind_addr.trim() {
+            "" => "0.0.0.0",
+            other => other,
+        };
+        let bind_addr: IpAddr = bind.parse().map_err(|_| {
+            ConnectError::invalid_argument("Enter an IP address to listen on, like 0.0.0.0 or ::.")
+        })?;
+        let port = i64::from(request.port);
+        if !(1..=65_535).contains(&port) {
+            return Err(ConnectError::invalid_argument(
+                "Port must be between 1 and 65535.",
+            ));
+        }
+        let (listener_id, route_id) = store
+            .add_server_port(&server.id, &bind_addr.to_string(), port)
+            .await
+            .map_err(|e| conflict(e, "Another listener already uses that address and port."))?;
+        let live = self.reload().await?;
+        let listener = self.listener(&listener_id, &live).await?;
+        let route = self.route(&route_id).await?;
+        audit(
+            &self.state,
+            &user,
+            "proxy.server_port.add",
+            ("server", &server.id),
+            json!({ "bind": format!("{bind_addr}:{port}"), "listener": listener_id }),
+        )
+        .await;
+        Response::ok(pb::AddServerPortResponse {
+            listener: listener.into(),
+            route: route.into(),
+            ..Default::default()
+        })
+    }
+
     async fn delete_listener(
         &self,
         ctx: RequestContext,
@@ -344,7 +391,12 @@ impl pb::ProxyService for ProxyRpc {
         let id = store
             .upsert_route(request.id, input)
             .await
-            .map_err(|e| conflict(e, "A route for that hostname already exists."))?
+            .map_err(|e| {
+                conflict(
+                    e,
+                    "A route for that hostname already exists on that listener.",
+                )
+            })?
             .ok_or_else(|| ConnectError::not_found("route not found"))?;
 
         self.reload().await?;

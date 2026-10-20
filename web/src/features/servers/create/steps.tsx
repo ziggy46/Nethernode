@@ -39,6 +39,7 @@ import {
   type PackChoice,
   SOFTWARE,
   slugPreview,
+  softwareInfo,
   subdomainError,
 } from "./draft";
 
@@ -403,10 +404,10 @@ export function ResourcesStep({
   const machineId = useId();
   const max = Math.max(
     4096,
-    Math.min(32768, hostMemory ? Math.floor(hostMemory / 1048576 / 512) * 512 : 16384),
+    Math.min(65536, hostMemory ? Math.floor(hostMemory / 1048576 / 512) * 512 : 16384),
   );
   const gb = (mb: number) => `${(mb / 1024).toFixed(mb % 1024 ? 1 : 0)} GB`;
-  const recommended = SOFTWARE.find((s) => s.id === draft.software)?.memoryMb ?? 4096;
+  const recommended = softwareInfo(draft.software)?.memoryMb ?? 4096;
   const limit = memoryLimitBytes(draft.memoryMb, draft.software === "modpack" ? "modrinth" : draft.software);
   return (
     <div>
@@ -443,10 +444,8 @@ export function ResourcesStep({
       <ul className="mt-4 flex flex-col gap-1.5 text-meta text-text-secondary">
         <li>
           Suggested for{" "}
-          {draft.software === "modpack"
-            ? "a modpack"
-            : (SOFTWARE.find((s) => s.id === draft.software)?.name ?? "this")}
-          : {gb(recommended)}
+          {draft.software === "modpack" ? "a modpack" : (softwareInfo(draft.software)?.name ?? "this")}:{" "}
+          {gb(recommended)}
           {draft.software === "modpack" ? " to start; big packs want 8 GB or more" : ""}.
         </li>
         <li>
