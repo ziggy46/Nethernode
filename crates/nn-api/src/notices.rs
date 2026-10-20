@@ -1,7 +1,7 @@
 //! What the bell in the top bar shows: things that need someone's
 //! attention. Worked out fresh on each request from the servers, nodes,
-//! backups and disks, plus a newer NetherNode release when checking for
-//! those is on (Settings › Notifications).
+//! backups and disks, plus a newer NetherNode release and newer modpack
+//! versions when checking for those is on (Settings › Notifications).
 
 use std::sync::Mutex;
 use std::time::Duration;
@@ -264,7 +264,19 @@ async fn gather(state: &AppState, admin: bool) -> Vec<Notice> {
         }
     }
 
+    let checking = update_check_on(state).await;
     for server in store.list_servers().await.unwrap_or_default() {
+        if checking && let Some(version) = crate::modpack_updates::available(&server) {
+            out.push(Notice {
+                id: format!("modpack:{}:{version}", server.id),
+                level: "info",
+                title: format!("A newer pack version for {}", server.name),
+                detail: format!(
+                    "{version} is available. Update it from the server's Mods tab; a backup is made first."
+                ),
+                link: Some(format!("/servers/{}", server.id)),
+            });
+        }
         if server.status == "crashed" {
             out.push(Notice {
                 id: format!("crashed:{}:{}", server.id, server.updated_at),

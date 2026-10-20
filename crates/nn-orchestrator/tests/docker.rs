@@ -169,3 +169,97 @@ async fn create_start_adopt_sleep_wake_stop_delete() {
     assert!(store.find_server(&id).await.unwrap().is_none());
     assert!(!servers_dir.join(&server.slug).exists());
 }
+
+fn mod_jars(dir: &std::path::Path) -> Vec<String> {
+    let mut jars: Vec<String> = std::fs::read_dir(dir)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().into_string().unwrap())
+        .filter(|n| n.ends_with(".jar"))
+        .collect();
+    jars.sort();
+    jars
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "needs Docker and downloads a modpack and a Minecraft server"]
+async fn modpack_update_swaps_the_packs_files() {
+    // "Essentially Optimized Server", a small Fabric pack with a version per
+    // Minecraft release: 1.21.10 → 1.21.11 replaces most of its mods.
+    const OLD: &str = "k2uQ6TzC";
+    const NEW: &str = "D2dYG22N";
+    let pack = |version: &str| nn_orchestrator::spec::Modpack {
+        platform: "modrinth".into(),
+        project_id: "sTicmJba".into(),
+        slug: "essentially-optimized-server".into(),
+        title: "Essentially Optimized Server".into(),
+        version_id: Some(version.into()),
+        version_name: None,
+        loader: Some("fabric".into()),
+        icon_url: None,
+        page_url: None,
+    };
+    let dir = tempfile::tempdir_in(std::env::current_dir().unwrap()).unwrap();
+    let servers_dir = dir.path().join("servers");
+    let store = Store::open(&dir.path().join("test.db")).await.unwrap();
+    store.migrate().await.unwrap();
+    let events = EventBus::default();
+    let orch = orchestrator(&store, &events, &servers_dir).await;
+    nn_orchestrator::spawn_background(&orch);
+
+    println!("create + start (pack for 1.21.10)");
+    let server = orch
+        .create(CreateServer {
+            name: "NN Modpack Test".into(),
+            loader: "modrinth".into(),
+            mc_version: "1.21.10".into(),
+            loader_version: None,
+            memory_mb: 2048,
+            card_theme: "end".into(),
+            eula_accepted: true,
+            sleep_when_empty: false,
+            start_after_create: true,
+            slug: None,
+            avoid_ports: Vec::new(),
+            modpack: Some(pack(OLD)),
+        })
+        .await
+        .unwrap();
+    let id = server.id.clone();
+    wait_for(&store, &id, "running", Duration::from_secs(900)).await;
+    orch.stop(&id, false).await.unwrap();
+    wait_for(&store, &id, "stopped", Duration::from_secs(60)).await;
+    let mods = servers_dir.join(&server.slug).join("mods");
+    let before = mod_jars(&mods);
+    assert!(
+        before.contains(&"fabric-api-0.138.3+1.21.10.jar".to_owned()),
+        "{before:?}"
+    );
+    // Something the pack didn't install.
+    std::fs::write(mods.join("keep-me.txt"), b"mine").unwrap();
+
+    println!("update to the pack for 1.21.11 and start");
+    let mut settings = store.find_server(&id).await.unwrap().unwrap().settings();
+    settings.modpack_json = Some(serde_json::to_string(&pack(NEW)).unwrap());
+    settings.mc_version = "1.21.11".into();
+    orch.update(&id, settings).await.unwrap();
+    orch.start(&id).await.unwrap();
+    wait_for(&store, &id, "running", Duration::from_secs(900)).await;
+    let after = mod_jars(&mods);
+    println!("  mods before: {before:?}\n  mods after: {after:?}");
+    assert!(
+        after.contains(&"fabric-api-0.141.1+1.21.11.jar".to_owned()),
+        "new version's mods installed: {after:?}"
+    );
+    assert!(
+        !after.contains(&"fabric-api-0.138.3+1.21.10.jar".to_owned()),
+        "old version's mods removed: {after:?}"
+    );
+    assert!(
+        mods.join("keep-me.txt").exists(),
+        "files the pack didn't install are left alone"
+    );
+
+    orch.stop(&id, false).await.unwrap();
+    wait_for(&store, &id, "stopped", Duration::from_secs(60)).await;
+    orch.delete(&id, true).await.unwrap();
+}

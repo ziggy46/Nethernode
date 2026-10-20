@@ -97,6 +97,27 @@ pub(crate) async fn backup_and_wait(
     run(state, server, &backup_id, &name, &nn_store::new_id()).await
 }
 
+/// Backs a server up for someone, labelled, and waits for it to finish.
+pub(crate) async fn labelled_backup_and_wait(
+    state: &AppState,
+    server: &Server,
+    user_id: &str,
+    label: &str,
+) -> Result<String, String> {
+    let (backup_id, name) = begin(state, server, Kind::Manual, Some(user_id))
+        .await
+        .map_err(|e| e.message.unwrap_or_default())?;
+    if let Err(e) = state
+        .auth
+        .store()
+        .set_backup_message(&backup_id, label)
+        .await
+    {
+        tracing::warn!(error = %e, "couldn't label a backup");
+    }
+    run(state, server, &backup_id, &name, &nn_store::new_id()).await
+}
+
 async fn run(
     state: &AppState,
     server: &Server,
@@ -250,10 +271,16 @@ pub(crate) async fn start_restore(
             };
             record(&state2, &server, &pre_id, restored.pre_restore).await?;
             let files = restored.files?;
-            let message = format!(
+            let mut message = format!(
                 "Restored {} ({files} files). What was there before is kept as a pre-restore backup.",
                 server.name
             );
+            // Modpack servers go back to the pack version the files are from.
+            if let Some(note) =
+                crate::modpack_updates::restore_pack(&state2, &server.id, &backup, docker).await
+            {
+                message.push_str(&note);
+            }
             if start_after && let Err(e) = node.start(&server.id).await {
                 return Ok(format!("{message} It didn't start again: {e}"));
             }

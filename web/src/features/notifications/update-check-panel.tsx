@@ -89,8 +89,9 @@ export default function UpdateCheckPanel() {
         <label htmlFor={id} className="text-label">
           <span className="block font-[550]">Tell me when a new version is out</span>
           <span className="mt-[3px] block text-meta text-text-muted">
-            About twice a day the panel asks GitHub for the newest release (nothing about this install is
-            sent), and the bell says when there's a newer one.
+            About twice a day the panel asks GitHub for the newest release, and once a day it asks Modrinth or
+            CurseForge for newer versions of your servers' modpacks (nothing about this install is sent). The
+            bell says when there's something newer.
           </span>
         </label>
         <Switch id={id} checked={on} disabled={set.isPending} onCheckedChange={(v) => set.mutate(v)} />

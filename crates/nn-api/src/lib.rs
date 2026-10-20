@@ -42,6 +42,7 @@ mod files_http;
 pub mod install_count;
 mod log_search;
 mod middleware;
+pub mod modpack_updates;
 mod moves;
 pub mod notices;
 pub mod notify;

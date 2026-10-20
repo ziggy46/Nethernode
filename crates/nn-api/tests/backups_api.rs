@@ -22,6 +22,7 @@ const CSRF: &str = "csrf";
 
 struct Harness {
     app: Router,
+    store: Store,
     events: EventBus,
     owner: String,
     root: PathBuf,
@@ -91,6 +92,7 @@ async fn harness() -> Harness {
     std::fs::write(root.join("libraries/big.jar"), b"downloaded again").unwrap();
     Harness {
         app,
+        store: store.clone(),
         events: events.clone(),
         owner,
         root,
@@ -240,6 +242,82 @@ async fn back_up_download_and_restore() {
     assert_eq!(status, StatusCode::OK);
     let (_, list) = h.call("BackupService", "ListBackups", json!({})).await;
     assert_eq!(list["backups"].as_array().unwrap().len(), 1);
+}
+
+fn pack(version: &str) -> String {
+    json!({ "platform": "modrinth", "project_id": "PACK", "slug": "pack", "title": "Pack", "version_id": version, "version_name": version, "loader": "fabric", "icon_url": null, "page_url": null })
+        .to_string()
+}
+
+async fn set_pack(store: &Store, id: &str, version: &str, mc_version: &str) {
+    let mut settings = store.find_server(id).await.unwrap().unwrap().settings();
+    settings.loader = "modrinth".into();
+    settings.mc_version = mc_version.into();
+    settings.modpack_json = Some(pack(version));
+    assert!(store.update_server_settings(id, &settings).await.unwrap());
+}
+
+#[tokio::test]
+async fn modpack_backups_remember_the_pack_version() {
+    let h = harness().await;
+    let mut rx = h.events.subscribe();
+    set_pack(&h.store, &h.server_id, "v2", "1.21.1").await;
+    let (status, body) = h
+        .call(
+            "BackupService",
+            "CreateBackup",
+            json!({ "serverId": h.server_id }),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let (message, failed) = h.job(&mut rx, body["jobId"].as_str().unwrap()).await;
+    assert!(!failed, "{message}");
+    let backup_id = body["backupId"].as_str().unwrap().to_owned();
+    let backup = h.store.find_backup(&backup_id).await.unwrap().unwrap();
+    assert_eq!(backup.modpack_json.as_deref(), Some(pack("v2").as_str()));
+    assert_eq!(backup.mc_version.as_deref(), Some("1.21.1"));
+
+    // Updated since; restoring the backup would put v2 back, but without
+    // Docker the settings can't be changed, so it says so.
+    set_pack(&h.store, &h.server_id, "v3", "1.21.4").await;
+    let (status, body) = h
+        .call(
+            "BackupService",
+            "RestoreBackup",
+            json!({ "backupId": backup_id }),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let (message, failed) = h.job(&mut rx, body["jobId"].as_str().unwrap()).await;
+    assert!(!failed, "{message}");
+    assert!(message.contains("couldn't be put back to v2"), "{message}");
+    // The copy of what was replaced remembers v3.
+    let backups = h.store.list_backups(Some(&h.server_id)).await.unwrap();
+    let pre = backups.iter().find(|b| b.kind == "pre-restore").unwrap();
+    assert_eq!(pre.modpack_json.as_deref(), Some(pack("v3").as_str()));
+    assert_eq!(pre.mc_version.as_deref(), Some("1.21.4"));
+
+    // Servers that aren't modpacks record nothing.
+    let mut settings = h
+        .store
+        .find_server(&h.server_id)
+        .await
+        .unwrap()
+        .unwrap()
+        .settings();
+    settings.loader = "paper".into();
+    settings.modpack_json = None;
+    h.store
+        .update_server_settings(&h.server_id, &settings)
+        .await
+        .unwrap();
+    let id = h
+        .store
+        .insert_backup(&h.server_id, "SMP", "plain.tar.zst", "manual", None)
+        .await
+        .unwrap();
+    let plain = h.store.find_backup(&id).await.unwrap().unwrap();
+    assert_eq!((plain.modpack_json, plain.mc_version), (None, None));
 }
 
 #[tokio::test]

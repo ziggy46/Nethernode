@@ -14,7 +14,7 @@ pub(crate) struct Resolved {
     pub mc_version: String,
 }
 
-fn newest_game_version(version: &ProjectVersion) -> Option<String> {
+pub(crate) fn newest_game_version(version: &ProjectVersion) -> Option<String> {
     version
         .game_versions
         .iter()

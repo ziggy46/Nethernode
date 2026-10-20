@@ -661,6 +661,29 @@ mod tests {
     }
 
     #[test]
+    fn a_new_pack_version_recreates_the_container() {
+        // The image installs the pack when its container starts, so a
+        // pack update has to change the spec.
+        let extra = BTreeMap::new();
+        let dir = PathBuf::from("/srv/nn/servers");
+        for platform in ["modrinth", "curseforge"] {
+            let old = pack(platform);
+            let new = Modpack {
+                version_id: Some("V2".into()),
+                ..old.clone()
+            };
+            let spec = |pack| {
+                build(&SpecInput {
+                    loader: platform,
+                    modpack: Some(pack),
+                    ..input(&extra, &dir)
+                })
+            };
+            assert_ne!(spec(&old).hash, spec(&new).hash, "{platform}");
+        }
+    }
+
+    #[test]
     fn curseforge_packs_get_a_downloads_folder_and_the_key() {
         let extra = BTreeMap::new();
         let dir = PathBuf::from("/srv/nn/servers");

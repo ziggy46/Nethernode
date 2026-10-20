@@ -64,6 +64,7 @@ const LABELS: Record<string, string> = {
   "mod.enable": "Turned on a mod",
   "mod.disable": "Turned off a mod",
   "mod.delete": "Removed a mod",
+  "modpack.update": "Updated a modpack",
   "backup.create": "Backed up a server",
   "backup.restore": "Restored a backup",
   "backup.delete": "Deleted a backup",

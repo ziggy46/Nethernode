@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO backups (id, server_id, server_name, file_name, kind, status, created_by,\n                                  created_at, node_id, modpack_json, mc_version)\n             SELECT ?1, ?2, ?3, ?4, ?5, 'creating', ?6, ?7, COALESCE(s.node_id, 'local'),\n                    s.modpack_json, CASE WHEN s.modpack_json IS NULL THEN NULL ELSE s.mc_version END\n             FROM (SELECT 1) LEFT JOIN servers s ON s.id = ?2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": []
+  },
+  "hash": "ef1735fe9bc0c27eee5cc552468f4672d8963c830ee4398764f0123606c205e3"
+}

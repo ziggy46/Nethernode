@@ -123,7 +123,16 @@ function applyData(client: QueryClient, event: DataEvent) {
         for (const key of [["servers"], ["nodes"], ["proxy", "routes"]])
           void client.invalidateQueries({ queryKey: key });
       }
-      if (event.kind === "backup" || event.kind === "restore" || event.kind === "move") {
+      // Both can change a modpack server's pack and Minecraft version.
+      if (event.kind === "restore" || event.kind === "modpack-update") {
+        void client.invalidateQueries({ queryKey: ["servers"] });
+      }
+      if (
+        event.kind === "backup" ||
+        event.kind === "restore" ||
+        event.kind === "move" ||
+        event.kind === "modpack-update"
+      ) {
         void client.invalidateQueries({ queryKey: ["notices"] });
         void client.invalidateQueries({ queryKey: ["backups"] });
         void client.invalidateQueries({ queryKey: ["schedules"] });

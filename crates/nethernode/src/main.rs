@@ -186,6 +186,7 @@ async fn serve(config: Config) -> Result<()> {
     }
     nn_api::install_count::spawn(state.clone());
     nn_api::notices::spawn_update_check(state.clone());
+    nn_api::modpack_updates::spawn_checks(state.clone());
     nn_api::cache::spawn_sweeper(state.clone());
     nn_api::stats_history::spawn_recorder(state.clone());
     let app = nn_api::router(state);

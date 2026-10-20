@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!\", server_id, server_name, file_name, size_bytes, files, raw_bytes, kind,\n                      status, message, created_by, created_at, finished_at, node_id\n               FROM backups WHERE ?1 IS NULL OR server_id = ?1\n               ORDER BY created_at DESC",
+  "query": "SELECT id AS \"id!\", server_id, server_name, file_name, size_bytes, files, raw_bytes, kind,\n                      status, message, created_by, created_at, finished_at, node_id, modpack_json,\n                      mc_version\n               FROM backups WHERE ?1 IS NULL OR server_id = ?1\n               ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -156,6 +156,28 @@
             "name": "node_id"
           }
         }
+      },
+      {
+        "name": "modpack_json",
+        "ordinal": 14,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "backups",
+            "name": "modpack_json"
+          }
+        }
+      },
+      {
+        "name": "mc_version",
+        "ordinal": 15,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "backups",
+            "name": "mc_version"
+          }
+        }
       }
     ],
     "parameters": {
@@ -175,8 +197,10 @@
       true,
       false,
       true,
-      false
+      false,
+      true,
+      true
     ]
   },
-  "hash": "430304367d2e90301bb5c5ccc88cda95c98443ee4d98aba48be8da29a65f9f46"
+  "hash": "9d3be5767e9dbf685c1583fa79a2e054ef863203c675ee6ad5c5354cb559bb85"
 }

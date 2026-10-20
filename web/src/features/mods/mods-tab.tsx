@@ -34,6 +34,7 @@ import { loaderName } from "../servers/format";
 import { DropOverlay, useFileDrop } from "../uploads/drop";
 import { bytes } from "../uploads/format";
 import { enqueue } from "../uploads/store";
+import { ModpackCard } from "./modpack-card";
 
 const modsKey = (serverId: string) => ["mods", serverId] as const;
 
@@ -116,6 +117,7 @@ export default function ModsTab({ server }: { server: Server }) {
           e.target.value = "";
         }}
       />
+      {server.modpack && <ModpackCard server={server} />}
       {data.manualDownloads.length > 0 && (
         <ManualDownloads
           server={server}

@@ -101,6 +101,11 @@ export function BackupTable({
                   )}
                   <td className="whitespace-nowrap px-3 py-2 text-text-secondary">
                     <span title={dateTime(b.createdAtMs)}>{ago(b.createdAtMs, now)}</span>
+                    {ready && b.message && (
+                      <span className="block max-w-64 truncate text-meta text-text-muted" title={b.message}>
+                        {b.message}
+                      </span>
+                    )}
                   </td>
                   <td className="whitespace-nowrap px-3 py-2 text-text-secondary tabular-nums">
                     {ready ? bytes(Number(b.sizeBytes)) : "—"}

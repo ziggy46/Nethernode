@@ -43,6 +43,10 @@ fn jar(files: &[(&str, &[u8])]) -> Vec<u8> {
 }
 
 async fn harness() -> Harness {
+    harness_with(Default::default()).await
+}
+
+async fn harness_with(content: Arc<nn_api::content::Content>) -> Harness {
     let tmp = tempfile::tempdir().unwrap();
     let servers_dir = tmp.path().canonicalize().unwrap().join("servers");
     let store = Store::open_in_memory().await.unwrap();
@@ -64,7 +68,7 @@ async fn harness() -> Harness {
         shutdown: shutdown_rx,
         players: Default::default(),
         uploads: Default::default(),
-        content: Default::default(),
+        content,
         notifier: Default::default(),
         install_count: Default::default(),
         agents: Default::default(),
@@ -273,4 +277,138 @@ async fn sqlx_set_modpack(store: &Store, id: &str) {
             .to_string(),
     );
     assert!(store.update_server_settings(id, &server).await.unwrap());
+}
+
+/// A Modrinth stand-in with one pack, PACK, in four versions: v1 and v2 for
+/// 1.21.1, v3 for 1.21.4, and v4 (newest) for 1.20.1.
+async fn fake_modrinth() -> String {
+    let version = |id: &str, month: u32, mc: &str| {
+        json!({
+            "id": id, "project_id": "PACK", "name": format!("Pack {id}"), "version_number": id,
+            "game_versions": [mc], "loaders": ["fabric"], "version_type": "release",
+            "date_published": format!("2026-{month:02}-01T00:00:00Z"), "files": [],
+        })
+    };
+    let versions = Arc::new(vec![
+        version("v4", 4, "1.20.1"),
+        version("v3", 3, "1.21.4"),
+        version("v2", 2, "1.21.1"),
+        version("v1", 1, "1.21.1"),
+    ]);
+    let all = versions.clone();
+    let project = json!({
+        "id": "PACK", "slug": "pack", "title": "Pack", "description": "A pack", "icon_url": null,
+        "downloads": 1, "loaders": ["fabric"], "game_versions": ["1.21.1", "1.21.4"],
+        "project_type": "modpack", "server_side": "required", "updated": "2026-04-01T00:00:00Z",
+    });
+    let app = Router::new()
+        .route(
+            "/v2/project/{id}",
+            axum::routing::get(move || {
+                let project = project.clone();
+                async move { axum::Json(project) }
+            }),
+        )
+        .route(
+            "/v2/project/{id}/version",
+            axum::routing::get(move || {
+                let all = all.clone();
+                async move { axum::Json(Value::Array(all.to_vec())) }
+            }),
+        )
+        .route(
+            "/v2/version/{id}",
+            axum::routing::get(
+                move |axum::extract::Path(id): axum::extract::Path<String>| {
+                    let versions = versions.clone();
+                    async move {
+                        match versions.iter().find(|v| v["id"] == id.as_str()) {
+                            Some(v) => Ok(axum::Json(v.clone())),
+                            None => Err(StatusCode::NOT_FOUND),
+                        }
+                    }
+                },
+            ),
+        );
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    format!("http://{addr}")
+}
+
+#[tokio::test]
+async fn modpack_updates_list_and_refuse() {
+    let modrinth = fake_modrinth().await;
+    let catalog = nn_catalog::Catalog::new(
+        None,
+        nn_catalog::Endpoints {
+            modrinth,
+            ..Default::default()
+        },
+    );
+    let h = harness_with(Arc::new(nn_api::content::Content::new(catalog, None, None))).await;
+    let id = h.server("mrpack", "modrinth").await;
+    let mut settings = h.store.find_server(&id).await.unwrap().unwrap().settings();
+    settings.mc_version = "1.21.1".into();
+    settings.modpack_json = Some(
+        json!({ "platform": "modrinth", "project_id": "PACK", "slug": "pack", "title": "Pack", "version_id": "v2", "version_name": "v2", "loader": "fabric", "icon_url": null, "page_url": "https://modrinth.com/modpack/pack" })
+            .to_string(),
+    );
+    assert!(
+        h.store
+            .update_server_settings(&id, &settings)
+            .await
+            .unwrap()
+    );
+
+    let (status, body) = h
+        .call("CheckModpackUpdate", json!({ "serverId": id }))
+        .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(body["modpack"]["title"], "Pack");
+    assert_eq!(body["current"]["id"], "v2");
+    let newer: Vec<&str> = body["newer"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v["id"].as_str().unwrap())
+        .collect();
+    assert_eq!(newer, ["v3"], "not v1 (older) or v4 (older Minecraft)");
+
+    for (version, says) in [
+        ("v2", "already installed"),
+        ("v1", "isn't newer"),
+        ("v4", "older Minecraft"),
+        ("nope", "no such item"),
+    ] {
+        let (status, body) = h
+            .call(
+                "UpdateModpack",
+                json!({ "serverId": id, "versionId": version }),
+            )
+            .await;
+        assert_ne!(status, StatusCode::OK, "{version}: {body}");
+        let message = body["message"].as_str().unwrap_or_default();
+        assert!(message.contains(says), "{version}: {message}");
+    }
+    // A good version, but nothing can run without Docker: refused before
+    // anything is stopped or backed up.
+    let (status, body) = h
+        .call(
+            "UpdateModpack",
+            json!({ "serverId": id, "versionId": "v3" }),
+        )
+        .await;
+    assert_ne!(status, StatusCode::OK, "{body}");
+    assert_eq!(body["code"], "failed_precondition", "{body}");
+    assert!(h.store.list_backups(Some(&id)).await.unwrap().is_empty());
+    let server = h.store.find_server(&id).await.unwrap().unwrap();
+    assert!(server.modpack_json.unwrap().contains("\"v2\""));
+
+    // Not a modpack.
+    let plain = h.server("plainfabric", "fabric").await;
+    let (_, body) = h
+        .call("CheckModpackUpdate", json!({ "serverId": plain }))
+        .await;
+    assert_eq!(body["code"], "failed_precondition", "{body}");
 }

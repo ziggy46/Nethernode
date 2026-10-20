@@ -470,7 +470,7 @@ fn settings_from_proto(s: &pb::ServerSettingsView<'_>) -> ServerSettings {
     }
 }
 
-fn proto_modpack(json: Option<&str>) -> Option<pb::Modpack> {
+pub(crate) fn proto_modpack(json: Option<&str>) -> Option<pb::Modpack> {
     let pack: nn_orchestrator::spec::Modpack = serde_json::from_str(json?).ok()?;
     Some(pb::Modpack {
         platform: match pack.platform.as_str() {

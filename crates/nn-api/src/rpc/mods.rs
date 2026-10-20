@@ -14,6 +14,7 @@ use serde_json::json;
 use crate::AppState;
 use crate::content::{catalog_error, manual};
 use crate::files::{file_error, open};
+use crate::modpack_updates;
 use crate::proto::nethernode::v1 as pb;
 use crate::rpc::catalog::{platform, proto_project, proto_version};
 use crate::rpc::{audit, require};
@@ -565,4 +566,60 @@ impl pb::ModService for ModRpc {
         .await;
         Response::ok(pb::DeleteModResponse::default())
     }
+
+    async fn check_modpack_update(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::CheckModpackUpdateRequest>,
+    ) -> ServiceResult<pb::CheckModpackUpdateResponse> {
+        require(&ctx, Permission::ManageServers)?;
+        let server = find_server(&self.state, request.server_id).await?;
+        let check = modpack_updates::check(&self.state, &server).await?;
+        let pack = serde_json::to_string(&check.pack).ok();
+        Response::ok(pb::CheckModpackUpdateResponse {
+            modpack: crate::rpc::servers::proto_modpack(pack.as_deref()).into(),
+            current: check.current.map(proto_version).into(),
+            newer: check.newer.into_iter().map(proto_version).collect(),
+            follows_newest: check.follows_newest,
+            unavailable: check.unavailable.unwrap_or_default(),
+            ..Default::default()
+        })
+    }
+
+    async fn update_modpack(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::UpdateModpackRequest>,
+    ) -> ServiceResult<pb::UpdateModpackResponse> {
+        let user = require(&ctx, Permission::ManageServers)?.clone();
+        let server = find_server(&self.state, request.server_id).await?;
+        crate::moves::not_moving(&self.state, &server.id)?;
+        let plan = modpack_updates::plan(&self.state, &server, request.version_id).await?;
+        if let Some(e) = self.state.nodes.for_server(&server).unavailable() {
+            return Err(crate::rpc::servers::node_error(e));
+        }
+        let details = json!({
+            "pack": plan.from.slug,
+            "from": plan.from.version_id,
+            "to": plan.to.version_id,
+            "mc_version": plan.mc_version,
+        });
+        let job_id = modpack_updates::start(&self.state, server.clone(), plan, &user.id);
+        self.record(&user, "modpack.update", &server.id, details)
+            .await;
+        Response::ok(pb::UpdateModpackResponse {
+            job_id,
+            ..Default::default()
+        })
+    }
+}
+
+async fn find_server(state: &AppState, id: &str) -> Result<Server, ConnectError> {
+    state
+        .auth
+        .store()
+        .find_server(id)
+        .await
+        .map_err(crate::rpc::store_error)?
+        .ok_or_else(|| ConnectError::not_found("server not found"))
 }

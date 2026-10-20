@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!\", server_id, server_name, file_name, size_bytes, files, raw_bytes, kind,\n                      status, message, created_by, created_at, finished_at, node_id\n               FROM backups WHERE id = ?1",
+  "query": "SELECT id AS \"id!\", server_id, server_name, file_name, size_bytes, files, raw_bytes, kind,\n                      status, message, created_by, created_at, finished_at, node_id, modpack_json,\n                      mc_version\n               FROM backups WHERE id = ?1",
   "describe": {
     "columns": [
       {
@@ -156,6 +156,28 @@
             "name": "node_id"
           }
         }
+      },
+      {
+        "name": "modpack_json",
+        "ordinal": 14,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "backups",
+            "name": "modpack_json"
+          }
+        }
+      },
+      {
+        "name": "mc_version",
+        "ordinal": 15,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "backups",
+            "name": "mc_version"
+          }
+        }
       }
     ],
     "parameters": {
@@ -175,8 +197,10 @@
       true,
       false,
       true,
-      false
+      false,
+      true,
+      true
     ]
   },
-  "hash": "6a1dae162b16d6c731d48cc7baa0711e79bd2d14e8213c29c108bb034fe334fd"
+  "hash": "12ceea8ee17f4962c46232b898624508c758c6cdddeb1ba03a2f80c69b5fddcb"
 }

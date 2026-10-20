@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE backups SET status = ?2, size_bytes = ?3, files = ?4, raw_bytes = ?5,\n                                message = COALESCE(?6, message), finished_at = ?7\n             WHERE id = ?1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": []
+  },
+  "hash": "5ca5a46245ea1363ae5e4d52ffa52b011763a7440aa36b7fd4dddebae8a3cd09"
+}

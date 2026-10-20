@@ -27,6 +27,15 @@ service ModService {
   rpc SetModEnabled(SetModEnabledRequest) returns (SetModEnabledResponse);
   // Moves a mod to the trash.
   rpc DeleteMod(DeleteModRequest) returns (DeleteModResponse);
+  // A modpack server's pack: the version installed and newer ones.
+  rpc CheckModpackUpdate(CheckModpackUpdateRequest) returns (CheckModpackUpdateResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Moves a modpack server to a newer version of its pack, in the
+  // background: stops it, backs it up, switches the version (the pack
+  // installs as it starts), and starts it again if it was running.
+  // Restoring that backup puts the old version back.
+  rpc UpdateModpack(UpdateModpackRequest) returns (UpdateModpackResponse);
 }
 
 message InstalledMod {
@@ -131,3 +140,29 @@ message DeleteModRequest {
 }
 
 message DeleteModResponse {}
+
+message CheckModpackUpdateRequest {
+  string server_id = 1;
+}
+
+message CheckModpackUpdateResponse {
+  Modpack modpack = 1;
+  // The installed version, when the platform still lists it.
+  optional ProjectVersion current = 2;
+  // Newer versions, newest first.
+  repeated ProjectVersion newer = 3;
+  // Not pinned to a version: the newest installs each time it starts.
+  bool follows_newest = 4;
+  // Why newer versions can't be looked up (CurseForge without an API key).
+  string unavailable = 5;
+}
+
+message UpdateModpackRequest {
+  string server_id = 1;
+  // A newer version of the same pack.
+  string version_id = 2;
+}
+
+message UpdateModpackResponse {
+  string job_id = 1;
+}

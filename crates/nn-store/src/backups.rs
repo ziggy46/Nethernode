@@ -33,6 +33,10 @@ pub struct Backup {
     pub finished_at: Option<i64>,
     /// The node holding the archive ([`crate::LOCAL_NODE`] for this machine).
     pub node_id: String,
+    /// The server's modpack (JSON) when it was made, if it was a modpack.
+    pub modpack_json: Option<String>,
+    /// The server's Minecraft version then, for modpacks.
+    pub mc_version: Option<String>,
 }
 
 /// A scheduled action.
@@ -101,9 +105,10 @@ impl Store {
         let now = now_ms();
         sqlx::query!(
             "INSERT INTO backups (id, server_id, server_name, file_name, kind, status, created_by,
-                                  created_at, node_id)
-             VALUES (?1, ?2, ?3, ?4, ?5, 'creating', ?6, ?7,
-                     COALESCE((SELECT node_id FROM servers WHERE id = ?2), 'local'))",
+                                  created_at, node_id, modpack_json, mc_version)
+             SELECT ?1, ?2, ?3, ?4, ?5, 'creating', ?6, ?7, COALESCE(s.node_id, 'local'),
+                    s.modpack_json, CASE WHEN s.modpack_json IS NULL THEN NULL ELSE s.mc_version END
+             FROM (SELECT 1) LEFT JOIN servers s ON s.id = ?2",
             id,
             server_id,
             server_name,
@@ -117,7 +122,15 @@ impl Store {
         Ok(id)
     }
 
-    /// Records how a backup turned out.
+    /// Labels a backup (kept when it finishes, unless it fails).
+    pub async fn set_backup_message(&self, id: &str, message: &str) -> Result<()> {
+        sqlx::query!("UPDATE backups SET message = ?2 WHERE id = ?1", id, message)
+            .execute(self.pool())
+            .await?;
+        Ok(())
+    }
+
+    /// Records how a backup turned out. A `None` message keeps any label.
     #[allow(clippy::too_many_arguments)]
     pub async fn finish_backup(
         &self,
@@ -130,8 +143,8 @@ impl Store {
     ) -> Result<()> {
         let now = now_ms();
         sqlx::query!(
-            "UPDATE backups SET status = ?2, size_bytes = ?3, files = ?4, raw_bytes = ?5, message = ?6,
-                                finished_at = ?7
+            "UPDATE backups SET status = ?2, size_bytes = ?3, files = ?4, raw_bytes = ?5,
+                                message = COALESCE(?6, message), finished_at = ?7
              WHERE id = ?1",
             id,
             status,
@@ -151,7 +164,8 @@ impl Store {
         let rows = sqlx::query_as!(
             Backup,
             r#"SELECT id AS "id!", server_id, server_name, file_name, size_bytes, files, raw_bytes, kind,
-                      status, message, created_by, created_at, finished_at, node_id
+                      status, message, created_by, created_at, finished_at, node_id, modpack_json,
+                      mc_version
                FROM backups WHERE ?1 IS NULL OR server_id = ?1
                ORDER BY created_at DESC"#,
             server_id,
@@ -166,7 +180,8 @@ impl Store {
         let row = sqlx::query_as!(
             Backup,
             r#"SELECT id AS "id!", server_id, server_name, file_name, size_bytes, files, raw_bytes, kind,
-                      status, message, created_by, created_at, finished_at, node_id
+                      status, message, created_by, created_at, finished_at, node_id, modpack_json,
+                      mc_version
                FROM backups WHERE id = ?1"#,
             id,
         )
