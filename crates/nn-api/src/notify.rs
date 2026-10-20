@@ -212,14 +212,53 @@ impl Notifier {
         Ok(())
     }
 
-    /// Sends a test message now.
+    /// Sends a test message now: that it works, and how messages look.
     pub(crate) async fn send_test(&self) -> Result<(), String> {
-        let embed = json!({
-            "title": "NetherNode notifications are working",
-            "description": "Server events will be posted to this channel.",
+        let now = jiff::Timestamp::now().to_string();
+        let mut out = vec![json!({
+            "title": "✅ NetherNode notifications are working",
+            "description": "The events chosen in Settings › Notifications are posted here. Below are examples of how they look; nothing happened to your servers.",
             "color": COLOR_OK,
-        });
-        self.send(vec![embed]).await
+            "timestamp": now,
+        })];
+        let example = About {
+            name: "Survival".into(),
+            software: "Paper 1.21.4".into(),
+            max_players: 20,
+            address: Some("survival.example.com".into()),
+            restarts_on_crash: false,
+            console: vec![
+                "[12:01:44 INFO]: Steve fell from a high place".into(),
+                "[12:02:10 ERROR]: Encountered an unexpected exception".into(),
+                "java.lang.OutOfMemoryError: Java heap space".into(),
+            ],
+            ..About::default()
+        };
+        let mut batch = BTreeMap::new();
+        batch.insert(
+            "1".to_owned(),
+            ServerBatch {
+                statuses: vec!["running".into()],
+                joined: vec![(
+                    "Steve".into(),
+                    Some("8667ba71-b85a-4004-af54-457a9734eed7".into()),
+                )],
+                ..ServerBatch::default()
+            },
+        );
+        batch.insert(
+            "2".to_owned(),
+            ServerBatch {
+                statuses: vec!["crashed".into()],
+                ..ServerBatch::default()
+            },
+        );
+        let examples = embeds(&batch, &|_| example.clone(), &now);
+        out.extend(examples.into_iter().map(|mut e| {
+            e["footer"] = json!({ "text": "Example" });
+            e
+        }));
+        self.send(out).await
     }
 
     async fn send(&self, embeds: Vec<serde_json::Value>) -> Result<(), String> {
@@ -258,8 +297,12 @@ async fn post(
     url: &str,
     embeds: &[serde_json::Value],
 ) -> Result<(), String> {
-    let body =
-        json!({ "username": "NetherNode", "embeds": embeds, "allowed_mentions": { "parse": [] } });
+    let body = json!({
+        "username": "NetherNode",
+        "avatar_url": AVATAR,
+        "embeds": embeds,
+        "allowed_mentions": { "parse": [] },
+    });
     let mut server_errors = 0;
     for _ in 0..4 {
         let response = client
@@ -305,6 +348,12 @@ async fn post(
     Err("Discord kept asking to slow down; some notifications were dropped.".to_owned())
 }
 
+/// The bot's picture: NetherNode's icon, from the public repository.
+const AVATAR: &str =
+    "https://raw.githubusercontent.com/ziggy46/Nethernode/main/web/public/icon-192.png";
+/// Player heads by UUID, for joins.
+const HEADS: &str = "https://mc-heads.net/avatar";
+
 const COLOR_OK: u32 = 0x2f_b3_6b;
 const COLOR_INFO: u32 = 0x5b_8d_ef;
 const COLOR_MUTED: u32 = 0x80_80_80;
@@ -322,65 +371,155 @@ enum PackNote {
 #[derive(Debug, Default)]
 struct ServerBatch {
     statuses: Vec<String>,
-    joined: Vec<String>,
+    /// Usernames, with UUIDs when known (for their heads).
+    joined: Vec<(String, Option<String>)>,
     failures: Vec<String>,
     packs: Vec<PackNote>,
+}
+
+/// What messages say about a server, looked up when a batch goes out.
+#[derive(Debug, Clone, Default)]
+struct About {
+    name: String,
+    /// Like "Paper 1.21.4".
+    software: String,
+    max_players: i64,
+    /// Where players join, when a route gives it one.
+    address: Option<String>,
+    /// Its machine, when it isn't the panel's own.
+    machine: Option<String>,
+    restarts_on_crash: bool,
+    /// The end of its console, for crashes.
+    console: Vec<String>,
+}
+
+fn field(name: &str, value: impl Into<String>) -> serde_json::Value {
+    json!({ "name": name, "value": value.into(), "inline": true })
+}
+
+/// The facts shown when a server comes online.
+fn server_fields(about: &About) -> Vec<serde_json::Value> {
+    let mut fields = vec![
+        field("Version", about.software.clone()),
+        field("Players", format!("Up to {}", about.max_players)),
+    ];
+    if let Some(machine) = &about.machine {
+        fields.push(field("Machine", machine.clone()));
+    }
+    fields
+}
+
+/// The end of a console as a code block that fits an embed.
+fn console_block(lines: &[String]) -> Option<String> {
+    let mut text = String::new();
+    for line in lines.iter().rev() {
+        // A fence in a line would end the block early.
+        let line = line.replace("```", "`\u{200b}``");
+        if text.len() + line.len() > 900 {
+            break;
+        }
+        text = format!("{line}\n{text}");
+    }
+    let text = text.trim_end();
+    (!text.is_empty()).then(|| format!("```\n{text}\n```"))
 }
 
 /// Turns a batch into Discord embeds, at most ten.
 fn embeds(
     batch: &BTreeMap<String, ServerBatch>,
-    names: &impl Fn(&str) -> String,
+    about: &impl Fn(&str) -> About,
+    now: &str,
 ) -> Vec<serde_json::Value> {
     let mut out = Vec::new();
     for (server_id, b) in batch {
-        let name = names(server_id);
+        let about = about(server_id);
+        let name = &about.name;
         let crashed = b.statuses.iter().any(|s| s == "crashed");
         let stopped = b.statuses.iter().position(|s| s == "stopped");
         let running = b.statuses.iter().rposition(|s| s == "running");
+        let join_line = about
+            .address
+            .as_ref()
+            .map(|a| format!("Join at **{a}**"))
+            .unwrap_or_else(|| "Players can join now.".into());
         if crashed {
-            out.push(json!({ "title": format!("{name} crashed"), "description": "It stopped unexpectedly. Check its console for the cause.", "color": COLOR_BAD }));
+            let what = if about.restarts_on_crash {
+                "It stopped unexpectedly; NetherNode is starting it again."
+            } else {
+                "It stopped unexpectedly and wasn't restarted. Its console in the panel has the whole story."
+            };
+            let description = match console_block(&about.console) {
+                Some(block) => format!("{what}\n\nThe last lines it printed:\n{block}"),
+                None => what.to_owned(),
+            };
+            out.push(json!({ "title": format!("💥 {name} crashed"), "description": description, "color": COLOR_BAD }));
         } else {
             match (stopped, running) {
-                (Some(s), Some(r)) if s < r => {
-                    out.push(json!({ "title": format!("{name} restarted"), "color": COLOR_OK }))
-                }
-                (_, Some(_)) => {
-                    out.push(json!({ "title": format!("{name} is online"), "color": COLOR_OK }))
-                }
-                (Some(_), None) => {
-                    out.push(json!({ "title": format!("{name} stopped"), "color": COLOR_MUTED }))
-                }
+                (Some(s), Some(r)) if s < r => out.push(json!({
+                    "title": format!("🔄 {name} restarted"),
+                    "description": join_line,
+                    "fields": server_fields(&about),
+                    "color": COLOR_OK,
+                })),
+                (_, Some(_)) => out.push(json!({
+                    "title": format!("🟢 {name} is online"),
+                    "description": join_line,
+                    "fields": server_fields(&about),
+                    "color": COLOR_OK,
+                })),
+                (Some(_), None) => out.push(json!({
+                    "title": format!("⏹️ {name} stopped"),
+                    "color": COLOR_MUTED,
+                })),
                 (None, None) => {}
             }
         }
         if !b.joined.is_empty() {
             let mut players = b.joined.clone();
-            players.dedup();
-            let list = if players.len() > 10 {
-                format!(
-                    "{} and {} others",
-                    players[..10].join(", "),
-                    players.len() - 10
-                )
+            players.dedup_by(|a, b| a.0 == b.0);
+            let mut embed = if let [(player, uuid)] = players.as_slice() {
+                let mut embed =
+                    json!({ "title": format!("👋 {player} joined {name}"), "color": COLOR_INFO });
+                if let Some(uuid) = uuid.as_deref().filter(|u| is_uuid(u)) {
+                    embed["thumbnail"] =
+                        json!({ "url": format!("{HEADS}/{}/64", uuid.replace('-', "")) });
+                }
+                embed
             } else {
-                players.join(", ")
+                let names: Vec<&str> = players.iter().map(|(n, _)| n.as_str()).collect();
+                let list = if names.len() > 15 {
+                    format!("{} and {} more", names[..15].join(", "), names.len() - 15)
+                } else {
+                    names.join(", ")
+                };
+                json!({ "title": format!("👋 {} players joined {name}", names.len()), "description": list, "color": COLOR_INFO })
             };
-            out.push(json!({ "title": format!("{list} joined {name}"), "color": COLOR_INFO }));
+            embed["timestamp"] = json!(now);
+            out.push(embed);
         }
         for failure in &b.failures {
-            out.push(json!({ "title": format!("{name} backup failed"), "description": truncate(failure, 300), "color": COLOR_BAD }));
+            out.push(json!({ "title": format!("💾 A backup of {name} failed"), "description": truncate(failure, 300), "color": COLOR_BAD }));
         }
         for note in &b.packs {
             out.push(match note {
-                PackNote::Available { pack, version } => json!({ "title": format!("{pack} {version} is available for {name}"), "description": "Update it from the server's Mods tab; a backup is made first.", "color": COLOR_INFO }),
-                PackNote::Updated(message) => json!({ "title": format!("{name}'s modpack was updated"), "description": truncate(message, 300), "color": COLOR_OK }),
-                PackNote::Failed(message) => json!({ "title": format!("{name}'s modpack update failed"), "description": truncate(message, 300), "color": COLOR_BAD }),
+                PackNote::Available { pack, version } => json!({ "title": format!("📦 {pack} {version} is out"), "description": format!("A newer version of {name}'s modpack. Update it from the server's Mods tab; a backup is made first."), "color": COLOR_INFO }),
+                PackNote::Updated(message) => json!({ "title": format!("✅ {name}'s modpack was updated"), "description": truncate(message, 300), "color": COLOR_OK }),
+                PackNote::Failed(message) => json!({ "title": format!("⚠️ {name}'s modpack update failed"), "description": truncate(message, 300), "color": COLOR_BAD }),
             });
+        }
+    }
+    for embed in &mut out {
+        if embed.get("timestamp").is_none() {
+            embed["timestamp"] = json!(now);
         }
     }
     out.truncate(MAX_EMBEDS);
     out
+}
+
+fn is_uuid(s: &str) -> bool {
+    let hex: String = s.chars().filter(|c| *c != '-').collect();
+    hex.len() == 32 && hex.chars().all(|c| c.is_ascii_hexdigit())
 }
 
 fn truncate(s: &str, max: usize) -> String {
@@ -420,14 +559,15 @@ pub fn spawn(state: AppState) {
                 None => {
                     deadline = None;
                     let pending = std::mem::take(&mut batch);
-                    let names = server_names(&state).await;
+                    let abouts = abouts(&state, &pending).await;
                     let lookup = |id: &str| {
-                        names
-                            .get(id)
-                            .cloned()
-                            .unwrap_or_else(|| "A server".to_owned())
+                        abouts.get(id).cloned().unwrap_or_else(|| About {
+                            name: "A server".to_owned(),
+                            ..About::default()
+                        })
                     };
-                    let embeds = embeds(&pending, &lookup);
+                    let now = jiff::Timestamp::now().to_string();
+                    let embeds = embeds(&pending, &lookup, &now);
                     if !embeds.is_empty()
                         && let Err(e) = state.notifier.send(embeds).await
                     {
@@ -439,14 +579,105 @@ pub fn spawn(state: AppState) {
     });
 }
 
-async fn server_names(state: &AppState) -> std::collections::HashMap<String, String> {
-    state
-        .auth
-        .store()
-        .list_servers()
-        .await
-        .map(|servers| servers.into_iter().map(|s| (s.id, s.name)).collect())
-        .unwrap_or_default()
+/// What the batch's messages say about each of its servers.
+async fn abouts(
+    state: &AppState,
+    batch: &BTreeMap<String, ServerBatch>,
+) -> std::collections::HashMap<String, About> {
+    let store = state.auth.store();
+    let servers = store.list_servers().await.unwrap_or_default();
+    let routes = store.list_routes().await.unwrap_or_default();
+    let nodes = store.list_nodes().await.unwrap_or_default();
+    let mut out = std::collections::HashMap::new();
+    for server in servers.into_iter().filter(|s| batch.contains_key(&s.id)) {
+        let exact = routes
+            .iter()
+            .find(|r| r.server_id.as_deref() == Some(&server.id) && !r.hostname.contains('*'))
+            .map(|r| r.hostname.clone());
+        let by_slug = routes
+            .iter()
+            .filter(|r| r.server_id.is_none())
+            .find_map(|r| r.hostname.strip_prefix("*."))
+            .map(|domain| format!("{}.{domain}", server.slug));
+        let machine = (server.node_id != nn_store::LOCAL_NODE)
+            .then(|| nodes.iter().find(|n| n.id == server.node_id))
+            .flatten()
+            .map(|n| n.name.clone());
+        let crashed = batch[&server.id].statuses.iter().any(|s| s == "crashed");
+        let console = match crashed {
+            true => match state
+                .nodes
+                .for_server(&server)
+                .subscribe_logs(&server.id)
+                .await
+            {
+                Ok(logs) => {
+                    let skip = logs.backlog.len().saturating_sub(12);
+                    logs.backlog
+                        .iter()
+                        .skip(skip)
+                        .map(|l| strip_ansi(l))
+                        .collect()
+                }
+                Err(_) => Vec::new(),
+            },
+            false => Vec::new(),
+        };
+        out.insert(
+            server.id.clone(),
+            About {
+                software: software(&server),
+                max_players: server.max_players,
+                address: exact.or(by_slug),
+                machine,
+                restarts_on_crash: server.restart_on_crash,
+                console,
+                name: server.name,
+            },
+        );
+    }
+    out
+}
+
+/// "Paper 1.21.4", or the modpack and its version.
+fn software(server: &nn_store::Server) -> String {
+    if let Some(pack) = crate::modpack_updates::pack_of(server) {
+        return match pack.version_name {
+            Some(v) => format!("{} {v}", pack.title),
+            None => pack.title,
+        };
+    }
+    let loader = match server.loader.as_str() {
+        "neoforge" => "NeoForge".to_owned(),
+        other => {
+            let mut chars = other.chars();
+            chars
+                .next()
+                .map(|c| c.to_uppercase().chain(chars).collect())
+                .unwrap_or_default()
+        }
+    };
+    format!("{loader} {}", server.mc_version)
+}
+
+/// A console line without its color codes.
+fn strip_ansi(line: &str) -> String {
+    let mut out = String::with_capacity(line.len());
+    let mut chars = line.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c != '\u{1b}' {
+            out.push(c);
+        } else if chars.peek() == Some(&'[') {
+            // ESC [ … ends at a letter.
+            chars.next();
+            for c in chars.by_ref() {
+                if c.is_ascii_alphabetic() {
+                    break;
+                }
+            }
+        }
+    }
+    out
 }
 
 /// Adds `event` to the batch if it's wanted. Returns whether it was.
@@ -470,13 +701,13 @@ fn note(batch: &mut BTreeMap<String, ServerBatch>, event: &Event, toggles: Toggl
         Event::PlayerJoined {
             server_id,
             username,
-            ..
+            uuid,
         } if toggles.player_join => {
             batch
                 .entry(server_id.clone())
                 .or_default()
                 .joined
-                .push(username.clone());
+                .push((username.clone(), uuid.clone()));
             true
         }
         Event::FileJobFinished {
@@ -573,19 +804,16 @@ mod tests {
 
     #[test]
     fn batches_read_naturally() {
-        let names = |id: &str| {
-            if id == "a" {
-                "SMP".to_owned()
-            } else {
-                "Creative".to_owned()
-            }
+        let names = |id: &str| About {
+            name: if id == "a" { "SMP" } else { "Creative" }.to_owned(),
+            ..About::default()
         };
         let all = Toggles {
             player_join: true,
             ..Toggles::default()
         };
         let titles = |events: &[Event], toggles| {
-            embeds(&batch_of(events, toggles), &names)
+            embeds(&batch_of(events, toggles), &names, "2026-10-20T12:00:00Z")
                 .into_iter()
                 .map(|e| e["title"].as_str().unwrap().to_owned())
                 .collect::<Vec<_>>()
@@ -600,12 +828,15 @@ mod tests {
                 ],
                 all
             ),
-            ["SMP restarted"]
+            ["🔄 SMP restarted"]
         );
-        assert_eq!(titles(&[status("b", "stopped")], all), ["Creative stopped"]);
+        assert_eq!(
+            titles(&[status("b", "stopped")], all),
+            ["⏹️ Creative stopped"]
+        );
         assert_eq!(
             titles(&[status("a", "running"), status("a", "crashed")], all),
-            ["SMP crashed"]
+            ["💥 SMP crashed"]
         );
         assert_eq!(
             titles(
@@ -616,7 +847,7 @@ mod tests {
                 ],
                 all
             ),
-            ["Steve, Alex joined SMP", "Creative is online"]
+            ["👋 2 players joined SMP", "🟢 Creative is online"]
         );
         // Turned-off events don't appear.
         assert!(titles(&[join("a", "Steve")], Toggles::default()).is_empty());
@@ -632,7 +863,7 @@ mod tests {
             message: "disk full".into(),
             failed: true,
         };
-        assert_eq!(titles(&[failed], all), ["SMP backup failed"]);
+        assert_eq!(titles(&[failed], all), ["💾 A backup of SMP failed"]);
 
         let pack_job = |failed| Event::FileJobFinished {
             server_id: "a".into(),
@@ -649,9 +880,9 @@ mod tests {
         assert_eq!(
             titles(&[available.clone(), pack_job(false), pack_job(true)], all),
             [
-                "Pack 2.0 is available for SMP",
-                "SMP's modpack was updated",
-                "SMP's modpack update failed"
+                "📦 Pack 2.0 is out",
+                "✅ SMP's modpack was updated",
+                "⚠️ SMP's modpack update failed"
             ]
         );
         let off = Toggles {
@@ -659,6 +890,69 @@ mod tests {
             ..Toggles::default()
         };
         assert!(titles(&[available, pack_job(true)], off).is_empty());
+    }
+
+    #[test]
+    fn messages_carry_the_details() {
+        let about = |_: &str| About {
+            name: "SMP".into(),
+            software: "Paper 1.21.4".into(),
+            max_players: 20,
+            address: Some("smp.example.com".into()),
+            machine: Some("Node two".into()),
+            restarts_on_crash: false,
+            console: vec![
+                "\u{1b}[31mjava.lang.OutOfMemoryError\u{1b}[0m".into(),
+                "```".into(),
+            ],
+        };
+        let now = "2026-10-20T12:00:00Z";
+        let online = &embeds(
+            &batch_of(&[status("a", "running")], Toggles::default()),
+            &about,
+            now,
+        )[0];
+        assert_eq!(online["description"], "Join at **smp.example.com**");
+        let fields: Vec<&str> = online["fields"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|f| f["value"].as_str().unwrap())
+            .collect();
+        assert_eq!(fields, ["Paper 1.21.4", "Up to 20", "Node two"]);
+        assert_eq!(online["timestamp"], now);
+
+        let mut about_crash = about("a");
+        about_crash.console = about_crash.console.iter().map(|l| strip_ansi(l)).collect();
+        let crashed = &embeds(
+            &batch_of(&[status("a", "crashed")], Toggles::default()),
+            &|_| about_crash.clone(),
+            now,
+        )[0];
+        let text = crashed["description"].as_str().unwrap();
+        assert!(text.contains("java.lang.OutOfMemoryError\n"), "{text}");
+        assert!(!text.contains('\u{1b}'), "color codes are gone");
+        assert_eq!(
+            text.matches("```").count(),
+            2,
+            "a fence in the console can't end the block: {text}"
+        );
+
+        let all = Toggles {
+            player_join: true,
+            ..Toggles::default()
+        };
+        let joined = Event::PlayerJoined {
+            server_id: "a".into(),
+            username: "Steve".into(),
+            uuid: Some("8667ba71-b85a-4004-af54-457a9734eed7".into()),
+        };
+        let one = &embeds(&batch_of(&[joined], all), &about, now)[0];
+        assert_eq!(one["title"], "👋 Steve joined SMP");
+        assert_eq!(
+            one["thumbnail"]["url"],
+            "https://mc-heads.net/avatar/8667ba71b85a4004af54457a9734eed7/64"
+        );
     }
 
     /// A stand-in for Discord that rate-limits the first request.
@@ -705,7 +999,15 @@ mod tests {
         assert_eq!(seen.len(), 1);
         assert_eq!(
             seen[0]["embeds"][0]["title"],
-            "NetherNode notifications are working"
+            "✅ NetherNode notifications are working"
+        );
+        assert_eq!(seen[0]["avatar_url"], AVATAR);
+        let examples = seen[0]["embeds"].as_array().unwrap();
+        assert!(examples.len() > 1, "examples follow");
+        assert!(
+            examples[1..]
+                .iter()
+                .all(|e| e["footer"]["text"] == "Example")
         );
         assert_eq!(seen[0]["allowed_mentions"]["parse"], json!([]));
         assert!(notifier.status().last_sent_ms.is_some());
