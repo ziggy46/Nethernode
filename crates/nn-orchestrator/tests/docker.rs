@@ -263,3 +263,149 @@ async fn modpack_update_swaps_the_packs_files() {
     wait_for(&store, &id, "stopped", Duration::from_secs(60)).await;
     orch.delete(&id, true).await.unwrap();
 }
+
+/// An HTTP GET of `/` on 127.0.0.1:`port`: the status code, if it answered.
+async fn http_status(port: u16) -> Option<u16> {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let mut stream = tokio::net::TcpStream::connect(("127.0.0.1", port))
+        .await
+        .ok()?;
+    stream
+        .write_all(b"GET / HTTP/1.0\r\nHost: localhost\r\n\r\n")
+        .await
+        .ok()?;
+    let mut head = vec![0u8; 64];
+    let n = stream.read(&mut head).await.ok()?;
+    let line = String::from_utf8_lossy(&head[..n]).to_string();
+    line.split_whitespace().nth(1)?.parse().ok()
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "needs Docker and downloads a Minecraft server and BlueMap"]
+async fn bluemap_module_runs_next_to_its_server() {
+    use nn_orchestrator::modules::{self, Lifecycle};
+    let dir = tempfile::tempdir_in(std::env::current_dir().unwrap()).unwrap();
+    let servers_dir = dir.path().join("servers");
+    let store = Store::open(&dir.path().join("test.db")).await.unwrap();
+    store.migrate().await.unwrap();
+    let events = EventBus::default();
+    let orch = orchestrator(&store, &events, &servers_dir).await;
+    nn_orchestrator::spawn_background(&orch);
+
+    println!("create + start a vanilla server so its world exists");
+    let server = orch
+        .create(CreateServer {
+            name: "NN Module Test".into(),
+            loader: "vanilla".into(),
+            mc_version: "1.21.4".into(),
+            loader_version: None,
+            memory_mb: 1024,
+            card_theme: "end".into(),
+            eula_accepted: true,
+            sleep_when_empty: false,
+            start_after_create: true,
+            slug: None,
+            avoid_ports: Vec::new(),
+            modpack: None,
+        })
+        .await
+        .unwrap();
+    let id = server.id.clone();
+    wait_for(&store, &id, "running", Duration::from_secs(600)).await;
+    orch.stop(&id, false).await.unwrap();
+    wait_for(&store, &id, "stopped", Duration::from_secs(60)).await;
+
+    println!("add BlueMap (started by hand) and start it");
+    let settings = serde_json::json!({ "accept_download": true, "render_threads": 1 });
+    let module = orch
+        .add_module(
+            &id,
+            "bluemap",
+            None,
+            settings.as_object().unwrap(),
+            Some(Lifecycle::Manual),
+            Some(1536),
+        )
+        .await
+        .unwrap();
+    let port = u16::try_from(module.web_port.expect("BlueMap has a web page")).unwrap();
+    orch.start_module(&module.id).await.unwrap();
+    let started = Instant::now();
+    let answered = loop {
+        if let Some(code) = http_status(port).await {
+            break code;
+        }
+        let state = &orch.modules(&id).await.unwrap()[0].1;
+        assert_ne!(
+            state.status,
+            "failed",
+            "BlueMap stopped: {:?}\n{}",
+            state.message,
+            orch.module_logs(&module.id, 80).await.unwrap().join("\n")
+        );
+        assert!(
+            started.elapsed() < Duration::from_secs(600),
+            "BlueMap's web page never answered:\n{}",
+            orch.module_logs(&module.id, 80).await.unwrap().join("\n")
+        );
+        tokio::time::sleep(Duration::from_secs(3)).await;
+    };
+    println!(
+        "  → web page answered {answered} after {:.0?}",
+        started.elapsed()
+    );
+    assert_eq!(answered, 200);
+    let slug = &server.slug;
+    let module_dir = servers_dir.join(slug).join("modules").join("bluemap");
+    let core = std::fs::read_to_string(module_dir.join("config/core.conf")).unwrap();
+    assert!(core.contains("accept-download: true"), "{core}");
+    assert!(
+        module_dir.join("cache/web").exists(),
+        "rendered output goes in the cache"
+    );
+
+    println!("the server joins the modules' network when it starts");
+    orch.start(&id).await.unwrap();
+    wait_for(&store, &id, "running", Duration::from_secs(300)).await;
+    let docker =
+        bollard::Docker::connect_with_socket(SOCKET, 30, bollard::API_DEFAULT_VERSION).unwrap();
+    let network = docker
+        .inspect_network(&modules::network_name(slug), None)
+        .await
+        .expect("the modules' network exists");
+    let members: Vec<String> = network
+        .containers
+        .unwrap_or_default()
+        .values()
+        .filter_map(|c| c.name.clone())
+        .collect();
+    assert!(
+        members.contains(&nn_orchestrator::spec::container_name(slug)),
+        "{members:?}"
+    );
+    assert!(
+        members.contains(&modules::container_name(slug, "bluemap")),
+        "{members:?}"
+    );
+
+    println!("stop the module, then delete the server with everything");
+    orch.stop_module(&module.id).await.unwrap();
+    assert_eq!(orch.modules(&id).await.unwrap()[0].1.status, "stopped");
+    orch.stop(&id, false).await.unwrap();
+    wait_for(&store, &id, "stopped", Duration::from_secs(60)).await;
+    orch.delete(&id, true).await.unwrap();
+    assert!(
+        docker
+            .inspect_container(&modules::container_name(slug, "bluemap"), None)
+            .await
+            .is_err(),
+        "the module's container is gone"
+    );
+    assert!(
+        docker
+            .inspect_network(&modules::network_name(slug), None)
+            .await
+            .is_err(),
+        "the network is gone"
+    );
+}

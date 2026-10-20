@@ -133,6 +133,10 @@ pub struct DockerConfig {
     pub port_range_start: u16,
     /// Last host port handed to servers.
     pub port_range_end: u16,
+    /// First host port handed to modules' web pages.
+    pub module_port_range_start: u16,
+    /// Last host port handed to modules' web pages.
+    pub module_port_range_end: u16,
     /// Container memory beyond each server's Java heap, in percent.
     pub memory_overhead_percent: u32,
     /// Container memory beyond each server's Java heap, at least, in MiB.
@@ -153,6 +157,8 @@ impl Default for DockerConfig {
             socket: "unix:///var/run/docker.sock".into(),
             port_range_start: 30000,
             port_range_end: 30999,
+            module_port_range_start: 8100,
+            module_port_range_end: 8199,
             memory_overhead_percent: 25,
             memory_overhead_min_mb: 1024,
             backend_ip: std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),

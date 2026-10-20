@@ -15,11 +15,12 @@ use std::time::Duration;
 use nn_events::EventBus;
 use nn_files::{FileError, ServerFiles};
 
+use nn_orchestrator::modules::{Lifecycle, ModuleState};
 use nn_orchestrator::{
     BeforeStart, CreateServer, HostInfo, Orchestrator, OrchestratorError, Players, StatSample,
 };
 use nn_players::{MgmtClient, MgmtError};
-use nn_store::{LOCAL_NODE, Server, ServerSettings, Store};
+use nn_store::{LOCAL_NODE, Module, Server, ServerSettings, Store};
 use tokio::sync::broadcast;
 
 use crate::protocol::Request;
@@ -164,6 +165,8 @@ impl LocalNode {
         }
     }
 }
+
+const MODULES_NOT_YET: &str = "Modules run on the panel's own machine only for now.";
 
 /// A machine that runs servers.
 #[derive(Clone)]
@@ -465,6 +468,83 @@ impl Node {
             )),
             Self::Remote(node) => node.connect(id).await,
         }
+    }
+
+    // ----- modules -----
+
+    /// A server's modules and what each is doing.
+    pub async fn modules(&self, server_id: &str) -> Result<Vec<(Module, ModuleState)>> {
+        let local = self.as_local(MODULES_NOT_YET)?;
+        Ok(local.orchestrator()?.modules(server_id).await?)
+    }
+
+    /// Adds a module to a server (see [`Orchestrator::add_module`]).
+    pub async fn add_module(
+        &self,
+        server_id: &str,
+        template: &str,
+        name: Option<&str>,
+        settings: &serde_json::Map<String, serde_json::Value>,
+        lifecycle: Option<Lifecycle>,
+        memory_mb: Option<i64>,
+    ) -> Result<Module> {
+        let local = self.as_local(MODULES_NOT_YET)?;
+        Ok(local
+            .orchestrator()?
+            .add_module(server_id, template, name, settings, lifecycle, memory_mb)
+            .await?)
+    }
+
+    /// Changes a module's settings; a running one restarts with them.
+    pub async fn update_module(
+        &self,
+        id: &str,
+        settings: &serde_json::Map<String, serde_json::Value>,
+        lifecycle: Lifecycle,
+        memory_mb: i64,
+    ) -> Result<Module> {
+        let local = self.as_local(MODULES_NOT_YET)?;
+        Ok(local
+            .orchestrator()?
+            .update_module(id, settings, lifecycle, memory_mb)
+            .await?)
+    }
+
+    /// Starts a module.
+    pub async fn start_module(&self, id: &str) -> Result<()> {
+        let local = self.as_local(MODULES_NOT_YET)?;
+        Ok(local.orchestrator()?.start_module(id).await?)
+    }
+
+    /// Stops a module.
+    pub async fn stop_module(&self, id: &str) -> Result<()> {
+        let local = self.as_local(MODULES_NOT_YET)?;
+        Ok(local.orchestrator()?.stop_module(id).await?)
+    }
+
+    /// Removes a module, and with `delete_files` its folder.
+    pub async fn remove_module(&self, id: &str, delete_files: bool) -> Result<()> {
+        let local = self.as_local(MODULES_NOT_YET)?;
+        Ok(local
+            .orchestrator()?
+            .remove_module(id, delete_files)
+            .await?)
+    }
+
+    /// The last lines a module printed.
+    pub async fn module_logs(&self, id: &str, lines: usize) -> Result<Vec<String>> {
+        let local = self.as_local(MODULES_NOT_YET)?;
+        Ok(local.orchestrator()?.module_logs(id, lines).await?)
+    }
+
+    /// Where a module's web page is published (`http://<ip>:<port>`).
+    pub fn module_address(&self, port: i64) -> Option<String> {
+        let local = self.as_local(MODULES_NOT_YET).ok()?;
+        let ip = local.orchestrator().ok()?.backend_ip();
+        Some(format!(
+            "http://{}",
+            std::net::SocketAddr::new(ip, u16::try_from(port).ok()?)
+        ))
     }
 
     // ----- settings pushed from the panel -----

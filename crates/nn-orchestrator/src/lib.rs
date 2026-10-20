@@ -9,6 +9,7 @@ mod error;
 pub mod host_path;
 pub mod java;
 mod lifecycle;
+pub mod modules;
 mod monitor;
 pub mod ports;
 pub mod properties;

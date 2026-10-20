@@ -33,6 +33,7 @@ import { BackupsPanel } from "../backups/backups-panel";
 import { useBackUpNow } from "../backups/use-back-up";
 import { ConsolePanel } from "../console/console-panel";
 import { FilesPanel } from "../files/files-panel";
+import { ModulesPanel } from "../modules/modules-panel";
 import { hasMods, ModsPanel } from "../mods/mods-panel";
 import { PlayersPanel } from "../players/players-panel";
 import { ConfigurationTab } from "./configuration-tab";
@@ -117,6 +118,7 @@ export function ServerPage({ id }: { id: string }) {
             ["files", "Files"],
             ["configuration", "Configuration"],
             ["backups", "Backups"],
+            ["modules", "Modules"],
           ].map(([value, label]) => (
             <Tabs.Trigger
               key={value}
@@ -146,6 +148,9 @@ export function ServerPage({ id }: { id: string }) {
         </Tabs.Content>
         <Tabs.Content value="backups">
           <BackupsPanel server={s} />
+        </Tabs.Content>
+        <Tabs.Content value="modules">
+          <ModulesPanel server={s} />
         </Tabs.Content>
       </Tabs.Root>
     </>

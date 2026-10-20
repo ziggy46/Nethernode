@@ -64,6 +64,8 @@ pub struct OrchestratorConfig {
     /// NetherNode shares the host's network, the Docker bridge gateway
     /// (e.g. 172.17.0.1) when it runs in a bridge-networked container.
     pub backend_ip: std::net::IpAddr,
+    /// Host ports for modules' web pages (published like game ports).
+    pub module_port_range: RangeInclusive<u16>,
 }
 
 impl OrchestratorConfig {
@@ -80,6 +82,7 @@ impl OrchestratorConfig {
             run_as: default_run_as(),
             host_servers_dir: None,
             backend_ip: std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
+            module_port_range: 8100..=8199,
         }
     }
 }
@@ -160,7 +163,9 @@ pub struct Orchestrator {
     pub(crate) secrets: Arc<SecretBox>,
     pub(crate) config: OrchestratorConfig,
     runtimes: Mutex<HashMap<String, Arc<Runtime>>>,
-    create_lock: tokio::sync::Mutex<()>,
+    pub(crate) create_lock: tokio::sync::Mutex<()>,
+    /// One lock per module, held while it's started, stopped or changed.
+    pub(crate) module_locks: Mutex<HashMap<String, Arc<tokio::sync::Mutex<()>>>>,
     before_start: std::sync::OnceLock<Arc<dyn BeforeStart>>,
     /// The admin's CurseForge API key, for CurseForge modpacks.
     curseforge_key: std::sync::RwLock<Option<String>>,
@@ -221,6 +226,7 @@ impl Orchestrator {
             config,
             runtimes: Mutex::new(HashMap::new()),
             create_lock: tokio::sync::Mutex::new(()),
+            module_locks: Mutex::new(HashMap::new()),
             before_start: std::sync::OnceLock::new(),
             curseforge_key: std::sync::RwLock::new(None),
         }))
@@ -881,6 +887,7 @@ impl Orchestrator {
         let result = async {
             let container = self.ensure_container(&server).await?;
             let server = self.load(id).await?;
+            self.connect_modules(&server, &container).await;
             self.write_management_properties(&server).await?;
             if let Some(hook) = self.before_start.get() {
                 hook.before_start(&server).await;
@@ -1037,6 +1044,8 @@ impl Orchestrator {
         {
             return Err(e.into());
         }
+        // Its module records go with it, so their containers go first.
+        self.remove_server_modules(&server).await?;
         self.store.delete_server(id).await?;
         self.runtimes
             .lock()
@@ -1162,7 +1171,7 @@ impl Orchestrator {
     }
 
     /// A server's data directory, refusing anything outside `servers_dir`.
-    fn server_dir(&self, slug: &str) -> Result<PathBuf> {
+    pub(crate) fn server_dir(&self, slug: &str) -> Result<PathBuf> {
         if slug.is_empty()
             || !slug
                 .bytes()

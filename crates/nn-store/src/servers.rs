@@ -444,12 +444,14 @@ impl Store {
         Ok(())
     }
 
-    /// Every host port assigned to a server (game and RCON).
+    /// Every host port in use: servers' game, RCON and management ports, and
+    /// modules' web pages.
     pub async fn used_ports(&self) -> Result<Vec<i64>> {
         let rows = sqlx::query!(
             r#"SELECT internal_port AS "port!: i64" FROM servers
                UNION SELECT rcon_port AS "port!: i64" FROM servers WHERE rcon_port IS NOT NULL
-               UNION SELECT mgmt_port AS "port!: i64" FROM servers WHERE mgmt_port IS NOT NULL"#
+               UNION SELECT mgmt_port AS "port!: i64" FROM servers WHERE mgmt_port IS NOT NULL
+               UNION SELECT web_port AS "port!: i64" FROM server_modules WHERE web_port IS NOT NULL"#
         )
         .fetch_all(self.pool())
         .await?;

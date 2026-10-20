@@ -17,6 +17,7 @@ use sqlx::sqlite::{
 
 pub mod audit;
 pub mod backups;
+pub mod modules;
 pub mod nodes;
 pub mod player_admin;
 pub mod players;
@@ -31,6 +32,7 @@ pub mod users;
 
 pub use audit::{AuditEntry, AuditFilter, NewAuditEntry};
 pub use backups::{Backup, Schedule, ScheduleInput};
+pub use modules::{Module, NewModule};
 pub use nodes::{LOCAL_NODE, Node};
 pub use player_admin::{CachedProfile, NewPlayerBan, PlayerBan, PlayerSummary};
 pub use players::{NewPlayerSession, PlayerSession};

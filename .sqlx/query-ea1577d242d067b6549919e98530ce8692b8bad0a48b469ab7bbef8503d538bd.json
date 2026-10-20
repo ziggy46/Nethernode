@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT web_port AS \"port!: i64\" FROM server_modules WHERE web_port IS NOT NULL",
+  "describe": {
+    "columns": [
+      {
+        "name": "port!: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "server_modules",
+            "name": "web_port"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "ea1577d242d067b6549919e98530ce8692b8bad0a48b469ab7bbef8503d538bd"
+}

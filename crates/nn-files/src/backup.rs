@@ -33,6 +33,16 @@ pub const REGENERATED: &[&str] = &[
     TRASH_DIR,
 ];
 
+/// Whether `name` in `dir` is a module's cache, `modules/<module>/cache`:
+/// what the module makes again on its own (a web map's rendered tiles).
+fn is_module_cache(dir: &std::path::Path, name: &str) -> bool {
+    let mut parts = dir.components().map(|c| c.as_os_str());
+    name == "cache"
+        && parts.next().is_some_and(|p| p == "modules")
+        && parts.next().is_some()
+        && parts.next().is_none()
+}
+
 /// zstd level: fast, and still small for worlds.
 const LEVEL: i32 = 3;
 
@@ -79,6 +89,9 @@ impl ServerFiles {
                 if dir.as_os_str() == "."
                     && (REGENERATED.contains(&name.as_str()) || leave_out.contains(&name))
                 {
+                    continue;
+                }
+                if is_module_cache(&dir, &name) {
                     continue;
                 }
                 let path = if dir.as_os_str() == "." {
@@ -360,6 +373,33 @@ mod tests {
         assert_eq!(std::fs::read(out.join("mods/a.jar")).unwrap(), b"jar");
         assert!(!out.join("libraries").exists());
         assert!(!out.join("world/escape").exists());
+    }
+
+    #[test]
+    fn module_caches_are_left_out() {
+        let tmp = tempfile::tempdir().unwrap();
+        let files = server(tmp.path());
+        let root = tmp.path().join("smp");
+        std::fs::create_dir_all(root.join("modules/bluemap/config")).unwrap();
+        std::fs::create_dir_all(root.join("modules/bluemap/cache/web/maps")).unwrap();
+        std::fs::create_dir_all(root.join("world/cache")).unwrap();
+        std::fs::write(root.join("modules/bluemap/config/core.conf"), b"kept").unwrap();
+        std::fs::write(
+            root.join("modules/bluemap/cache/web/maps/tile"),
+            b"made again",
+        )
+        .unwrap();
+        std::fs::write(root.join("world/cache/x"), b"a world's own folder").unwrap();
+        let (_, report) = files.backup_to(Vec::new(), &mut |_, _| {}).unwrap();
+        // The four from `server`, the module's config, and world/cache/x.
+        assert_eq!(report.files, 6);
+        assert!(is_module_cache(Path::new("modules/bluemap"), "cache"));
+        assert!(!is_module_cache(Path::new("modules"), "cache"));
+        assert!(!is_module_cache(
+            Path::new("modules/bluemap/config"),
+            "cache"
+        ));
+        assert!(!is_module_cache(Path::new("world"), "cache"));
     }
 
     #[test]

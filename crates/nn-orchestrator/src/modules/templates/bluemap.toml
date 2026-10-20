@@ -1,0 +1,74 @@
+# BlueMap: a 3D map of the world, rendered from its region files and shown
+# in the browser. https://bluemap.bluecolored.de/
+id = "bluemap"
+name = "BlueMap"
+description = "A 3D map of the world in your browser, kept up to date as the world changes."
+version = "5.29"
+image = "ghcr.io/bluemap-minecraft/bluemap@sha256:bb49bfdef996c6fd9cf68c8c6a2b79189e6711fa90ae4d43cf22d81a6811301e"
+# Render, keep rendering changes, and serve the web page.
+command = ["-r", "-u", "-w"]
+# The map stays up while the server sleeps.
+lifecycle = "always"
+memory_mb = 2048
+notes = "Overworld, Nether and End maps are made for vanilla, Fabric and Forge worlds. On Paper and Purpur the Nether and End are kept in separate folders, so only the Overworld map has anything in it. The first render can take a while and uses a lot of CPU."
+
+[web]
+port = 8100
+
+[env]
+# The heap follows the container's memory limit.
+JAVA_TOOL_OPTIONS = "-XX:MaxRAMPercentage=75"
+
+[[mounts]]
+source = "server:{{server.world}}"
+target = "/app/world"
+read_only = true
+
+[[mounts]]
+source = "module:config"
+target = "/app/config"
+
+[[mounts]]
+source = "cache:data"
+target = "/app/data"
+
+[[mounts]]
+source = "cache:web"
+target = "/app/web"
+
+# NetherNode keeps this file in step with the settings; BlueMap writes its
+# other config files itself the first time it starts.
+[[files]]
+path = "config/core.conf"
+content = """
+# Written by NetherNode from the module's settings; changes here are replaced.
+accept-download: {{setting.accept_download}}
+data: "data"
+render-thread-count: {{setting.render_threads}}
+update-cooldown: 60
+full-update-interval: 1440
+region-file-check-interval: 5
+scan-for-mod-resources: true
+metrics: false
+log: {
+  file: "data/logs/debug.log"
+  append: false
+}
+"""
+
+[[settings]]
+key = "accept_download"
+label = "Download Minecraft's textures from Mojang"
+help = "BlueMap draws the map with the game's own textures, downloaded from Mojang under the Minecraft EULA. It can't run without them."
+kind = "boolean"
+default = false
+required = true
+
+[[settings]]
+key = "render_threads"
+label = "Render threads"
+help = "More renders faster and uses more CPU while it does."
+kind = "number"
+default = 1
+min = 1
+max = 8

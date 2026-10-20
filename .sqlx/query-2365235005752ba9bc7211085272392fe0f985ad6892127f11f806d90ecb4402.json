@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO server_modules (id, server_id, template, name, settings_json, lifecycle,\n                                         memory_mb, web_port, created_at, updated_at)\n             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?9)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 9
+    },
+    "nullable": []
+  },
+  "hash": "2365235005752ba9bc7211085272392fe0f985ad6892127f11f806d90ecb4402"
+}

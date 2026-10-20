@@ -26,6 +26,7 @@ pub fn spawn_background(orch: &Arc<Orchestrator>) -> tokio::task::JoinHandle<()>
             tracing::error!(%error, "initial reconciliation failed");
         }
         auto_start(&orch).await;
+        crate::modules::spawn(&orch);
         let mut backoff = Duration::from_secs(1);
         loop {
             follow_events(&orch).await;

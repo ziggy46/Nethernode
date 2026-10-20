@@ -352,6 +352,8 @@ async fn start_orchestrator(
     let dir_for_node = dir.clone();
     let mut orch_config = OrchestratorConfig::new(dir);
     orch_config.port_range = config.docker.port_range_start..=config.docker.port_range_end;
+    orch_config.module_port_range =
+        config.docker.module_port_range_start..=config.docker.module_port_range_end;
     orch_config.memory_overhead_percent = config.docker.memory_overhead_percent;
     orch_config.memory_overhead_min_mb = config.docker.memory_overhead_min_mb;
     orch_config.backend_ip = config.docker.backend_ip;

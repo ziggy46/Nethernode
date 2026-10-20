@@ -50,6 +50,17 @@ pub(crate) async fn start_move(
             "Stop the server before moving it.",
         ));
     }
+    // Modules run on the panel's own machine only, for now.
+    if !store
+        .list_modules(Some(&server.id))
+        .await
+        .map_err(store_error)?
+        .is_empty()
+    {
+        return Err(ConnectError::failed_precondition(
+            "Remove the server's modules before moving it: modules run on the panel's own machine only for now.",
+        ));
+    }
     let moving = state
         .nodes
         .begin_move(&server.id)

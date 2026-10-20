@@ -1,0 +1,163 @@
+syntax = "proto3";
+
+package nethernode.v1;
+
+// Modules: helper containers that run next to a server, made from
+// templates that come with NetherNode (BlueMap, a 3D web map, for one).
+// Each has its own folder in the server's (modules/<name>/), and joins a
+// private network with the server. Administrators and owners. Modules run
+// on the panel's own machine only for now.
+service ModuleService {
+  // The kinds of module there are.
+  rpc ListModuleTemplates(ListModuleTemplatesRequest) returns (ListModuleTemplatesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // A server's modules and what each is doing.
+  rpc ListModules(ListModulesRequest) returns (ListModulesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Adds a module. It starts in the background if its lifecycle says it
+  // should be running now.
+  rpc AddModule(AddModuleRequest) returns (AddModuleResponse);
+  // Changes a module's settings; a running one restarts with them.
+  rpc UpdateModule(UpdateModuleRequest) returns (UpdateModuleResponse);
+  // Starts a module (downloading its image the first time).
+  rpc StartModule(StartModuleRequest) returns (StartModuleResponse);
+  rpc StopModule(StopModuleRequest) returns (StopModuleResponse);
+  // Removes a module's container and record, and its folder if asked.
+  rpc RemoveModule(RemoveModuleRequest) returns (RemoveModuleResponse);
+  // What a module printed last.
+  rpc GetModuleLogs(GetModuleLogsRequest) returns (GetModuleLogsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+// One field of a module's settings form.
+message ModuleSetting {
+  string key = 1;
+  string label = 2;
+  string help = 3;
+  // boolean, number, text, or choice.
+  string kind = 4;
+  // The default, as JSON.
+  string default_json = 5;
+  // A boolean that must be on, or text that can't be empty.
+  bool required = 6;
+  optional int64 min = 7;
+  optional int64 max = 8;
+  repeated string choices = 9;
+}
+
+message ModuleTemplate {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  // The software's version.
+  string version = 4;
+  // The image, pinned by digest.
+  string image = 5;
+  // with-server, always, or manual: how new ones run.
+  string lifecycle = 6;
+  uint32 memory_mb = 7;
+  // It has a web page.
+  bool has_web = 8;
+  // Anything to know before adding one.
+  string notes = 9;
+  repeated ModuleSetting settings = 10;
+}
+
+message Module {
+  string id = 1;
+  string server_id = 2;
+  string template = 3;
+  // Its folder (modules/<name>) and container name.
+  string name = 4;
+  // Its settings, as a JSON object.
+  string settings_json = 5;
+  // with-server: runs while the server runs (and stops when it sleeps);
+  // always: all the time; manual: only when started by hand.
+  string lifecycle = 6;
+  uint32 memory_mb = 7;
+  // Where its web page is published, like http://127.0.0.1:8100; reachable
+  // from the machine NetherNode runs on.
+  string web_address = 8;
+  // running, stopped, failed, or absent (not started yet).
+  string status = 9;
+  // Why it failed.
+  string message = 10;
+}
+
+message ListModuleTemplatesRequest {}
+
+message ListModuleTemplatesResponse {
+  repeated ModuleTemplate templates = 1;
+}
+
+message ListModulesRequest {
+  string server_id = 1;
+}
+
+message ListModulesResponse {
+  repeated Module modules = 1;
+  // Why this server can't have modules (it's on another machine, or Docker
+  // isn't reachable); empty when it can.
+  string unavailable = 2;
+}
+
+message AddModuleRequest {
+  string server_id = 1;
+  string template = 2;
+  // Empty: the template's ID.
+  string name = 3;
+  // Settings as a JSON object; missing ones take their defaults.
+  string settings_json = 4;
+  // Empty: the template's.
+  string lifecycle = 5;
+  // 0: the template's.
+  uint32 memory_mb = 6;
+}
+
+message AddModuleResponse {
+  Module module = 1;
+}
+
+message UpdateModuleRequest {
+  string id = 1;
+  string settings_json = 2;
+  string lifecycle = 3;
+  uint32 memory_mb = 4;
+}
+
+message UpdateModuleResponse {
+  Module module = 1;
+}
+
+message StartModuleRequest {
+  string id = 1;
+}
+
+message StartModuleResponse {}
+
+message StopModuleRequest {
+  string id = 1;
+}
+
+message StopModuleResponse {}
+
+message RemoveModuleRequest {
+  string id = 1;
+  // Also delete its folder (settings and what it made).
+  bool delete_files = 2;
+}
+
+message RemoveModuleResponse {}
+
+message GetModuleLogsRequest {
+  string id = 1;
+  // How many lines from the end (default 200, at most 2000).
+  uint32 lines = 2;
+}
+
+message GetModuleLogsResponse {
+  repeated string lines = 1;
+}
