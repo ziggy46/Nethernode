@@ -78,7 +78,11 @@ fn curseforge_key(state: &AppState, pack: &Modpack) -> Result<Option<String>, St
     }
     match state.content.curseforge_key() {
         Some(key) if !pack.project_id.is_empty() => Ok(Some(key)),
-        _ => Err(NO_CURSEFORGE_KEY.to_owned()),
+        Some(_) => Err(
+            "This pack was added before there was a CurseForge API key, so its versions can't be looked up."
+                .to_owned(),
+        ),
+        None => Err(NO_CURSEFORGE_KEY.to_owned()),
     }
 }
 
