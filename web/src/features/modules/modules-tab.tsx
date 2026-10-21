@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import { ErrorAlert, Field, Select } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
+import { CloudflareService } from "@/gen/nethernode/v1/cloudflare_pb";
 import {
   type Module,
   ModuleService,
@@ -42,10 +43,12 @@ import {
 import type { Server } from "@/gen/nethernode/v1/servers_pb";
 import { errorMessage, transport } from "@/lib/api";
 
+import { cloudflareKey } from "../cloudflare/queries";
 import { routesQuery } from "../proxy/queries";
 import { serverAddresses, siteAddresses, siteError } from "./site";
 
 const client = createClient(ModuleService, transport);
+const cloudflareClient = createClient(CloudflareService, transport);
 const modulesKey = (serverId: string) => ["modules", serverId] as const;
 const templatesKey = ["module-templates"] as const;
 
@@ -585,6 +588,17 @@ function SiteDialog({
   const [open, setOpen] = useState(module.webPublic);
   const error = siteError(host);
   const preview = siteAddresses(host, serverAddresses(server, routes.data ?? []));
+  // Only owners and administrators can see this; others get the manual steps.
+  const cloudflare = useQuery({
+    queryKey: cloudflareKey,
+    queryFn: () => cloudflareClient.getCloudflare({}),
+    retry: false,
+  }).data;
+  const managed =
+    cloudflare?.connected &&
+    cloudflare.dns &&
+    preview.length > 0 &&
+    preview.every((a) => cloudflare.zones.some((z) => a === z || a.endsWith(`.${z}`)));
   const save = useMutation({
     mutationFn: () => client.setModuleSite({ id: module.id, webHost: host.trim(), webPublic: open }),
     onSuccess: () => {
@@ -642,9 +656,9 @@ function SiteDialog({
             <Switch id={id} checked={open} onCheckedChange={setOpen} />
           </div>
           <p className="mb-4 rounded-md border border-info/25 bg-info-subtle px-3 py-2 text-meta text-text-secondary">
-            For the address to reach NetherNode, point its DNS where the panel's address points, and if a
-            reverse proxy (like Pangolin) is in front of the panel, add the name there too, sent to
-            NetherNode.
+            {managed
+              ? "Cloudflare is connected: NetherNode adds this address to its tunnel and DNS when it's open, with HTTPS, and removes it when it isn't."
+              : "For the address to reach NetherNode, point its DNS where the panel's address points, and if a reverse proxy (like Pangolin) is in front of the panel, add the name there too, sent to NetherNode. Or connect Cloudflare in Settings and NetherNode does it."}
           </p>
           {save.error && <ErrorAlert>{errorMessage(save.error)}</ErrorAlert>}
           <DialogFooter>

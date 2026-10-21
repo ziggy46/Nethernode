@@ -543,6 +543,24 @@ impl Node {
         Ok(local.orchestrator()?.module_logs(id, lines).await?)
     }
 
+    /// Runs the Cloudflare Tunnel connector (this machine only).
+    pub async fn run_tunnel(&self, token: &str) -> Result<()> {
+        let local = self.as_local("The Cloudflare Tunnel runs on the panel's own machine.")?;
+        Ok(local.orchestrator()?.run_tunnel(token).await?)
+    }
+
+    /// Removes the Cloudflare Tunnel connector.
+    pub async fn stop_tunnel(&self) -> Result<()> {
+        let local = self.as_local("The Cloudflare Tunnel runs on the panel's own machine.")?;
+        Ok(local.orchestrator()?.stop_tunnel().await?)
+    }
+
+    /// What the Cloudflare Tunnel connector is doing.
+    pub async fn tunnel_state(&self) -> Result<ModuleState> {
+        let local = self.as_local("The Cloudflare Tunnel runs on the panel's own machine.")?;
+        Ok(local.orchestrator()?.tunnel_state().await)
+    }
+
     /// Where a module's web page is published (`http://<ip>:<port>`).
     pub fn module_address(&self, port: i64) -> Option<String> {
         let local = self.as_local(MODULES_NOT_YET).ok()?;

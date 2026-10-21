@@ -18,6 +18,7 @@ pub mod runtime;
 pub mod self_update;
 pub mod spec;
 pub mod ticks;
+pub mod tunnel;
 mod watcher;
 
 pub use error::{OrchestratorError, Result};

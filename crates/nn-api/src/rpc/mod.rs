@@ -10,8 +10,8 @@ use crate::AppState;
 use crate::middleware::CurrentUser;
 use crate::proto::nethernode::v1::{
     AccountServiceExt, AuditServiceExt, AuthServiceExt, BackupServiceExt, CatalogServiceExt,
-    FileServiceExt, InstallCountServiceExt, ModServiceExt, ModuleServiceExt, NodeServiceExt,
-    NotificationServiceExt, PlayerServiceExt, ProxyServiceExt, ScheduleServiceExt,
+    CloudflareServiceExt, FileServiceExt, InstallCountServiceExt, ModServiceExt, ModuleServiceExt,
+    NodeServiceExt, NotificationServiceExt, PlayerServiceExt, ProxyServiceExt, ScheduleServiceExt,
     ServerServiceExt, UserServiceExt,
 };
 
@@ -20,6 +20,7 @@ mod audit;
 mod auth;
 pub(crate) mod backups;
 pub(crate) mod catalog;
+mod cloudflare;
 mod files;
 mod install_count;
 pub(crate) mod mods;
@@ -43,6 +44,7 @@ pub(crate) fn register(router: ConnectRouter, state: &AppState) -> ConnectRouter
     let router = Arc::new(files::FileRpc::new(state.clone())).register(router);
     let router = Arc::new(players::PlayerRpc::new(state.clone())).register(router);
     let router = Arc::new(catalog::CatalogRpc::new(state.clone())).register(router);
+    let router = Arc::new(cloudflare::CloudflareRpc::new(state.clone())).register(router);
     let router = Arc::new(mods::ModRpc::new(state.clone())).register(router);
     let router = Arc::new(modules::ModuleRpc::new(state.clone())).register(router);
     let router = Arc::new(backups::BackupRpc::new(state.clone())).register(router);

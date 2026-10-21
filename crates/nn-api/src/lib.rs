@@ -32,6 +32,7 @@ use tower_http::trace::TraceLayer;
 pub mod agents;
 pub mod backups;
 pub mod cache;
+pub mod cloudflare;
 mod console;
 pub mod content;
 mod cookies;
@@ -106,6 +107,11 @@ pub struct ApiConfig {
     /// client IP. Enable only behind a reverse proxy or Cloudflare Tunnel;
     /// otherwise clients can spoof their IP and dodge rate limiting.
     pub trust_proxy_headers: bool,
+    /// The panel's own web port, where a Cloudflare Tunnel sends visitors
+    /// (0: 8080).
+    pub panel_port: u16,
+    /// Cloudflare's API (empty: the real one; tests point it elsewhere).
+    pub cloudflare_api: String,
 }
 
 /// Shared state for handlers and middleware.

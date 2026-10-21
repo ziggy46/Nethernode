@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+package nethernode.v1;
+
+// Cloudflare, managed by NetherNode: with an API token it makes a Cloudflare
+// Tunnel, runs its connector, and keeps the tunnel's routes and the DNS
+// records for modules' own addresses (map.mc1.example.com) in step with
+// what's open. Minecraft connections don't use it. Owners and
+// administrators.
+service CloudflareService {
+  rpc GetCloudflare(GetCloudflareRequest) returns (GetCloudflareResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Checks the token (it needs Account › Cloudflare Tunnel › Edit, Zone ›
+  // Zone › Read and Zone › DNS › Edit), makes the tunnel and starts its
+  // connector. DNS stays as it is until turned on.
+  rpc ConnectCloudflare(ConnectCloudflareRequest) returns (ConnectCloudflareResponse);
+  // What turning DNS management on would change now. Changes nothing.
+  rpc PreviewCloudflare(PreviewCloudflareRequest) returns (PreviewCloudflareResponse);
+  // Turns keeping DNS and the tunnel's routes in step on (applying the
+  // changes now) or off (removing what NetherNode added).
+  rpc SetCloudflareDns(SetCloudflareDnsRequest) returns (SetCloudflareDnsResponse);
+  // Removes what NetherNode added in DNS, the tunnel and its connector, and
+  // forgets the token.
+  rpc DisconnectCloudflare(DisconnectCloudflareRequest) returns (DisconnectCloudflareResponse);
+}
+
+message GetCloudflareRequest {}
+
+message GetCloudflareResponse {
+  bool connected = 1;
+  // The end of the token, to recognize it by.
+  string token_hint = 2;
+  string account_name = 3;
+  string tunnel_id = 4;
+  // The connector: running, stopped, failed, or absent.
+  string connector_status = 5;
+  string connector_message = 6;
+  // DNS records and the tunnel's routes are kept in step.
+  bool dns = 7;
+  // Domains the token can manage.
+  repeated string zones = 8;
+  // Addresses leading to the tunnel.
+  repeated string routed = 9;
+  // Why some addresses can't (records NetherNode didn't make).
+  repeated string conflicts = 10;
+  // Open addresses outside those domains, set up by hand.
+  repeated string outside = 11;
+  // The last changes made, described.
+  repeated string changes = 12;
+  string last_error = 13;
+  optional int64 last_sync_ms = 14;
+}
+
+message ConnectCloudflareRequest {
+  string token = 1;
+}
+
+message ConnectCloudflareResponse {}
+
+message PreviewCloudflareRequest {}
+
+message PreviewCloudflareResponse {
+  // The changes turning DNS management on would make now.
+  repeated string changes = 1;
+  repeated string conflicts = 2;
+}
+
+message SetCloudflareDnsRequest {
+  bool enabled = 1;
+}
+
+message SetCloudflareDnsResponse {
+  repeated string changes = 1;
+}
+
+message DisconnectCloudflareRequest {}
+
+message DisconnectCloudflareResponse {}

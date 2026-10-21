@@ -165,6 +165,8 @@ async fn serve(config: Config) -> Result<()> {
         config: Arc::new(ApiConfig {
             secure_cookies: config.http.secure_cookies.into(),
             trust_proxy_headers: config.http.trust_proxy_headers,
+            panel_port: config.http.bind.port(),
+            cloudflare_api: String::new(),
         }),
         metrics: Some(metrics),
         shutdown: shutdown_rx.clone(),
@@ -190,6 +192,7 @@ async fn serve(config: Config) -> Result<()> {
     nn_api::cache::spawn_sweeper(state.clone());
     nn_api::spawn_trash_cleanup(state.clone());
     nn_api::module_sites::spawn_refresher(state.clone());
+    nn_api::cloudflare::spawn(state.clone());
     nn_api::stats_history::spawn_recorder(state.clone());
     let app = nn_api::router(state);
 

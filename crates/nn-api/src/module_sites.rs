@@ -123,7 +123,20 @@ pub async fn refresh(state: &AppState) {
             table.entry(address).or_insert_with(|| target.clone());
         }
     }
-    *SITES.write().unwrap_or_else(|e| e.into_inner()) = table;
+    let changed = {
+        let mut current = SITES.write().unwrap_or_else(|e| e.into_inner());
+        let mut before: Vec<&String> = current.keys().collect();
+        let mut after: Vec<&String> = table.keys().collect();
+        before.sort();
+        after.sort();
+        let changed = before != after;
+        *current = table;
+        changed
+    };
+    // Cloudflare follows which addresses are open.
+    if changed {
+        crate::cloudflare::nudge(state);
+    }
 }
 
 /// Keeps the table current as servers' addresses change.

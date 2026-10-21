@@ -1,5 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Bell, Box, ChartNoAxesColumn, Globe, HardDrive, LogOut, Palette, UserRound } from "lucide-react";
+import {
+  Bell,
+  Box,
+  ChartNoAxesColumn,
+  Cloud,
+  Globe,
+  HardDrive,
+  LogOut,
+  Palette,
+  UserRound,
+} from "lucide-react";
 import type * as React from "react";
 import { lazy, Suspense } from "react";
 
@@ -25,6 +35,7 @@ const UpdateCheckPanel = lazy(() => import("@/features/notifications/update-chec
 const DomainsPanel = lazy(() => import("@/features/domains/domains-panel"));
 const InstallCountPanel = lazy(() => import("@/features/install-count/install-count-panel"));
 const CachePanel = lazy(() => import("@/features/storage/cache-panel"));
+const CloudflarePanel = lazy(() => import("@/features/cloudflare/cloudflare-panel"));
 
 const CurseForgeKey = lazy(() =>
   import("@/features/catalog/curseforge-key").then((m) => ({ default: m.CurseForgeKey })),
@@ -36,6 +47,7 @@ const SECTIONS: { id: string; label: string; icon: React.ReactNode; access: Acce
   { id: "account", label: "Account", icon: <UserRound />, access: "everyone" },
   { id: "appearance", label: "Appearance", icon: <Palette />, access: "everyone" },
   { id: "domains", label: "Domains", icon: <Globe />, access: "admins" },
+  { id: "cloudflare", label: "Cloudflare", icon: <Cloud />, access: "admins" },
   { id: "notifications", label: "Notifications", icon: <Bell />, access: "admins" },
   { id: "mods", label: "Mods and modpacks", icon: <Box />, access: "admins" },
   { id: "storage", label: "Storage", icon: <HardDrive />, access: "admins" },
@@ -115,6 +127,12 @@ function Section({ id }: { id: string }) {
       return (
         <Suspense fallback={<Loading height="h-40" />}>
           <DomainsPanel />
+        </Suspense>
+      );
+    case "cloudflare":
+      return (
+        <Suspense fallback={<Loading height="h-40" />}>
+          <CloudflarePanel />
         </Suspense>
       );
     case "notifications":
