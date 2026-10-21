@@ -22,6 +22,9 @@ pub(crate) struct Account {
 pub(crate) struct Zone {
     pub id: String,
     pub name: String,
+    /// The account it belongs to.
+    #[serde(default)]
+    pub account: Option<Account>,
 }
 
 /// A DNS record.

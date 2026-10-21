@@ -48,16 +48,24 @@ fn authorized(headers: &HeaderMap) -> bool {
 
 async fn fake_cloudflare(fake: Shared) -> String {
     let app = Router::new()
+        // Like the real API, listing accounts finds none without an
+        // account-settings permission the token doesn't have.
+        .route("/accounts", get(|| async { ok(json!([])) }))
         .route(
-            "/accounts",
+            "/zones",
             get(|headers: HeaderMap| async move {
                 if !authorized(&headers) {
-                    return Json(json!({ "success": false, "errors": [{ "code": 1000, "message": "Invalid API Token" }] }));
+                    return Json(
+                        json!({ "success": false, "errors": [{ "code": 1000, "message": "Invalid API Token" }] }),
+                    );
                 }
-                ok(json!([{ "id": "acc1", "name": "Pickles" }]))
+                ok(json!([{
+                    "id": "z1",
+                    "name": "xtra-pickles.com",
+                    "account": { "id": "acc1", "name": "Pickles" }
+                }]))
             }),
         )
-        .route("/zones", get(|| async { ok(json!([{ "id": "z1", "name": "xtra-pickles.com" }])) }))
         .route(
             "/accounts/acc1/cfd_tunnel",
             axum::routing::post(|State(f): State<Shared>| async move {

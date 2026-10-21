@@ -152,19 +152,9 @@ pub(crate) async fn connect(state: &AppState, token: &str) -> Result<(), Connect
         return Err(ConnectError::invalid_argument("Paste an API token."));
     }
     let api = Api::new(base(state), token);
-    let accounts = api.accounts().await.map_err(|e| {
-        ConnectError::failed_precondition(format!(
-            "Cloudflare didn't accept the token: {e}. It needs Account › Cloudflare Tunnel › Edit."
-        ))
-    })?;
-    let account = accounts.into_iter().next().ok_or_else(|| {
-        ConnectError::failed_precondition(
-            "The token can't use any account. Give it Account › Cloudflare Tunnel › Edit.",
-        )
-    })?;
     let zones = api.zones().await.map_err(|e| {
         ConnectError::failed_precondition(format!(
-            "The token can't list zones: {e}. Give it Zone › Zone › Read and Zone › DNS › Edit."
+            "Cloudflare didn't accept the token: {e}. It needs Zone › Zone › Read and Zone › DNS › Edit for your domain, and Account › Cloudflare Tunnel › Edit."
         ))
     })?;
     if zones.is_empty() {
@@ -172,6 +162,21 @@ pub(crate) async fn connect(state: &AppState, token: &str) -> Result<(), Connect
             "The token can't see any zones. Give it Zone › Zone › Read and Zone › DNS › Edit for your domain.",
         ));
     }
+    // The zones say which account they're in. (Listing accounts needs a
+    // permission the token otherwise has no use for.)
+    let account = match zones.iter().find_map(|z| z.account.clone()) {
+        Some(account) => account,
+        None => api
+            .accounts()
+            .await
+            .ok()
+            .and_then(|a| a.into_iter().next())
+            .ok_or_else(|| {
+                ConnectError::failed_precondition(
+                    "Couldn't tell which Cloudflare account the domain is in.",
+                )
+            })?,
+    };
     let _sync = SYNC.lock().await;
     let previous = saved(state).await;
     let tunnel_id = match previous
