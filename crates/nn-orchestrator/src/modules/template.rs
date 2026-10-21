@@ -63,6 +63,10 @@ impl Lifecycle {
 pub struct Web {
     /// The port it listens on inside its container.
     pub port: u16,
+    /// What new modules' own addresses start with (`map` gives
+    /// map.<server address>).
+    #[serde(default)]
+    pub prefix: Option<String>,
 }
 
 /// A folder given to the container.
@@ -234,6 +238,14 @@ fn check(t: &Template) -> Result<(), String> {
                 t.id, m.target
             ));
         }
+    }
+    if let Some(prefix) = t.web.as_ref().and_then(|w| w.prefix.as_deref())
+        && !valid_name(prefix)
+    {
+        return Err(format!(
+            "{}: web prefix {prefix} isn't a hostname label",
+            t.id
+        ));
     }
     for f in &t.files {
         nn_files::RelPath::parse(&f.path)
@@ -452,7 +464,13 @@ mod tests {
     #[test]
     fn built_in_templates_are_valid() {
         let bluemap = find("bluemap").expect("BlueMap is built in");
-        assert_eq!(bluemap.web, Some(Web { port: 8100 }));
+        assert_eq!(
+            bluemap.web,
+            Some(Web {
+                port: 8100,
+                prefix: Some("map".into())
+            })
+        );
         assert_eq!(bluemap.lifecycle, Lifecycle::Always);
         assert!(
             bluemap

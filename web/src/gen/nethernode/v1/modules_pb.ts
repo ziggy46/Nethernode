@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file nethernode/v1/modules.proto.
  */
 export const file_nethernode_v1_modules: GenFile = /*@__PURE__*/
-  fileDesc("ChtuZXRoZXJub2RlL3YxL21vZHVsZXMucHJvdG8SDW5ldGhlcm5vZGUudjEitAEKDU1vZHVsZVNldHRpbmcSCwoDa2V5GAEgASgJEg0KBWxhYmVsGAIgASgJEgwKBGhlbHAYAyABKAkSDAoEa2luZBgEIAEoCRIUCgxkZWZhdWx0X2pzb24YBSABKAkSEAoIcmVxdWlyZWQYBiABKAgSEAoDbWluGAcgASgDSACIAQESEAoDbWF4GAggASgDSAGIAQESDwoHY2hvaWNlcxgJIAMoCUIGCgRfbWluQgYKBF9tYXgi1QEKDk1vZHVsZVRlbXBsYXRlEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkSDwoHdmVyc2lvbhgEIAEoCRINCgVpbWFnZRgFIAEoCRIRCglsaWZlY3ljbGUYBiABKAkSEQoJbWVtb3J5X21iGAcgASgNEg8KB2hhc193ZWIYCCABKAgSDQoFbm90ZXMYCSABKAkSLgoIc2V0dGluZ3MYCiADKAsyHC5uZXRoZXJub2RlLnYxLk1vZHVsZVNldHRpbmciugEKBk1vZHVsZRIKCgJpZBgBIAEoCRIRCglzZXJ2ZXJfaWQYAiABKAkSEAoIdGVtcGxhdGUYAyABKAkSDAoEbmFtZRgEIAEoCRIVCg1zZXR0aW5nc19qc29uGAUgASgJEhEKCWxpZmVjeWNsZRgGIAEoCRIRCgltZW1vcnlfbWIYByABKA0SEwoLd2ViX2FkZHJlc3MYCCABKAkSDgoGc3RhdHVzGAkgASgJEg8KB21lc3NhZ2UYCiABKAkiHAoaTGlzdE1vZHVsZVRlbXBsYXRlc1JlcXVlc3QiTwobTGlzdE1vZHVsZVRlbXBsYXRlc1Jlc3BvbnNlEjAKCXRlbXBsYXRlcxgBIAMoCzIdLm5ldGhlcm5vZGUudjEuTW9kdWxlVGVtcGxhdGUiJwoSTGlzdE1vZHVsZXNSZXF1ZXN0EhEKCXNlcnZlcl9pZBgBIAEoCSJSChNMaXN0TW9kdWxlc1Jlc3BvbnNlEiYKB21vZHVsZXMYASADKAsyFS5uZXRoZXJub2RlLnYxLk1vZHVsZRITCgt1bmF2YWlsYWJsZRgCIAEoCSKCAQoQQWRkTW9kdWxlUmVxdWVzdBIRCglzZXJ2ZXJfaWQYASABKAkSEAoIdGVtcGxhdGUYAiABKAkSDAoEbmFtZRgDIAEoCRIVCg1zZXR0aW5nc19qc29uGAQgASgJEhEKCWxpZmVjeWNsZRgFIAEoCRIRCgltZW1vcnlfbWIYBiABKA0iOgoRQWRkTW9kdWxlUmVzcG9uc2USJQoGbW9kdWxlGAEgASgLMhUubmV0aGVybm9kZS52MS5Nb2R1bGUiXgoTVXBkYXRlTW9kdWxlUmVxdWVzdBIKCgJpZBgBIAEoCRIVCg1zZXR0aW5nc19qc29uGAIgASgJEhEKCWxpZmVjeWNsZRgDIAEoCRIRCgltZW1vcnlfbWIYBCABKA0iPQoUVXBkYXRlTW9kdWxlUmVzcG9uc2USJQoGbW9kdWxlGAEgASgLMhUubmV0aGVybm9kZS52MS5Nb2R1bGUiIAoSU3RhcnRNb2R1bGVSZXF1ZXN0EgoKAmlkGAEgASgJIhUKE1N0YXJ0TW9kdWxlUmVzcG9uc2UiHwoRU3RvcE1vZHVsZVJlcXVlc3QSCgoCaWQYASABKAkiFAoSU3RvcE1vZHVsZVJlc3BvbnNlIjcKE1JlbW92ZU1vZHVsZVJlcXVlc3QSCgoCaWQYASABKAkSFAoMZGVsZXRlX2ZpbGVzGAIgASgIIhYKFFJlbW92ZU1vZHVsZVJlc3BvbnNlIjEKFEdldE1vZHVsZUxvZ3NSZXF1ZXN0EgoKAmlkGAEgASgJEg0KBWxpbmVzGAIgASgNIiYKFUdldE1vZHVsZUxvZ3NSZXNwb25zZRINCgVsaW5lcxgBIAMoCTLpBQoNTW9kdWxlU2VydmljZRJxChNMaXN0TW9kdWxlVGVtcGxhdGVzEikubmV0aGVybm9kZS52MS5MaXN0TW9kdWxlVGVtcGxhdGVzUmVxdWVzdBoqLm5ldGhlcm5vZGUudjEuTGlzdE1vZHVsZVRlbXBsYXRlc1Jlc3BvbnNlIgOQAgESWQoLTGlzdE1vZHVsZXMSIS5uZXRoZXJub2RlLnYxLkxpc3RNb2R1bGVzUmVxdWVzdBoiLm5ldGhlcm5vZGUudjEuTGlzdE1vZHVsZXNSZXNwb25zZSIDkAIBEk4KCUFkZE1vZHVsZRIfLm5ldGhlcm5vZGUudjEuQWRkTW9kdWxlUmVxdWVzdBogLm5ldGhlcm5vZGUudjEuQWRkTW9kdWxlUmVzcG9uc2USVwoMVXBkYXRlTW9kdWxlEiIubmV0aGVybm9kZS52MS5VcGRhdGVNb2R1bGVSZXF1ZXN0GiMubmV0aGVybm9kZS52MS5VcGRhdGVNb2R1bGVSZXNwb25zZRJUCgtTdGFydE1vZHVsZRIhLm5ldGhlcm5vZGUudjEuU3RhcnRNb2R1bGVSZXF1ZXN0GiIubmV0aGVybm9kZS52MS5TdGFydE1vZHVsZVJlc3BvbnNlElEKClN0b3BNb2R1bGUSIC5uZXRoZXJub2RlLnYxLlN0b3BNb2R1bGVSZXF1ZXN0GiEubmV0aGVybm9kZS52MS5TdG9wTW9kdWxlUmVzcG9uc2USVwoMUmVtb3ZlTW9kdWxlEiIubmV0aGVybm9kZS52MS5SZW1vdmVNb2R1bGVSZXF1ZXN0GiMubmV0aGVybm9kZS52MS5SZW1vdmVNb2R1bGVSZXNwb25zZRJfCg1HZXRNb2R1bGVMb2dzEiMubmV0aGVybm9kZS52MS5HZXRNb2R1bGVMb2dzUmVxdWVzdBokLm5ldGhlcm5vZGUudjEuR2V0TW9kdWxlTG9nc1Jlc3BvbnNlIgOQAgFiBnByb3RvMw");
+  fileDesc("ChtuZXRoZXJub2RlL3YxL21vZHVsZXMucHJvdG8SDW5ldGhlcm5vZGUudjEitAEKDU1vZHVsZVNldHRpbmcSCwoDa2V5GAEgASgJEg0KBWxhYmVsGAIgASgJEgwKBGhlbHAYAyABKAkSDAoEa2luZBgEIAEoCRIUCgxkZWZhdWx0X2pzb24YBSABKAkSEAoIcmVxdWlyZWQYBiABKAgSEAoDbWluGAcgASgDSACIAQESEAoDbWF4GAggASgDSAGIAQESDwoHY2hvaWNlcxgJIAMoCUIGCgRfbWluQgYKBF9tYXgi1QEKDk1vZHVsZVRlbXBsYXRlEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkSDwoHdmVyc2lvbhgEIAEoCRINCgVpbWFnZRgFIAEoCRIRCglsaWZlY3ljbGUYBiABKAkSEQoJbWVtb3J5X21iGAcgASgNEg8KB2hhc193ZWIYCCABKAgSDQoFbm90ZXMYCSABKAkSLgoIc2V0dGluZ3MYCiADKAsyHC5uZXRoZXJub2RlLnYxLk1vZHVsZVNldHRpbmci+AEKBk1vZHVsZRIKCgJpZBgBIAEoCRIRCglzZXJ2ZXJfaWQYAiABKAkSEAoIdGVtcGxhdGUYAyABKAkSDAoEbmFtZRgEIAEoCRIVCg1zZXR0aW5nc19qc29uGAUgASgJEhEKCWxpZmVjeWNsZRgGIAEoCRIRCgltZW1vcnlfbWIYByABKA0SEwoLd2ViX2FkZHJlc3MYCCABKAkSDgoGc3RhdHVzGAkgASgJEg8KB21lc3NhZ2UYCiABKAkSEAoId2ViX2hvc3QYCyABKAkSEgoKd2ViX3B1YmxpYxgMIAEoCBIWCg5zaXRlX2FkZHJlc3NlcxgNIAMoCSIcChpMaXN0TW9kdWxlVGVtcGxhdGVzUmVxdWVzdCJPChtMaXN0TW9kdWxlVGVtcGxhdGVzUmVzcG9uc2USMAoJdGVtcGxhdGVzGAEgAygLMh0ubmV0aGVybm9kZS52MS5Nb2R1bGVUZW1wbGF0ZSInChJMaXN0TW9kdWxlc1JlcXVlc3QSEQoJc2VydmVyX2lkGAEgASgJIlIKE0xpc3RNb2R1bGVzUmVzcG9uc2USJgoHbW9kdWxlcxgBIAMoCzIVLm5ldGhlcm5vZGUudjEuTW9kdWxlEhMKC3VuYXZhaWxhYmxlGAIgASgJIoIBChBBZGRNb2R1bGVSZXF1ZXN0EhEKCXNlcnZlcl9pZBgBIAEoCRIQCgh0ZW1wbGF0ZRgCIAEoCRIMCgRuYW1lGAMgASgJEhUKDXNldHRpbmdzX2pzb24YBCABKAkSEQoJbGlmZWN5Y2xlGAUgASgJEhEKCW1lbW9yeV9tYhgGIAEoDSI6ChFBZGRNb2R1bGVSZXNwb25zZRIlCgZtb2R1bGUYASABKAsyFS5uZXRoZXJub2RlLnYxLk1vZHVsZSJeChNVcGRhdGVNb2R1bGVSZXF1ZXN0EgoKAmlkGAEgASgJEhUKDXNldHRpbmdzX2pzb24YAiABKAkSEQoJbGlmZWN5Y2xlGAMgASgJEhEKCW1lbW9yeV9tYhgEIAEoDSI9ChRVcGRhdGVNb2R1bGVSZXNwb25zZRIlCgZtb2R1bGUYASABKAsyFS5uZXRoZXJub2RlLnYxLk1vZHVsZSIgChJTdGFydE1vZHVsZVJlcXVlc3QSCgoCaWQYASABKAkiFQoTU3RhcnRNb2R1bGVSZXNwb25zZSIfChFTdG9wTW9kdWxlUmVxdWVzdBIKCgJpZBgBIAEoCSIUChJTdG9wTW9kdWxlUmVzcG9uc2UiNwoTUmVtb3ZlTW9kdWxlUmVxdWVzdBIKCgJpZBgBIAEoCRIUCgxkZWxldGVfZmlsZXMYAiABKAgiFgoUUmVtb3ZlTW9kdWxlUmVzcG9uc2UiMQoUR2V0TW9kdWxlTG9nc1JlcXVlc3QSCgoCaWQYASABKAkSDQoFbGluZXMYAiABKA0iJgoVR2V0TW9kdWxlTG9nc1Jlc3BvbnNlEg0KBWxpbmVzGAEgAygJIkgKFFNldE1vZHVsZVNpdGVSZXF1ZXN0EgoKAmlkGAEgASgJEhAKCHdlYl9ob3N0GAIgASgJEhIKCndlYl9wdWJsaWMYAyABKAgiPgoVU2V0TW9kdWxlU2l0ZVJlc3BvbnNlEiUKBm1vZHVsZRgBIAEoCzIVLm5ldGhlcm5vZGUudjEuTW9kdWxlMsUGCg1Nb2R1bGVTZXJ2aWNlEnEKE0xpc3RNb2R1bGVUZW1wbGF0ZXMSKS5uZXRoZXJub2RlLnYxLkxpc3RNb2R1bGVUZW1wbGF0ZXNSZXF1ZXN0GioubmV0aGVybm9kZS52MS5MaXN0TW9kdWxlVGVtcGxhdGVzUmVzcG9uc2UiA5ACARJZCgtMaXN0TW9kdWxlcxIhLm5ldGhlcm5vZGUudjEuTGlzdE1vZHVsZXNSZXF1ZXN0GiIubmV0aGVybm9kZS52MS5MaXN0TW9kdWxlc1Jlc3BvbnNlIgOQAgESTgoJQWRkTW9kdWxlEh8ubmV0aGVybm9kZS52MS5BZGRNb2R1bGVSZXF1ZXN0GiAubmV0aGVybm9kZS52MS5BZGRNb2R1bGVSZXNwb25zZRJXCgxVcGRhdGVNb2R1bGUSIi5uZXRoZXJub2RlLnYxLlVwZGF0ZU1vZHVsZVJlcXVlc3QaIy5uZXRoZXJub2RlLnYxLlVwZGF0ZU1vZHVsZVJlc3BvbnNlElQKC1N0YXJ0TW9kdWxlEiEubmV0aGVybm9kZS52MS5TdGFydE1vZHVsZVJlcXVlc3QaIi5uZXRoZXJub2RlLnYxLlN0YXJ0TW9kdWxlUmVzcG9uc2USUQoKU3RvcE1vZHVsZRIgLm5ldGhlcm5vZGUudjEuU3RvcE1vZHVsZVJlcXVlc3QaIS5uZXRoZXJub2RlLnYxLlN0b3BNb2R1bGVSZXNwb25zZRJXCgxSZW1vdmVNb2R1bGUSIi5uZXRoZXJub2RlLnYxLlJlbW92ZU1vZHVsZVJlcXVlc3QaIy5uZXRoZXJub2RlLnYxLlJlbW92ZU1vZHVsZVJlc3BvbnNlEloKDVNldE1vZHVsZVNpdGUSIy5uZXRoZXJub2RlLnYxLlNldE1vZHVsZVNpdGVSZXF1ZXN0GiQubmV0aGVybm9kZS52MS5TZXRNb2R1bGVTaXRlUmVzcG9uc2USXwoNR2V0TW9kdWxlTG9ncxIjLm5ldGhlcm5vZGUudjEuR2V0TW9kdWxlTG9nc1JlcXVlc3QaJC5uZXRoZXJub2RlLnYxLkdldE1vZHVsZUxvZ3NSZXNwb25zZSIDkAIBYgZwcm90bzM");
 
 /**
  * One field of a module's settings form.
@@ -216,6 +216,28 @@ export type Module = Message<"nethernode.v1.Module"> & {
    * @generated from field: string message = 10;
    */
   message: string;
+
+  /**
+   * Its own address as set: a prefix ("map") or a whole hostname.
+   *
+   * @generated from field: string web_host = 11;
+   */
+  webHost: string;
+
+  /**
+   * Anyone can open its web page at its own address.
+   *
+   * @generated from field: bool web_public = 12;
+   */
+  webPublic: boolean;
+
+  /**
+   * The hostnames that makes, like map.mc1.example.com (one per address the
+   * server has; empty when the server has none and web_host is a prefix).
+   *
+   * @generated from field: repeated string site_addresses = 13;
+   */
+  siteAddresses: string[];
 };
 
 /**
@@ -552,6 +574,52 @@ export const GetModuleLogsResponseSchema: GenMessage<GetModuleLogsResponse> = /*
   messageDesc(file_nethernode_v1_modules, 18);
 
 /**
+ * @generated from message nethernode.v1.SetModuleSiteRequest
+ */
+export type SetModuleSiteRequest = Message<"nethernode.v1.SetModuleSiteRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * A prefix like "map", or a whole hostname.
+   *
+   * @generated from field: string web_host = 2;
+   */
+  webHost: string;
+
+  /**
+   * @generated from field: bool web_public = 3;
+   */
+  webPublic: boolean;
+};
+
+/**
+ * Describes the message nethernode.v1.SetModuleSiteRequest.
+ * Use `create(SetModuleSiteRequestSchema)` to create a new message.
+ */
+export const SetModuleSiteRequestSchema: GenMessage<SetModuleSiteRequest> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_modules, 19);
+
+/**
+ * @generated from message nethernode.v1.SetModuleSiteResponse
+ */
+export type SetModuleSiteResponse = Message<"nethernode.v1.SetModuleSiteResponse"> & {
+  /**
+   * @generated from field: nethernode.v1.Module module = 1;
+   */
+  module?: Module | undefined;
+};
+
+/**
+ * Describes the message nethernode.v1.SetModuleSiteResponse.
+ * Use `create(SetModuleSiteResponseSchema)` to create a new message.
+ */
+export const SetModuleSiteResponseSchema: GenMessage<SetModuleSiteResponse> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_modules, 20);
+
+/**
  * Modules: helper containers that run next to a server, made from
  * templates that come with NetherNode (BlueMap, a 3D web map, for one).
  * Each has its own folder in the server's (modules/<name>/), and joins a
@@ -629,6 +697,18 @@ export const ModuleService: GenService<{
     methodKind: "unary";
     input: typeof RemoveModuleRequestSchema;
     output: typeof RemoveModuleResponseSchema;
+  },
+  /**
+   * A module's own address for its web page (a prefix for the server's
+   * address, like "map", or a whole hostname) and whether anyone can open
+   * it there. The panel passes requests for that hostname to the module.
+   *
+   * @generated from rpc nethernode.v1.ModuleService.SetModuleSite
+   */
+  setModuleSite: {
+    methodKind: "unary";
+    input: typeof SetModuleSiteRequestSchema;
+    output: typeof SetModuleSiteResponseSchema;
   },
   /**
    * What a module printed last.

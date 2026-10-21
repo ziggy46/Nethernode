@@ -70,6 +70,7 @@ const LABELS: Record<string, string> = {
   "module.start": "Started a module",
   "module.stop": "Stopped a module",
   "module.remove": "Removed a module",
+  "module.site": "Changed a module's address",
   "backup.create": "Backed up a server",
   "backup.restore": "Restored a backup",
   "backup.delete": "Deleted a backup",

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!\", server_id, template, name, settings_json, lifecycle, memory_mb,\n                      web_port, created_at, updated_at\n               FROM server_modules WHERE id = ?1",
+  "query": "SELECT id AS \"id!\", server_id, template, name, settings_json, lifecycle, memory_mb,\n                      web_port, web_host, web_public AS \"web_public: bool\", created_at, updated_at\n               FROM server_modules WHERE id = ?1",
   "describe": {
     "columns": [
       {
@@ -92,8 +92,30 @@
         }
       },
       {
-        "name": "created_at",
+        "name": "web_host",
         "ordinal": 8,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "server_modules",
+            "name": "web_host"
+          }
+        }
+      },
+      {
+        "name": "web_public: bool",
+        "ordinal": 9,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "server_modules",
+            "name": "web_public"
+          }
+        }
+      },
+      {
+        "name": "created_at",
+        "ordinal": 10,
         "type_info": "Integer",
         "origin": {
           "Table": {
@@ -104,7 +126,7 @@
       },
       {
         "name": "updated_at",
-        "ordinal": 9,
+        "ordinal": 11,
         "type_info": "Integer",
         "origin": {
           "Table": {
@@ -126,9 +148,11 @@
       false,
       false,
       true,
+      true,
+      false,
       false,
       false
     ]
   },
-  "hash": "0136a4b9785c4ab26e7753a23b02d68f5822f43486dd3cada82afd2ad44f7229"
+  "hash": "b7337795f9b7521f7f485f9c4224d8ddf70d276f89ea0d407fc4cd28a4549416"
 }

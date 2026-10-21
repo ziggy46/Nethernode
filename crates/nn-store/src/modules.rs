@@ -21,6 +21,11 @@ pub struct Module {
     pub memory_mb: i64,
     /// Host port of its web page, if it has one.
     pub web_port: Option<i64>,
+    /// Its own address: a prefix for the server's address (`map`), or a
+    /// whole hostname (with a dot).
+    pub web_host: Option<String>,
+    /// Anyone can open its web page at that address.
+    pub web_public: bool,
     /// Unix ms.
     pub created_at: i64,
     /// Unix ms.
@@ -44,6 +49,8 @@ pub struct NewModule<'a> {
     pub memory_mb: i64,
     /// Host port of its web page.
     pub web_port: Option<i64>,
+    /// Its own address (see [`Module::web_host`]).
+    pub web_host: Option<&'a str>,
 }
 
 impl Store {
@@ -53,8 +60,8 @@ impl Store {
         let now = now_ms();
         sqlx::query!(
             "INSERT INTO server_modules (id, server_id, template, name, settings_json, lifecycle,
-                                         memory_mb, web_port, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?9)",
+                                         memory_mb, web_port, web_host, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?10, ?9, ?9)",
             id,
             m.server_id,
             m.template,
@@ -64,6 +71,7 @@ impl Store {
             m.memory_mb,
             m.web_port,
             now,
+            m.web_host,
         )
         .execute(self.pool())
         .await?;
@@ -75,7 +83,7 @@ impl Store {
         let row = sqlx::query_as!(
             Module,
             r#"SELECT id AS "id!", server_id, template, name, settings_json, lifecycle, memory_mb,
-                      web_port, created_at, updated_at
+                      web_port, web_host, web_public AS "web_public: bool", created_at, updated_at
                FROM server_modules WHERE id = ?1"#,
             id,
         )
@@ -89,7 +97,7 @@ impl Store {
         let rows = sqlx::query_as!(
             Module,
             r#"SELECT id AS "id!", server_id, template, name, settings_json, lifecycle, memory_mb,
-                      web_port, created_at, updated_at
+                      web_port, web_host, web_public AS "web_public: bool", created_at, updated_at
                FROM server_modules WHERE ?1 IS NULL OR server_id = ?1
                ORDER BY server_id, name"#,
             server_id,
@@ -117,6 +125,27 @@ impl Store {
             settings_json,
             lifecycle,
             memory_mb,
+            now,
+        )
+        .execute(self.pool())
+        .await?;
+        Ok(result.rows_affected() == 1)
+    }
+
+    /// Sets a module's own address and whether anyone can open it. Returns
+    /// whether it exists.
+    pub async fn set_module_site(
+        &self,
+        id: &str,
+        web_host: Option<&str>,
+        web_public: bool,
+    ) -> Result<bool> {
+        let now = now_ms();
+        let result = sqlx::query!(
+            "UPDATE server_modules SET web_host = ?2, web_public = ?3, updated_at = ?4 WHERE id = ?1",
+            id,
+            web_host,
+            web_public,
             now,
         )
         .execute(self.pool())

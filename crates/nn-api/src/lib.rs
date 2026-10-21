@@ -43,6 +43,7 @@ pub mod install_count;
 mod log_search;
 mod middleware;
 pub mod modpack_updates;
+pub mod module_sites;
 mod moves;
 pub mod notices;
 pub mod notify;
@@ -217,5 +218,7 @@ pub fn router(state: AppState) -> Router {
         ))
         .layer(CompressionLayer::new())
         .layer(TraceLayer::new_for_http())
+        // Outermost: modules' own addresses skip all of the panel's layers.
+        .layer(from_fn_with_state(state.clone(), module_sites::dispatch))
         .with_state(state)
 }

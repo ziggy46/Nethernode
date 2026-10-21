@@ -293,6 +293,7 @@ impl Orchestrator {
                     lifecycle: lifecycle.as_str(),
                     memory_mb,
                     web_port,
+                    web_host: template.web.as_ref().and_then(|w| w.prefix.as_deref()),
                 })
                 .await?
         };
@@ -820,6 +821,8 @@ mod tests {
             lifecycle: "always".into(),
             memory_mb: 2048,
             web_port: Some(8100),
+            web_host: Some("map".into()),
+            web_public: false,
             created_at: 0,
             updated_at: 0,
         }

@@ -6,6 +6,7 @@ import {
   CircleCheck,
   CircleDashed,
   CirclePause,
+  Globe,
   Info,
   Play,
   Plus,
@@ -31,6 +32,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ErrorAlert, Field, Select } from "@/components/ui/field";
+import { Switch } from "@/components/ui/switch";
 import {
   type Module,
   ModuleService,
@@ -39,6 +41,9 @@ import {
 } from "@/gen/nethernode/v1/modules_pb";
 import type { Server } from "@/gen/nethernode/v1/servers_pb";
 import { errorMessage, transport } from "@/lib/api";
+
+import { routesQuery } from "../proxy/queries";
+import { serverAddresses, siteAddresses, siteError } from "./site";
 
 const client = createClient(ModuleService, transport);
 const modulesKey = (serverId: string) => ["modules", serverId] as const;
@@ -99,6 +104,7 @@ export default function ModulesTab({ server }: { server: Server }) {
   const [adding, setAdding] = useState<ModuleTemplate | null>(null);
   const [editing, setEditing] = useState<Module | null>(null);
   const [logs, setLogs] = useState<Module | null>(null);
+  const [site, setSite] = useState<Module | null>(null);
   const [removing, setRemoving] = useState<Module | null>(null);
   const [deleteFiles, setDeleteFiles] = useState(false);
   const refresh = () => queryClient.invalidateQueries({ queryKey: modulesKey(server.id) });
@@ -158,6 +164,40 @@ export default function ModulesTab({ server }: { server: Server }) {
                       Web page:{" "}
                       <span className="select-all font-mono text-text-secondary">{m.webAddress}</span>, on the
                       machine NetherNode runs on
+                    </p>
+                  )}
+                  {m.webAddress && (
+                    <p className="flex flex-wrap items-center gap-x-1.5 text-meta text-text-muted">
+                      <Globe className="size-3.5" aria-hidden />
+                      {m.webPublic && m.siteAddresses.length > 0 ? (
+                        <>
+                          Open to anyone at{" "}
+                          {m.siteAddresses.map((a, i) => (
+                            <span key={a}>
+                              {i > 0 && ", "}
+                              <a
+                                href={`https://${a}`}
+                                target="_blank"
+                                rel="noreferrer noopener"
+                                className="font-mono text-text-secondary underline underline-offset-2"
+                              >
+                                {a}
+                              </a>
+                            </span>
+                          ))}
+                        </>
+                      ) : m.webPublic ? (
+                        "Open to anyone, but the server has no address for the prefix to go in front of."
+                      ) : (
+                        "Not on an address of its own."
+                      )}
+                      <button
+                        type="button"
+                        className="text-text-secondary underline underline-offset-2"
+                        onClick={() => setSite(m)}
+                      >
+                        Change
+                      </button>
                     </p>
                   )}
                   {m.message && <p className="text-meta text-danger">{m.message}</p>}
@@ -272,6 +312,7 @@ export default function ModulesTab({ server }: { server: Server }) {
         />
       )}
       {logs && <LogsDialog module={logs} onClose={() => setLogs(null)} />}
+      {site && <SiteDialog server={server} module={site} onClose={() => setSite(null)} onSaved={refresh} />}
       <ConfirmDialog
         open={removing !== null}
         onOpenChange={(open) => !open && setRemoving(null)}
@@ -521,6 +562,100 @@ function LogsDialog({ module, onClose }: { module: Module; onClose: () => void }
             {logs.data ? logs.data.lines.join("\n") || "Nothing yet." : "Loading…"}
           </pre>
         )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** A module's own address, and whether anyone can open it there. */
+function SiteDialog({
+  server,
+  module,
+  onClose,
+  onSaved,
+}: {
+  server: Server;
+  module: Module;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const id = useId();
+  const routes = useQuery(routesQuery);
+  const [host, setHost] = useState(module.webHost || "map");
+  const [open, setOpen] = useState(module.webPublic);
+  const error = siteError(host);
+  const preview = siteAddresses(host, serverAddresses(server, routes.data ?? []));
+  const save = useMutation({
+    mutationFn: () => client.setModuleSite({ id: module.id, webHost: host.trim(), webPublic: open }),
+    onSuccess: () => {
+      toast.success(open ? `${module.name} is open at its own address.` : `${module.name}'s address is off.`);
+      onSaved();
+      onClose();
+    },
+  });
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="w-[560px]">
+        <DialogHeader>
+          <DialogTitle>{module.name}'s own address</DialogTitle>
+          <DialogDescription>
+            A web address for its page that anyone can open, like a map to share with players.
+          </DialogDescription>
+        </DialogHeader>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!error) save.mutate();
+          }}
+        >
+          <Field
+            label="Address"
+            hint="A prefix for the server's address (map), or a whole hostname."
+            value={host}
+            onChange={(e) => setHost(e.target.value)}
+            error={host ? error : undefined}
+            className="[&_input]:font-mono"
+          />
+          <p className="mb-4 text-meta text-text-secondary">
+            {preview.length > 0 ? (
+              <>
+                It'll be at{" "}
+                {preview.map((a, i) => (
+                  <span key={a}>
+                    {i > 0 && ", "}
+                    <span className="font-mono">{a}</span>
+                  </span>
+                ))}
+                .
+              </>
+            ) : (
+              `${server.name} has no address yet for the prefix to go in front of. Give it one on Proxy & routes, or type a whole hostname.`
+            )}
+          </p>
+          <div className="mb-4 flex items-start justify-between gap-5">
+            <label htmlFor={id} className="text-label">
+              <span className="block font-[550]">Open to anyone</span>
+              <span className="mt-[3px] block text-meta text-text-muted">
+                No sign-in: anyone with the address can see the page.
+              </span>
+            </label>
+            <Switch id={id} checked={open} onCheckedChange={setOpen} />
+          </div>
+          <p className="mb-4 rounded-md border border-info/25 bg-info-subtle px-3 py-2 text-meta text-text-secondary">
+            For the address to reach NetherNode, point its DNS where the panel's address points, and if a
+            reverse proxy (like Pangolin) is in front of the panel, add the name there too, sent to
+            NetherNode.
+          </p>
+          {save.error && <ErrorAlert>{errorMessage(save.error)}</ErrorAlert>}
+          <DialogFooter>
+            <Button type="button" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" disabled={save.isPending || Boolean(error)}>
+              {save.isPending ? "Saving…" : "Save"}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

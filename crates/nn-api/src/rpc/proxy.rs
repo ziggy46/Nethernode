@@ -238,6 +238,7 @@ impl pb::ProxyService for ProxyRpc {
             .ok_or_else(|| ConnectError::not_found("listener not found"))?;
 
         let live = self.reload().await?;
+        crate::module_sites::refresh(&self.state).await;
         let listener = self.listener(&id, &live).await?;
         let details = json!({ "bind": format!("{bind_addr}:{port}"), "enabled": listener.enabled, "proxy_protocol": listener.proxy_protocol });
         audit(
@@ -284,6 +285,7 @@ impl pb::ProxyService for ProxyRpc {
             .await
             .map_err(|e| conflict(e, "Another listener already uses that address and port."))?;
         let live = self.reload().await?;
+        crate::module_sites::refresh(&self.state).await;
         let listener = self.listener(&listener_id, &live).await?;
         let route = self.route(&route_id).await?;
         audit(
@@ -319,6 +321,7 @@ impl pb::ProxyService for ProxyRpc {
             return Err(ConnectError::not_found("listener not found"));
         }
         self.reload().await?;
+        crate::module_sites::refresh(&self.state).await;
         audit(
             &self.state,
             &user,
@@ -400,6 +403,7 @@ impl pb::ProxyService for ProxyRpc {
             .ok_or_else(|| ConnectError::not_found("route not found"))?;
 
         self.reload().await?;
+        crate::module_sites::refresh(&self.state).await;
         let route = self.route(&id).await?;
         let details =
             json!({ "hostname": hostname, "server_id": server_id, "listener_id": listener_id });
@@ -435,6 +439,7 @@ impl pb::ProxyService for ProxyRpc {
             return Err(ConnectError::not_found("route not found"));
         }
         self.reload().await?;
+        crate::module_sites::refresh(&self.state).await;
         audit(
             &self.state,
             &user,

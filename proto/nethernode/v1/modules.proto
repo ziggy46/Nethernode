@@ -26,6 +26,10 @@ service ModuleService {
   rpc StopModule(StopModuleRequest) returns (StopModuleResponse);
   // Removes a module's container and record, and its folder if asked.
   rpc RemoveModule(RemoveModuleRequest) returns (RemoveModuleResponse);
+  // A module's own address for its web page (a prefix for the server's
+  // address, like "map", or a whole hostname) and whether anyone can open
+  // it there. The panel passes requests for that hostname to the module.
+  rpc SetModuleSite(SetModuleSiteRequest) returns (SetModuleSiteResponse);
   // What a module printed last.
   rpc GetModuleLogs(GetModuleLogsRequest) returns (GetModuleLogsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
@@ -85,6 +89,13 @@ message Module {
   string status = 9;
   // Why it failed.
   string message = 10;
+  // Its own address as set: a prefix ("map") or a whole hostname.
+  string web_host = 11;
+  // Anyone can open its web page at its own address.
+  bool web_public = 12;
+  // The hostnames that makes, like map.mc1.example.com (one per address the
+  // server has; empty when the server has none and web_host is a prefix).
+  repeated string site_addresses = 13;
 }
 
 message ListModuleTemplatesRequest {}
@@ -160,4 +171,15 @@ message GetModuleLogsRequest {
 
 message GetModuleLogsResponse {
   repeated string lines = 1;
+}
+
+message SetModuleSiteRequest {
+  string id = 1;
+  // A prefix like "map", or a whole hostname.
+  string web_host = 2;
+  bool web_public = 3;
+}
+
+message SetModuleSiteResponse {
+  Module module = 1;
 }

@@ -6,6 +6,7 @@ use nn_orchestrator::modules::{Lifecycle, ModuleState, template};
 use serde_json::{Map, Value, json};
 
 use crate::AppState;
+use crate::module_sites;
 use crate::proto::nethernode::v1 as pb;
 use crate::rpc::servers::node_error;
 use crate::rpc::{audit, require, store_error};
@@ -42,7 +43,22 @@ impl ModuleRpc {
         Ok((module, node))
     }
 
-    fn to_proto(
+    /// The hostnames a module's own address makes.
+    async fn site_addresses(&self, module: &nn_store::Module) -> Vec<String> {
+        let Some(host) = module.web_host.as_deref() else {
+            return Vec::new();
+        };
+        let store = self.state.auth.store();
+        let (Ok(Some(server)), Ok(routes)) = (
+            store.find_server(&module.server_id).await,
+            store.list_routes().await,
+        ) else {
+            return Vec::new();
+        };
+        module_sites::addresses(host, &module_sites::server_addresses(&server, &routes))
+    }
+
+    async fn to_proto(
         &self,
         node: &nn_node::Node,
         module: nn_store::Module,
@@ -52,7 +68,11 @@ impl ModuleRpc {
             status: "absent".into(),
             message: None,
         });
+        let site_addresses = self.site_addresses(&module).await;
         pb::Module {
+            site_addresses,
+            web_host: module.web_host.clone().unwrap_or_default(),
+            web_public: module.web_public,
             web_address: module
                 .web_port
                 .and_then(|p| node.module_address(p))
@@ -150,25 +170,30 @@ impl pb::ModuleService for ModuleRpc {
         let node = self.state.nodes.for_server(&server);
         let (modules, unavailable) = match node.modules(&server.id).await {
             Ok(found) => (
-                found
-                    .into_iter()
-                    .map(|(m, s)| self.to_proto(&node, m, Some(s)))
-                    .collect(),
+                {
+                    let mut out = Vec::new();
+                    for (m, s) in found {
+                        out.push(self.to_proto(&node, m, Some(s)).await);
+                    }
+                    out
+                },
                 String::new(),
             ),
             // Still list what's recorded, without what it's doing.
-            Err(e) => (
-                self.state
+            Err(e) => {
+                let mut out = Vec::new();
+                for m in self
+                    .state
                     .auth
                     .store()
                     .list_modules(Some(&server.id))
                     .await
                     .map_err(store_error)?
-                    .into_iter()
-                    .map(|m| self.to_proto(&node, m, None))
-                    .collect(),
-                e.to_string(),
-            ),
+                {
+                    out.push(self.to_proto(&node, m, None).await);
+                }
+                (out, e.to_string())
+            }
         };
         Response::ok(pb::ListModulesResponse {
             modules,
@@ -231,7 +256,7 @@ impl pb::ModuleService for ModuleRpc {
             });
         }
         Response::ok(pb::AddModuleResponse {
-            module: self.to_proto(&node, module, None).into(),
+            module: self.to_proto(&node, module, None).await.into(),
             ..Default::default()
         })
     }
@@ -263,7 +288,7 @@ impl pb::ModuleService for ModuleRpc {
         )
         .await;
         Response::ok(pb::UpdateModuleResponse {
-            module: self.to_proto(&node, updated, None).into(),
+            module: self.to_proto(&node, updated, None).await.into(),
             ..Default::default()
         })
     }
@@ -317,6 +342,7 @@ impl pb::ModuleService for ModuleRpc {
         node.remove_module(&module.id, request.delete_files)
             .await
             .map_err(node_error)?;
+        module_sites::refresh(&self.state).await;
         audit(
             &self.state,
             &user,
@@ -326,6 +352,60 @@ impl pb::ModuleService for ModuleRpc {
         )
         .await;
         Response::ok(pb::RemoveModuleResponse::default())
+    }
+
+    async fn set_module_site(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::SetModuleSiteRequest>,
+    ) -> ServiceResult<pb::SetModuleSiteResponse> {
+        let user = require(&ctx, Permission::ManageServers)?.clone();
+        let (module, node) = self.module(request.id).await?;
+        if module.web_port.is_none() {
+            return Err(ConnectError::failed_precondition(
+                "This module has no web page.",
+            ));
+        }
+        let host =
+            module_sites::check_host(request.web_host).map_err(ConnectError::invalid_argument)?;
+        let store = self.state.auth.store();
+        // Each hostname can lead to one module.
+        let mut mine = module.clone();
+        mine.web_host = Some(host.clone());
+        let wanted = self.site_addresses(&mine).await;
+        for other in store.list_modules(None).await.map_err(store_error)? {
+            if other.id == module.id || !other.web_public {
+                continue;
+            }
+            let theirs = self.site_addresses(&other).await;
+            if let Some(taken) = wanted.iter().find(|a| theirs.contains(a)) {
+                return Err(ConnectError::already_exists(format!(
+                    "{taken} is already another module's address."
+                )));
+            }
+        }
+        store
+            .set_module_site(&module.id, Some(&host), request.web_public)
+            .await
+            .map_err(store_error)?;
+        module_sites::refresh(&self.state).await;
+        audit(
+            &self.state,
+            &user,
+            "module.site",
+            ("server", &module.server_id),
+            json!({ "module": module.id, "name": module.name, "web_host": host, "public": request.web_public }),
+        )
+        .await;
+        let saved = store
+            .find_module(&module.id)
+            .await
+            .map_err(store_error)?
+            .ok_or_else(|| ConnectError::not_found("no such module"))?;
+        Response::ok(pb::SetModuleSiteResponse {
+            module: self.to_proto(&node, saved, None).await.into(),
+            ..Default::default()
+        })
     }
 
     async fn get_module_logs(

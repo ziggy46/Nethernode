@@ -154,6 +154,7 @@ async fn without_docker_modules_are_listed_but_not_added() {
             lifecycle: "always",
             memory_mb: 2048,
             web_port: Some(8100),
+            web_host: Some("map"),
         })
         .await
         .unwrap();
@@ -174,4 +175,88 @@ async fn without_docker_modules_are_listed_but_not_added() {
         .await;
     assert_eq!(body["code"], "failed_precondition", "{body}");
     assert_eq!(h.store.list_modules(Some(&id)).await.unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn a_modules_own_address_reaches_its_page() {
+    let h = harness().await;
+    let id = h.server("mc1", "vanilla").await;
+    h.store
+        .upsert_route(
+            None,
+            nn_store::RouteInput {
+                server_id: Some(&id),
+                hostname: "mc1.example.com",
+                listener_id: None,
+                priority: 0,
+            },
+        )
+        .await
+        .unwrap();
+    // A stand-in for the module's web page.
+    let page = Router::new().fallback(|uri: http::Uri| async move { format!("map page at {uri}") });
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    tokio::spawn(async move { axum::serve(listener, page).await.unwrap() });
+    let module = h
+        .store
+        .insert_module(NewModule {
+            server_id: &id,
+            template: "bluemap",
+            name: "bluemap",
+            settings_json: "{}",
+            lifecycle: "manual",
+            memory_mb: 2048,
+            web_port: Some(i64::from(port)),
+            web_host: Some("map"),
+        })
+        .await
+        .unwrap();
+
+    let get = |host: &'static str| {
+        let app = h.app.clone();
+        async move {
+            let req = Request::get("/tiles/0.json?x=1")
+                .header(header::HOST, host)
+                .body(Body::empty())
+                .unwrap();
+            let response = app.oneshot(req).await.unwrap();
+            let status = response.status();
+            let body = response.into_body().collect().await.unwrap().to_bytes();
+            (status, String::from_utf8_lossy(&body).into_owned())
+        }
+    };
+    // Off until it's opened.
+    assert!(!get("map.mc1.example.com").await.1.contains("map page"));
+
+    let (status, body) = h
+        .call(
+            "SetModuleSite",
+            json!({ "id": module.id, "webHost": "map", "webPublic": true }),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(
+        body["module"]["siteAddresses"],
+        json!(["map.mc1.example.com"])
+    );
+    let (status, page) = get("map.mc1.example.com:443").await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(page, "map page at /tiles/0.json?x=1");
+    // Other hostnames still get the panel.
+    assert!(!get("panel.example.com").await.1.contains("map page"));
+
+    let (_, body) = h
+        .call(
+            "SetModuleSite",
+            json!({ "id": module.id, "webHost": "bad host", "webPublic": true }),
+        )
+        .await;
+    assert_eq!(body["code"], "invalid_argument", "{body}");
+    h.call(
+        "SetModuleSite",
+        json!({ "id": module.id, "webHost": "map", "webPublic": false }),
+    )
+    .await;
+    assert!(!get("map.mc1.example.com").await.1.contains("map page"));
 }

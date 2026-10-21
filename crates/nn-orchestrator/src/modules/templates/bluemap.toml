@@ -14,6 +14,8 @@ notes = "Overworld, Nether and End maps are made for vanilla, Fabric and Forge w
 
 [web]
 port = 8100
+# Its own address starts as map.<server address> (off until turned on).
+prefix = "map"
 
 [env]
 # The heap follows the container's memory limit.
