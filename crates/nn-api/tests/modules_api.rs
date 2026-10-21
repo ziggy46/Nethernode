@@ -260,3 +260,131 @@ async fn a_modules_own_address_reaches_its_page() {
     .await;
     assert!(!get("map.mc1.example.com").await.1.contains("map page"));
 }
+
+#[tokio::test]
+async fn a_status_page_needs_no_docker() {
+    let h = harness().await;
+    let id = h.server("mc1", "fabric").await;
+    h.store
+        .upsert_route(
+            None,
+            nn_store::RouteInput {
+                server_id: Some(&id),
+                hostname: "mc1.example.com",
+                listener_id: None,
+                priority: 0,
+            },
+        )
+        .await
+        .unwrap();
+    h.store.set_server_status(&id, "running").await.unwrap();
+    h.store
+        .open_player_session(nn_store::NewPlayerSession {
+            server_id: &id,
+            uuid: None,
+            username: "Alex",
+            ip: Some("203.0.113.9"),
+        })
+        .await
+        .unwrap();
+
+    // Added even though Docker isn't there: it has no container.
+    let (status, body) = h
+        .call(
+            "AddModule",
+            json!({ "serverId": id, "template": "status-page", "settingsJson": r#"{"title":"Pickles <SMP>","show_players":true}"# }),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let module = body["module"].clone();
+    assert_eq!(module["name"], "status-page");
+    assert_eq!(module["webHost"], "status");
+    assert_eq!(module["status"], "running");
+    let (_, body) = h.call("ListModules", json!({ "serverId": id })).await;
+    assert!(body["unavailable"].as_str().unwrap().contains("Docker"));
+    assert_eq!(body["modules"][0]["status"], "running", "{body}");
+
+    let get = |method: &'static str, path: &'static str| {
+        let app = h.app.clone();
+        async move {
+            let req = Request::builder()
+                .method(method)
+                .uri(path)
+                .header(header::HOST, "status.mc1.example.com")
+                .body(Body::empty())
+                .unwrap();
+            let response = app.oneshot(req).await.unwrap();
+            let status = response.status();
+            let headers = response.headers().clone();
+            let body = response.into_body().collect().await.unwrap().to_bytes();
+            (status, headers, String::from_utf8_lossy(&body).into_owned())
+        }
+    };
+    // Off until it's opened.
+    assert!(!get("GET", "/").await.2.contains("Server status"));
+
+    let (status, body) = h
+        .call(
+            "SetModuleSite",
+            json!({ "id": module["id"], "webHost": "status", "webPublic": true }),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(
+        body["module"]["siteAddresses"],
+        json!(["status.mc1.example.com"])
+    );
+
+    let (status, headers, page) = get("GET", "/").await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(
+        page.contains("<title>Pickles &lt;SMP&gt;</title>"),
+        "{page}"
+    );
+    assert!(
+        headers[header::CONTENT_SECURITY_POLICY]
+            .to_str()
+            .unwrap()
+            .contains("frame-ancestors 'none'")
+    );
+    let (status, headers, json) = get("GET", "/status.json").await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(headers[header::CONTENT_TYPE], "application/json");
+    let shown: Value = serde_json::from_str(&json).unwrap();
+    assert_eq!(shown["state"], "online", "{shown}");
+    assert_eq!(shown["names"], json!(["Alex"]));
+    assert_eq!(shown["address"], "mc1.example.com");
+    assert_eq!(shown["loader"], "Fabric");
+    assert!(
+        !json.contains("203.0.113.9"),
+        "never the players' addresses"
+    );
+    assert_eq!(get("GET", "/admin").await.0, StatusCode::NOT_FOUND);
+    assert_eq!(get("POST", "/").await.0, StatusCode::METHOD_NOT_ALLOWED);
+
+    // Its settings are checked like any module's.
+    let (_, body) = h
+        .call(
+            "UpdateModule",
+            json!({ "id": module["id"], "settingsJson": r#"{"show_players":"yes"}"# }),
+        )
+        .await;
+    assert_eq!(body["code"], "invalid_argument", "{body}");
+    let (status, body) = h
+        .call(
+            "UpdateModule",
+            json!({ "id": module["id"], "settingsJson": r#"{"show_address":false}"# }),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+
+    let (status, body) = h
+        .call(
+            "RemoveModule",
+            json!({ "id": module["id"], "deleteFiles": false }),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert!(h.store.list_modules(Some(&id)).await.unwrap().is_empty());
+    assert!(!get("GET", "/").await.2.contains("Server status"));
+}

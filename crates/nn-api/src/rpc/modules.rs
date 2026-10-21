@@ -1,5 +1,7 @@
 //! ModuleService: helper containers next to servers.
 
+use std::collections::HashMap;
+
 use connectrpc::{ConnectError, RequestContext, Response, ServiceRequest, ServiceResult};
 use nn_auth::Permission;
 use nn_orchestrator::modules::{Lifecycle, ModuleState, template};
@@ -63,16 +65,69 @@ impl ModuleRpc {
         )
     }
 
+    /// Adds a module NetherNode serves itself (the status page): just its
+    /// record, since there's no container or folder. Works for servers on
+    /// any machine.
+    async fn add_panel_module(
+        &self,
+        server: &nn_store::Server,
+        t: &template::Template,
+        name: Option<&str>,
+        settings: &Map<String, Value>,
+    ) -> Result<nn_store::Module, ConnectError> {
+        let name = name.unwrap_or(&t.id);
+        if !template::valid_name(name) {
+            return Err(ConnectError::invalid_argument(
+                "Module names are up to 32 lowercase letters, digits and dashes.",
+            ));
+        }
+        let settings = template::settings(t, settings).map_err(ConnectError::invalid_argument)?;
+        let store = self.state.auth.store();
+        if store
+            .list_modules(Some(&server.id))
+            .await
+            .map_err(store_error)?
+            .iter()
+            .any(|m| m.name == name)
+        {
+            return Err(ConnectError::already_exists(format!(
+                "{} already has a module called {name}.",
+                server.name
+            )));
+        }
+        store
+            .insert_module(nn_store::NewModule {
+                server_id: &server.id,
+                template: &t.id,
+                name,
+                settings_json: &Value::Object(settings).to_string(),
+                lifecycle: t.lifecycle.as_str(),
+                memory_mb: t.memory_mb,
+                web_port: None,
+                web_host: t.web.as_ref().and_then(|w| w.prefix.as_deref()),
+            })
+            .await
+            .map_err(store_error)
+    }
+
     async fn to_proto(
         &self,
         node: &nn_node::Node,
         module: nn_store::Module,
         state: Option<ModuleState>,
     ) -> pb::Module {
-        let state = state.unwrap_or(ModuleState {
-            status: "absent".into(),
-            message: None,
-        });
+        // One NetherNode serves itself is always up.
+        let state = if template::is_panel(&module.template) {
+            ModuleState {
+                status: "running".into(),
+                message: None,
+            }
+        } else {
+            state.unwrap_or(ModuleState {
+                status: "absent".into(),
+                message: None,
+            })
+        };
         let site_addresses = self.site_addresses(&module).await;
         pb::Module {
             site_addresses,
@@ -127,6 +182,7 @@ fn proto_template(t: &template::Template) -> pb::ModuleTemplate {
         lifecycle: t.lifecycle.as_str().to_owned(),
         memory_mb: u32::try_from(t.memory_mb).unwrap_or(0),
         has_web: t.web.is_some(),
+        panel: t.panel,
         notes: t.notes.clone(),
         settings: t
             .settings
@@ -173,33 +229,30 @@ impl pb::ModuleService for ModuleRpc {
         require(&ctx, Permission::ManageServers)?;
         let server = self.server(request.server_id).await?;
         let node = self.state.nodes.for_server(&server);
-        let (modules, unavailable) = match node.modules(&server.id).await {
+        let recorded = self
+            .state
+            .auth
+            .store()
+            .list_modules(Some(&server.id))
+            .await
+            .map_err(store_error)?;
+        // What the containers are doing; without it, still list what's
+        // recorded.
+        let (mut states, unavailable) = match node.modules(&server.id).await {
             Ok(found) => (
-                {
-                    let mut out = Vec::new();
-                    for (m, s) in found {
-                        out.push(self.to_proto(&node, m, Some(s)).await);
-                    }
-                    out
-                },
+                found
+                    .into_iter()
+                    .map(|(m, s)| (m.id, s))
+                    .collect::<HashMap<_, _>>(),
                 String::new(),
             ),
-            // Still list what's recorded, without what it's doing.
-            Err(e) => {
-                let mut out = Vec::new();
-                for m in self
-                    .state
-                    .auth
-                    .store()
-                    .list_modules(Some(&server.id))
-                    .await
-                    .map_err(store_error)?
-                {
-                    out.push(self.to_proto(&node, m, None).await);
-                }
-                (out, e.to_string())
-            }
+            Err(e) => (HashMap::new(), e.to_string()),
         };
+        let mut modules = Vec::new();
+        for m in recorded {
+            let state = states.remove(&m.id);
+            modules.push(self.to_proto(&node, m, state).await);
+        }
         Response::ok(pb::ListModulesResponse {
             modules,
             unavailable,
@@ -218,17 +271,23 @@ impl pb::ModuleService for ModuleRpc {
         let node = self.state.nodes.for_server(&server);
         let name = Some(request.name.trim()).filter(|n| !n.is_empty());
         let memory = (request.memory_mb > 0).then(|| i64::from(request.memory_mb));
-        let module = node
-            .add_module(
-                &server.id,
-                request.template,
-                name,
-                &settings(request.settings_json)?,
-                lifecycle(request.lifecycle)?,
-                memory,
-            )
-            .await
-            .map_err(node_error)?;
+        let module = match template::find(request.template).filter(|t| t.panel) {
+            Some(t) => {
+                self.add_panel_module(&server, t, name, &settings(request.settings_json)?)
+                    .await?
+            }
+            None => node
+                .add_module(
+                    &server.id,
+                    request.template,
+                    name,
+                    &settings(request.settings_json)?,
+                    lifecycle(request.lifecycle)?,
+                    memory,
+                )
+                .await
+                .map_err(node_error)?,
+        };
         audit(
             &self.state,
             &user,
@@ -238,7 +297,8 @@ impl pb::ModuleService for ModuleRpc {
         )
         .await;
         // Start it if it should be running now; failures show as a toast.
-        if let Some(lifecycle) = Lifecycle::parse(&module.lifecycle)
+        if !template::is_panel(&module.template)
+            && let Some(lifecycle) = Lifecycle::parse(&module.lifecycle)
             && nn_orchestrator::modules::wanted(lifecycle, &server.status) == Some(true)
         {
             let (state, node, id, server_id, name) = (
@@ -273,17 +333,36 @@ impl pb::ModuleService for ModuleRpc {
     ) -> ServiceResult<pb::UpdateModuleResponse> {
         let user = require(&ctx, Permission::ManageServers)?.clone();
         let (module, node) = self.module(request.id).await?;
-        let lifecycle = lifecycle(request.lifecycle)?
-            .ok_or_else(|| ConnectError::invalid_argument("choose when it runs"))?;
-        let updated = node
-            .update_module(
+        let updated = if let Some(t) = template::find(&module.template).filter(|t| t.panel) {
+            let settings = template::settings(t, &settings(request.settings_json)?)
+                .map_err(ConnectError::invalid_argument)?;
+            let store = self.state.auth.store();
+            store
+                .update_module(
+                    &module.id,
+                    &Value::Object(settings).to_string(),
+                    &module.lifecycle,
+                    module.memory_mb,
+                )
+                .await
+                .map_err(store_error)?;
+            store
+                .find_module(&module.id)
+                .await
+                .map_err(store_error)?
+                .ok_or_else(|| ConnectError::not_found("no such module"))?
+        } else {
+            let lifecycle = lifecycle(request.lifecycle)?
+                .ok_or_else(|| ConnectError::invalid_argument("choose when it runs"))?;
+            node.update_module(
                 &module.id,
                 &settings(request.settings_json)?,
                 lifecycle,
                 i64::from(request.memory_mb),
             )
             .await
-            .map_err(node_error)?;
+            .map_err(node_error)?
+        };
         audit(
             &self.state,
             &user,
@@ -344,9 +423,18 @@ impl pb::ModuleService for ModuleRpc {
     ) -> ServiceResult<pb::RemoveModuleResponse> {
         let user = require(&ctx, Permission::ManageServers)?.clone();
         let (module, node) = self.module(request.id).await?;
-        node.remove_module(&module.id, request.delete_files)
-            .await
-            .map_err(node_error)?;
+        if template::is_panel(&module.template) {
+            self.state
+                .auth
+                .store()
+                .delete_module(&module.id)
+                .await
+                .map_err(store_error)?;
+        } else {
+            node.remove_module(&module.id, request.delete_files)
+                .await
+                .map_err(node_error)?;
+        }
         module_sites::refresh(&self.state).await;
         audit(
             &self.state,
@@ -366,7 +454,7 @@ impl pb::ModuleService for ModuleRpc {
     ) -> ServiceResult<pb::SetModuleSiteResponse> {
         let user = require(&ctx, Permission::ManageServers)?.clone();
         let (module, node) = self.module(request.id).await?;
-        if module.web_port.is_none() {
+        if !module_sites::has_page(&module) {
             return Err(ConnectError::failed_precondition(
                 "This module has no web page.",
             ));

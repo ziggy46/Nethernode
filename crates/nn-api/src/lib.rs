@@ -56,6 +56,7 @@ mod rpc;
 pub mod schedules;
 mod spa;
 pub mod stats_history;
+mod status_page;
 pub mod uploads;
 
 pub use files::spawn_trash_cleanup;

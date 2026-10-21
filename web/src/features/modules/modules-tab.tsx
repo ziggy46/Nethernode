@@ -130,13 +130,15 @@ export default function ModulesTab({ server }: { server: Server }) {
   const unavailable = list.data.unavailable;
   const available = templates.data?.templates ?? [];
   const templateOf = (m: Module) => available.find((t) => t.id === m.template);
+  const removingPanel = removing ? (templateOf(removing)?.panel ?? false) : false;
 
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <p className="max-w-prose text-label text-text-secondary">
-          Modules run next to this server in their own containers, with their files in its{" "}
-          <span className="font-mono">modules</span> folder.
+          Most modules run next to this server in their own containers, with their files in its{" "}
+          <span className="font-mono">modules</span> folder. A few, like the status page, are part of
+          NetherNode itself.
         </p>
       </div>
       {unavailable && <ErrorAlert className="mb-4">{unavailable}</ErrorAlert>}
@@ -145,6 +147,7 @@ export default function ModulesTab({ server }: { server: Server }) {
         <ul className="mb-6 divide-y divide-divider rounded-lg border border-border">
           {modules.map((m) => {
             const template = templateOf(m);
+            const panel = template?.panel ?? false;
             const running = m.status === "running";
             const busy = act.isPending && act.variables?.work !== undefined;
             return (
@@ -156,10 +159,12 @@ export default function ModulesTab({ server }: { server: Server }) {
                     {m.name !== m.template && (
                       <span className="font-mono text-meta text-text-muted">{m.name}</span>
                     )}
-                    <StatusBadge module={m} />
+                    {!panel && <StatusBadge module={m} />}
                   </p>
                   <p className="text-meta text-text-muted">
-                    {lifecycleLabel(m.lifecycle)} · {m.memoryMb} MB
+                    {panel
+                      ? "Served by NetherNode, with nothing to run"
+                      : `${lifecycleLabel(m.lifecycle)} · ${m.memoryMb} MB`}
                     {template?.version ? ` · ${template.name} ${template.version}` : ""}
                   </p>
                   {m.webAddress && (
@@ -169,7 +174,7 @@ export default function ModulesTab({ server }: { server: Server }) {
                       machine NetherNode runs on
                     </p>
                   )}
-                  {m.webAddress && (
+                  {(m.webAddress || panel) && (
                     <p className="flex flex-wrap items-center gap-x-1.5 text-meta text-text-muted">
                       <Globe className="size-3.5" aria-hidden />
                       {m.webPublic && m.siteAddresses.length > 0 ? (
@@ -206,7 +211,7 @@ export default function ModulesTab({ server }: { server: Server }) {
                   {m.message && <p className="text-meta text-danger">{m.message}</p>}
                 </div>
                 <div className="flex gap-1.5">
-                  {running ? (
+                  {panel ? null : running ? (
                     <Button
                       size="mini"
                       disabled={busy}
@@ -235,14 +240,16 @@ export default function ModulesTab({ server }: { server: Server }) {
                       {busy ? "Starting…" : "Start"}
                     </Button>
                   )}
-                  <Button
-                    size="mini"
-                    variant="ghost"
-                    aria-label={`Log of ${m.name}`}
-                    onClick={() => setLogs(m)}
-                  >
-                    <ScrollText />
-                  </Button>
+                  {!panel && (
+                    <Button
+                      size="mini"
+                      variant="ghost"
+                      aria-label={`Log of ${m.name}`}
+                      onClick={() => setLogs(m)}
+                    >
+                      <ScrollText />
+                    </Button>
+                  )}
                   <Button
                     size="mini"
                     variant="ghost"
@@ -284,7 +291,7 @@ export default function ModulesTab({ server }: { server: Server }) {
               <Button
                 size="mini"
                 className="self-start"
-                disabled={Boolean(unavailable)}
+                disabled={Boolean(unavailable) && !t.panel}
                 onClick={() => setAdding(t)}
               >
                 <Plus />
@@ -320,7 +327,11 @@ export default function ModulesTab({ server }: { server: Server }) {
         open={removing !== null}
         onOpenChange={(open) => !open && setRemoving(null)}
         title={`Remove ${removing?.name}?`}
-        description="Its container is removed. Its folder stays unless you tick the box, so adding it again picks up where it left off."
+        description={
+          removingPanel
+            ? "Its page stops being served, and its address is taken down."
+            : "Its container is removed. Its folder stays unless you tick the box, so adding it again picks up where it left off."
+        }
         confirmLabel="Remove"
         pending={act.isPending}
         onConfirm={() => {
@@ -333,14 +344,16 @@ export default function ModulesTab({ server }: { server: Server }) {
             });
         }}
       >
-        <label htmlFor="remove-module-files" className="flex items-center gap-2 text-label">
-          <Checkbox
-            id="remove-module-files"
-            checked={deleteFiles}
-            onCheckedChange={(v) => setDeleteFiles(v === true)}
-          />
-          Also delete its folder (<span className="font-mono">modules/{removing?.name}</span>)
-        </label>
+        {!removingPanel && (
+          <label htmlFor="remove-module-files" className="flex items-center gap-2 text-label">
+            <Checkbox
+              id="remove-module-files"
+              checked={deleteFiles}
+              onCheckedChange={(v) => setDeleteFiles(v === true)}
+            />
+            Also delete its folder (<span className="font-mono">modules/{removing?.name}</span>)
+          </label>
+        )}
       </ConfirmDialog>
     </div>
   );
@@ -425,36 +438,48 @@ function ModuleDialog({
           {!module && (
             <Field
               label="Name"
-              hint={`Its folder is modules/${name || "…"} in ${server.name}'s folder.`}
+              hint={
+                template.panel
+                  ? undefined
+                  : `Its folder is modules/${name || "…"} in ${server.name}'s folder.`
+              }
               value={name}
               onChange={(e) => setName(e.target.value)}
               pattern="[a-z0-9][a-z0-9-]{0,31}"
               required
             />
           )}
-          <div className="mb-[17px]">
-            <label htmlFor={`${id}-lifecycle`} className="mb-[7px] block text-label text-text-secondary">
-              Runs
-            </label>
-            <Select id={`${id}-lifecycle`} value={lifecycle} onChange={(e) => setLifecycle(e.target.value)}>
-              {LIFECYCLES.map((l) => (
-                <option key={l.value} value={l.value}>
-                  {l.label}
-                </option>
-              ))}
-            </Select>
-            {hint && <p className="mt-1.5 text-meta text-text-muted">{hint}</p>}
-          </div>
-          <Field
-            label="Memory (MB)"
-            type="number"
-            min={128}
-            max={16384}
-            step={128}
-            value={memory}
-            onChange={(e) => setMemory(e.target.value)}
-            required
-          />
+          {!template.panel && (
+            <>
+              <div className="mb-[17px]">
+                <label htmlFor={`${id}-lifecycle`} className="mb-[7px] block text-label text-text-secondary">
+                  Runs
+                </label>
+                <Select
+                  id={`${id}-lifecycle`}
+                  value={lifecycle}
+                  onChange={(e) => setLifecycle(e.target.value)}
+                >
+                  {LIFECYCLES.map((l) => (
+                    <option key={l.value} value={l.value}>
+                      {l.label}
+                    </option>
+                  ))}
+                </Select>
+                {hint && <p className="mt-1.5 text-meta text-text-muted">{hint}</p>}
+              </div>
+              <Field
+                label="Memory (MB)"
+                type="number"
+                min={128}
+                max={16384}
+                step={128}
+                value={memory}
+                onChange={(e) => setMemory(e.target.value)}
+                required
+              />
+            </>
+          )}
           {template.settings.map((s) => (
             <SettingField key={s.key} setting={s} value={values[s.key]} onChange={(v) => set(s.key, v)} />
           ))}

@@ -306,7 +306,7 @@ async fn wanted(state: &AppState, zones: &[String]) -> Vec<String> {
     let mut out = Vec::new();
     for module in modules
         .iter()
-        .filter(|m| m.web_public && m.web_port.is_some())
+        .filter(|m| m.web_public && module_sites::has_page(m))
     {
         let (Some(host), Some(server)) = (
             module.web_host.as_deref(),

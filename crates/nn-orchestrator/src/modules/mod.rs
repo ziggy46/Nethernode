@@ -161,6 +161,15 @@ fn level_name(server_dir: &Path) -> String {
         .unwrap_or_else(|| "world".to_owned())
 }
 
+/// The modules that have containers (leaving out ones NetherNode serves
+/// itself, like the status page).
+fn container_modules(modules: Vec<Module>) -> Vec<Module> {
+    modules
+        .into_iter()
+        .filter(|m| !template::is_panel(&m.template))
+        .collect()
+}
+
 /// Whether a module should be running given its server's status: `Some`
 /// to start or stop it, `None` to leave it as it is.
 pub fn wanted(lifecycle: Lifecycle, server_status: &str) -> Option<bool> {
@@ -198,6 +207,12 @@ impl Orchestrator {
                 module.template
             ))
         })?;
+        if template.panel {
+            return Err(OrchestratorError::InvalidState(format!(
+                "NetherNode serves the {} itself; it has no container.",
+                template.name
+            )));
+        }
         Ok((module, server, template))
     }
 
@@ -236,9 +251,11 @@ impl Orchestrator {
                 "Modules run on this machine only for now.".into(),
             ));
         }
-        let template = template::find(template_id).ok_or_else(|| {
-            OrchestratorError::InvalidInput(format!("There's no {template_id} module."))
-        })?;
+        let template = template::find(template_id)
+            .filter(|t| !t.panel)
+            .ok_or_else(|| {
+                OrchestratorError::InvalidInput(format!("There's no {template_id} module."))
+            })?;
         let name = name
             .map(str::trim)
             .filter(|n| !n.is_empty())
@@ -356,7 +373,7 @@ impl Orchestrator {
                 std::fs::remove_dir_all(&dir)?;
             }
         }
-        if self.store.list_modules(Some(&server.id)).await?.is_empty() {
+        if container_modules(self.store.list_modules(Some(&server.id)).await?).is_empty() {
             self.remove_network(&server).await;
         }
         self.module_locks
@@ -573,7 +590,7 @@ impl Orchestrator {
     pub async fn modules(&self, server_id: &str) -> Result<Vec<(Module, ModuleState)>> {
         let server = self.load(server_id).await?;
         let mut out = Vec::new();
-        for module in self.store.list_modules(Some(server_id)).await? {
+        for module in container_modules(self.store.list_modules(Some(server_id)).await?) {
             let state = self.module_state(&server, &module).await;
             out.push((module, state));
         }
@@ -667,7 +684,7 @@ impl Orchestrator {
     /// modules. Called whenever the server's container is (re)created.
     pub(crate) async fn connect_modules(&self, server: &Server, container: &str) {
         match self.store.list_modules(Some(&server.id)).await {
-            Ok(modules) if !modules.is_empty() => {}
+            Ok(modules) if modules.iter().any(|m| !template::is_panel(&m.template)) => {}
             _ => return,
         }
         let mut server = server.clone();
@@ -696,7 +713,7 @@ impl Orchestrator {
     /// Removes a server's module containers and network (its module
     /// records go with the server). Before the server is deleted.
     pub(crate) async fn remove_server_modules(&self, server: &Server) -> Result<()> {
-        let modules = self.store.list_modules(Some(&server.id)).await?;
+        let modules = container_modules(self.store.list_modules(Some(&server.id)).await?);
         for module in &modules {
             self.remove_module_container(server, &module.name).await?;
         }
@@ -727,7 +744,7 @@ impl Orchestrator {
         let Ok(modules) = self.store.list_modules(Some(server_id)).await else {
             return;
         };
-        for module in modules {
+        for module in container_modules(modules) {
             let Some(lifecycle) = Lifecycle::parse(&module.lifecycle) else {
                 continue;
             };
@@ -764,7 +781,8 @@ pub fn spawn(orch: &Arc<Orchestrator>) {
         if let Ok(servers) = orch.store.list_local_servers().await {
             let status: HashMap<String, String> =
                 servers.into_iter().map(|s| (s.id, s.status)).collect();
-            for module in orch.store.list_modules(None).await.unwrap_or_default() {
+            for module in container_modules(orch.store.list_modules(None).await.unwrap_or_default())
+            {
                 let (Some(lifecycle), Some(server_status)) = (
                     Lifecycle::parse(&module.lifecycle),
                     status.get(&module.server_id),

@@ -18,7 +18,8 @@ use axum::extract::{Request, State};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use http::{HeaderMap, StatusCode, header};
-use nn_store::{Route, Server};
+use nn_orchestrator::modules::template;
+use nn_store::{Module, Route, Server};
 
 use crate::AppState;
 
@@ -26,11 +27,26 @@ use crate::AppState;
 const MAX_BODY: usize = 16 * 1024 * 1024;
 const REFRESH_EVERY: Duration = Duration::from_secs(30);
 
-/// Hostname → where its module's web page is (`http://127.0.0.1:8100`).
-static SITES: LazyLock<RwLock<HashMap<String, String>>> = LazyLock::new(Default::default);
+/// Where a module's address leads.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Target {
+    /// Its container's web page (`http://127.0.0.1:8100`).
+    Forward(String),
+    /// A page NetherNode serves itself: the status page of this module.
+    StatusPage(String),
+}
 
-fn sites() -> std::sync::RwLockReadGuard<'static, HashMap<String, String>> {
+/// Hostname → where it leads.
+static SITES: LazyLock<RwLock<HashMap<String, Target>>> = LazyLock::new(Default::default);
+
+fn sites() -> std::sync::RwLockReadGuard<'static, HashMap<String, Target>> {
     SITES.read().unwrap_or_else(|e| e.into_inner())
+}
+
+/// Whether a module has a web page: its container's, or one NetherNode
+/// serves for it.
+pub(crate) fn has_page(module: &Module) -> bool {
+    module.web_port.is_some() || template::is_panel(&module.template)
 }
 
 static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
@@ -129,17 +145,23 @@ pub async fn refresh(state: &AppState) {
     let flat = crate::cloudflare::zones(state).await;
     let mut table = HashMap::new();
     for module in modules.iter().filter(|m| m.web_public) {
-        let (Some(host), Some(port), Some(server)) = (
+        let (Some(host), Some(server)) = (
             module.web_host.as_deref(),
-            module.web_port,
             servers.get(module.server_id.as_str()),
         ) else {
             continue;
         };
-        let node = state.nodes.for_server(server);
-        let target = node
-            .module_address(port)
-            .unwrap_or_else(|| format!("http://127.0.0.1:{port}"));
+        let target = if template::is_panel(&module.template) {
+            Target::StatusPage(module.id.clone())
+        } else if let Some(port) = module.web_port {
+            let node = state.nodes.for_server(server);
+            Target::Forward(
+                node.module_address(port)
+                    .unwrap_or_else(|| format!("http://127.0.0.1:{port}")),
+            )
+        } else {
+            continue;
+        };
         for address in addresses(host, &server_addresses(server, &routes), &flat) {
             table.entry(address).or_insert_with(|| target.clone());
         }
@@ -193,7 +215,11 @@ pub(crate) async fn dispatch(State(state): State<AppState>, req: Request, next: 
     let target = host_of(req.headers(), state.config.trust_proxy_headers)
         .and_then(|host| sites().get(&host).cloned());
     match target {
-        Some(target) => forward(&target, req).await,
+        Some(Target::Forward(target)) => forward(&target, req).await,
+        Some(Target::StatusPage(module)) => {
+            let (method, path) = (req.method().clone(), req.uri().path().to_owned());
+            crate::status_page::serve(&state, &module, &method, &path).await
+        }
         None => next.run(req).await,
     }
 }

@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>{{TITLE}}</title>
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #100c18;
+  --card: #1b1425;
+  --raised: #241a31;
+  --border: #3d2e4d;
+  --text: #f5f1f7;
+  --text-2: #b9aec3;
+  --muted: #94869f;
+  --accent: #ff8a00;
+  --on-accent: #100c18;
+  --online: #4ade80;
+  --busy: #fbbf24;
+  --asleep: #b29aff;
+  --offline: #94869f;
+  /* Minecraft's text colors (§0–§f), tuned to read on the card. */
+  --mc-0: #94869f; --mc-1: #7b8cff; --mc-2: #3bb54a; --mc-3: #2cb5b5;
+  --mc-4: #ff5c5c; --mc-5: #c77dff; --mc-6: #ffaa00; --mc-7: #aaaaaa;
+  --mc-8: #8a8a8a; --mc-9: #8f9dff; --mc-a: #5ee05e; --mc-b: #5fe0e0;
+  --mc-c: #ff6b6b; --mc-d: #ff79ff; --mc-e: #f5e050; --mc-f: #f5f1f7;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+:root[data-theme="overworld"] { --accent: #5cd17a; }
+:root[data-theme="end"] { --accent: #c4a8ff; }
+:root[data-theme="sky"] { --accent: #6cc4ff; }
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --bg: #f6f3f8;
+    --card: #ffffff;
+    --raised: #f1ecf4;
+    --border: #e0d8e6;
+    --text: #1d1626;
+    --text-2: #4d4258;
+    --muted: #6e6279;
+    --online: #16843f;
+    --busy: #a16207;
+    --asleep: #6d4fd6;
+    --offline: #6e6279;
+    --on-accent: #ffffff;
+    --mc-0: #1d1626; --mc-1: #2235c9; --mc-2: #17803d; --mc-3: #0f7a7a;
+    --mc-4: #b3261e; --mc-5: #8a2cb0; --mc-6: #a15c00; --mc-7: #5f5868;
+    --mc-8: #6e6279; --mc-9: #3346d6; --mc-a: #1a7f2e; --mc-b: #0b7285;
+    --mc-c: #c0362c; --mc-d: #b02fa8; --mc-e: #8a6d00; --mc-f: #1d1626;
+  }
+  :root { --accent: #b35400; }
+  :root[data-theme="overworld"] { --accent: #17803d; }
+  :root[data-theme="end"] { --accent: #6d4fd6; }
+  :root[data-theme="sky"] { --accent: #0b6fb3; }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  background-image: radial-gradient(60rem 30rem at 50% -10rem, color-mix(in oklab, var(--accent) 16%, transparent), transparent);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 16px 24px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+main {
+  width: 100%;
+  max-width: 520px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 28px;
+}
+.eyebrow {
+  margin: 0 0 6px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+h1 {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.2;
+  letter-spacing: -0.6px;
+  overflow-wrap: anywhere;
+}
+.motd {
+  margin: 8px 0 0;
+  color: var(--text-2);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0 0;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--raised);
+}
+.dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--tone);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--tone) 22%, transparent);
+}
+[data-state="online"] { --tone: var(--online); }
+[data-state="starting"], [data-state="stopping"] { --tone: var(--busy); }
+[data-state="asleep"] { --tone: var(--asleep); }
+[data-state="offline"], [data-state="unknown"] { --tone: var(--offline); }
+.state strong { display: block; font-size: 16px; }
+.state span { display: block; color: var(--text-2); font-size: 13px; }
+dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 16px 0 0;
+}
+dl div { padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; min-width: 0; }
+dt { font-size: 11px; color: var(--muted); }
+dd { margin: 2px 0 0; font-size: 18px; font-weight: 600; letter-spacing: -0.3px; overflow-wrap: anywhere; }
+dd small { font-size: 13px; font-weight: 400; color: var(--text-2); letter-spacing: 0; }
+.join { margin: 16px 0 0; }
+.join p { margin: 0 0 6px; font-size: 11px; color: var(--muted); }
+.address {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.address code {
+  flex: 1;
+  min-width: 0;
+  font: 15px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+button {
+  flex: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--on-accent);
+  background: var(--accent);
+  border: 0;
+  border-radius: 7px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.players { margin: 16px 0 0; }
+.players p { margin: 0 0 6px; font-size: 11px; color: var(--muted); }
+.players ul { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.players li {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  font-size: 13px;
+}
+footer {
+  margin-top: 16px;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+}
+footer .stale { color: var(--busy); }
+[hidden] { display: none !important; }
+@media (max-width: 420px) {
+  main { padding: 20px; }
+  dl { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">Server status</p>
+  <h1 id="title"></h1>
+  <p class="motd" id="motd" hidden></p>
+  <div class="state" id="state" role="status">
+    <div class="dot" aria-hidden="true"></div>
+    <div><strong id="state-label"></strong><span id="state-detail"></span></div>
+  </div>
+  <dl>
+    <div><dt>Players</dt><dd id="players"></dd></div>
+    <div><dt>Version</dt><dd id="version"></dd></div>
+  </dl>
+  <div class="join" id="join" hidden>
+    <p>Join at</p>
+    <div class="address"><code id="address"></code><button type="button" id="copy">Copy</button></div>
+  </div>
+  <div class="players" id="names" hidden>
+    <p>Playing now</p>
+    <ul id="name-list"></ul>
+  </div>
+</main>
+<footer><span id="updated"></span> · Served by NetherNode</footer>
+<script type="application/json" id="initial">{{DATA}}</script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const COLORS = "0123456789abcdef";
+  // Minecraft's § formatting codes, drawn with text nodes only.
+  function motd(el, text) {
+    el.replaceChildren();
+    let style = {};
+    const parts = text.split("§");
+    const push = (s) => {
+      if (!s) return;
+      const span = document.createElement("span");
+      span.textContent = s;
+      if (style.color) span.style.color = style.color;
+      if (style.bold) span.style.fontWeight = "600";
+      if (style.italic) span.style.fontStyle = "italic";
+      const lines = [style.underline && "underline", style.strike && "line-through"].filter(Boolean);
+      if (lines.length) span.style.textDecoration = lines.join(" ");
+      el.append(span);
+    };
+    push(parts[0]);
+    for (const part of parts.slice(1)) {
+      const code = part.charAt(0).toLowerCase();
+      if (code && COLORS.includes(code)) style = { color: `var(--mc-${code})` };
+      else if (code === "l") style.bold = true;
+      else if (code === "o") style.italic = true;
+      else if (code === "n") style.underline = true;
+      else if (code === "m") style.strike = true;
+      else if (code === "r") style = {};
+      push(part.slice(1));
+    }
+  }
+  function ago(ms) {
+    const minutes = Math.max(0, Math.round((Date.now() - ms) / 60000));
+    if (minutes < 1) return "less than a minute";
+    if (minutes < 60) return `${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 48) return `${hours} h ${minutes % 60} min`;
+    return `${Math.floor(hours / 24)} days`;
+  }
+  const STATES = {
+    online: ["Online", (s) => (s.since_ms ? `Up for ${ago(s.since_ms)}` : "Ready to join")],
+    starting: ["Starting", () => "It'll be ready to join in a moment."],
+    stopping: ["Stopping", () => "It's shutting down."],
+    asleep: ["Asleep", () => "Nobody's on, so it's sleeping. Join and it wakes up."],
+    offline: ["Offline", () => "It isn't running right now."],
+    unknown: ["Unknown", () => "NetherNode can't reach the machine this server runs on right now."],
+  };
+  let last = null;
+  function draw(s, stale) {
+    last = s;
+    document.title = s.title;
+    document.documentElement.dataset.theme = s.theme;
+    $("title").textContent = s.title;
+    $("motd").hidden = !s.motd;
+    if (s.motd) motd($("motd"), s.motd);
+    const [label, detail] = STATES[s.state] ?? STATES.unknown;
+    $("state").dataset.state = s.state;
+    $("state-label").textContent = label;
+    $("state-detail").textContent = detail(s);
+    const players = $("players");
+    players.replaceChildren();
+    if (s.players_online != null) {
+      players.append(String(s.players_online));
+      const max = document.createElement("small");
+      max.textContent = ` of ${s.players_max}`;
+      players.append(max);
+    } else {
+      players.textContent = "—";
+    }
+    $("version").textContent = [s.version, s.loader].filter(Boolean).join(" · ") || "—";
+    $("join").hidden = !s.address;
+    $("address").textContent = s.address ?? "";
+    const names = s.names ?? [];
+    $("names").hidden = names.length === 0;
+    $("name-list").replaceChildren(
+      ...names.map((n) => {
+        const li = document.createElement("li");
+        li.textContent = n;
+        return li;
+      }),
+    );
+    const updated = $("updated");
+    updated.className = stale ? "stale" : "";
+    const time = new Date(s.checked_ms).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    updated.textContent = stale ? `Couldn't refresh; this is from ${time}` : `Updated ${time}`;
+  }
+  $("copy").addEventListener("click", async () => {
+    if (!last?.address) return;
+    try {
+      await navigator.clipboard.writeText(last.address);
+      $("copy").textContent = "Copied";
+    } catch {
+      $("copy").textContent = "Select it";
+    }
+    setTimeout(() => ($("copy").textContent = "Copy"), 2000);
+  });
+  draw(JSON.parse($("initial").textContent), false);
+  async function refresh() {
+    try {
+      const res = await fetch("/status.json", { cache: "no-store" });
+      if (!res.ok) throw new Error(String(res.status));
+      draw(await res.json(), false);
+    } catch {
+      if (last) draw(last, true);
+    }
+  }
+  setInterval(refresh, 30000);
+  document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && refresh());
+})();
+</script>
+</body>
+</html>

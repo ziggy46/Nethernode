@@ -1,0 +1,33 @@
+# A status page: a public page showing whether the server is up, how many
+# are playing and how to join. NetherNode serves it itself, so there's no
+# container, and it works for servers on any machine.
+id = "status-page"
+name = "Status page"
+description = "A public page showing whether the server is up, who's playing and how to join."
+panel = true
+lifecycle = "always"
+notes = "NetherNode serves this page itself: there's nothing to download or run. Open it to anyone from its address to share it."
+
+[web]
+# Its own address starts as status.<server address> (off until turned on).
+prefix = "status"
+
+[[settings]]
+key = "title"
+label = "Title"
+help = "Empty: the server's name."
+kind = "text"
+default = ""
+
+[[settings]]
+key = "show_address"
+label = "Show the address to join"
+kind = "boolean"
+default = true
+
+[[settings]]
+key = "show_players"
+label = "Show who's online"
+help = "Lists the names of the players on the server. Off: only how many there are."
+kind = "boolean"
+default = false

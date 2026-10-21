@@ -6,7 +6,9 @@ package nethernode.v1;
 // templates that come with NetherNode (BlueMap, a 3D web map, for one).
 // Each has its own folder in the server's (modules/<name>/), and joins a
 // private network with the server. Administrators and owners. Modules run
-// on the panel's own machine only for now.
+// on the panel's own machine only for now. A few are part of NetherNode
+// itself (`ModuleTemplate.panel`, like the status page): those have no
+// container and work for any server.
 service ModuleService {
   // The kinds of module there are.
   rpc ListModuleTemplates(ListModuleTemplatesRequest) returns (ListModuleTemplatesResponse) {
@@ -68,6 +70,10 @@ message ModuleTemplate {
   // Anything to know before adding one.
   string notes = 9;
   repeated ModuleSetting settings = 10;
+  // Part of NetherNode itself (the status page): no image, container,
+  // folder, memory or lifecycle; it can't be started or stopped, and works
+  // for servers on any machine.
+  bool panel = 11;
 }
 
 message Module {

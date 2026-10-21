@@ -61,7 +61,9 @@ impl Lifecycle {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Web {
-    /// The port it listens on inside its container.
+    /// The port it listens on inside its container (none for a page
+    /// NetherNode serves itself).
+    #[serde(default)]
     pub port: u16,
     /// What new modules' own addresses start with (`map` gives
     /// map.<server address>).
@@ -146,8 +148,15 @@ pub struct Template {
     /// One sentence on what it does.
     pub description: String,
     /// The version of the software, for display.
+    #[serde(default)]
     pub version: String,
+    /// Part of NetherNode itself, with no container: its web page is served
+    /// by the panel, and it has no image, folder, memory or lifecycle of its
+    /// own.
+    #[serde(default)]
+    pub panel: bool,
     /// The image, pinned by digest (`repo@sha256:…`).
+    #[serde(default)]
     pub image: String,
     /// Arguments after the image's entrypoint.
     #[serde(default)]
@@ -155,6 +164,7 @@ pub struct Template {
     /// When new modules run.
     pub lifecycle: Lifecycle,
     /// Default memory limit, MiB.
+    #[serde(default)]
     pub memory_mb: i64,
     /// Anything to know before adding one.
     #[serde(default)]
@@ -176,7 +186,10 @@ pub struct Template {
     pub settings: Vec<Setting>,
 }
 
-const BUILT_IN: &[&str] = &[include_str!("templates/bluemap.toml")];
+const BUILT_IN: &[&str] = &[
+    include_str!("templates/bluemap.toml"),
+    include_str!("templates/status-page.toml"),
+];
 
 /// The templates that come with NetherNode.
 pub fn built_in() -> &'static [Template] {
@@ -194,6 +207,12 @@ pub fn find(id: &str) -> Option<&'static Template> {
     built_in().iter().find(|t| t.id == id)
 }
 
+/// Whether a module made from `template_id` is part of NetherNode itself
+/// (no container), like the status page.
+pub fn is_panel(template_id: &str) -> bool {
+    find(template_id).is_some_and(|t| t.panel)
+}
+
 /// Reads and checks a template.
 pub fn parse(raw: &str) -> Result<Template, String> {
     let template: Template = toml::from_str(raw).map_err(|e| e.to_string())?;
@@ -208,11 +227,29 @@ fn check(t: &Template) -> Result<(), String> {
             t.id
         ));
     }
-    let Some((_, digest)) = t.image.split_once("@sha256:") else {
-        return Err(format!("{}: the image must be pinned by digest", t.id));
-    };
-    if digest.len() != 64 || !digest.bytes().all(|b| b.is_ascii_hexdigit()) {
-        return Err(format!("{}: the image digest is malformed", t.id));
+    if t.panel {
+        if !t.image.is_empty()
+            || !t.command.is_empty()
+            || !t.env.is_empty()
+            || !t.mounts.is_empty()
+            || !t.files.is_empty()
+            || t.web.as_ref().is_some_and(|w| w.port != 0)
+        {
+            return Err(format!(
+                "{}: a module NetherNode serves itself has no container",
+                t.id
+            ));
+        }
+    } else {
+        let Some((_, digest)) = t.image.split_once("@sha256:") else {
+            return Err(format!("{}: the image must be pinned by digest", t.id));
+        };
+        if digest.len() != 64 || !digest.bytes().all(|b| b.is_ascii_hexdigit()) {
+            return Err(format!("{}: the image digest is malformed", t.id));
+        }
+        if t.web.as_ref().is_some_and(|w| w.port == 0) {
+            return Err(format!("{}: the web page needs its port", t.id));
+        }
     }
     // Placeholders must be ones that exist, with every setting filled in.
     let defaults: Map<String, Value> = t
@@ -478,6 +515,28 @@ mod tests {
                 .iter()
                 .any(|m| m.read_only && m.target == "/app/world")
         );
+    }
+
+    #[test]
+    fn the_status_page_has_no_container() {
+        let page = find("status-page").expect("the status page is built in");
+        assert!(page.panel && page.image.is_empty() && page.mounts.is_empty());
+        assert_eq!(
+            page.web.as_ref().and_then(|w| w.prefix.as_deref()),
+            Some("status")
+        );
+        assert!(is_panel("status-page") && !is_panel("bluemap"));
+        // A container's settings don't belong on one.
+        let mut wrong = page.clone();
+        wrong.image = find("bluemap").unwrap().image.clone();
+        assert!(check(&wrong).is_err());
+        // And a container template still needs its image and port.
+        let mut wrong = find("bluemap").unwrap().clone();
+        wrong.web = Some(Web {
+            port: 0,
+            prefix: None,
+        });
+        assert!(check(&wrong).is_err());
     }
 
     #[test]
