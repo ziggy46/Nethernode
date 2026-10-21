@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE server_modules SET web_host = ?2, web_public = ?3, updated_at = ?4 WHERE id = ?1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "0f55ec5694ef90e28fddbb036c732c0811e4a34b9296baee58c4377b71db444a"
+}

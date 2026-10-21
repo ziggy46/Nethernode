@@ -26,14 +26,10 @@ service ModuleService {
   rpc StopModule(StopModuleRequest) returns (StopModuleResponse);
   // Removes a module's container and record, and its folder if asked.
   rpc RemoveModule(RemoveModuleRequest) returns (RemoveModuleResponse);
-  // Where anyone can open a module's web page: at a path on the shared
-  // address for modules' pages (map.example.com/mc1/), or on an address of
-  // its own (a prefix for the server's address, like "map", or a whole
-  // hostname). The panel passes those requests to the module.
+  // A module's own address for its web page (a prefix for the server's
+  // address, like "map", or a whole hostname) and whether anyone can open
+  // it there. The panel passes requests for that hostname to the module.
   rpc SetModuleSite(SetModuleSiteRequest) returns (SetModuleSiteResponse);
-  // Sets the shared address for modules' pages, like map.example.com
-  // (empty: none). Owners and administrators.
-  rpc SetSharedSiteHost(SetSharedSiteHostRequest) returns (SetSharedSiteHostResponse);
   // What a module printed last.
   rpc GetModuleLogs(GetModuleLogsRequest) returns (GetModuleLogsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
@@ -100,12 +96,8 @@ message Module {
   // The hostnames that makes, like map.mc1.example.com (one per address the
   // server has; empty when the server has none and web_host is a prefix).
   repeated string site_addresses = 13;
-  // Its path on the shared address (like "mc1"), when it's there rather
-  // than on its own address.
-  string web_path = 14;
-  // Where that is, like map.example.com/mc1/ (empty without a shared
-  // address).
-  string shared_address = 15;
+  // Were web_path and shared_address (the shared address, taken out).
+  reserved 14, 15;
 }
 
 message ListModuleTemplatesRequest {}
@@ -120,8 +112,8 @@ message ListModulesRequest {
 
 message ListModulesResponse {
   repeated Module modules = 1;
-  // The shared address for modules' pages; empty if none is set.
-  string shared_host = 3;
+  // Was shared_host.
+  reserved 3;
   // Why this server can't have modules (it's on another machine, or Docker
   // isn't reachable); empty when it can.
   string unavailable = 2;
@@ -187,20 +179,12 @@ message GetModuleLogsResponse {
 
 message SetModuleSiteRequest {
   string id = 1;
-  // Its own address: a prefix like "map", or a whole hostname. Used when
-  // web_path is empty.
+  // A prefix like "map", or a whole hostname.
   string web_host = 2;
   bool web_public = 3;
-  // A path on the shared address, like "mc1"; empty to use web_host.
-  string web_path = 4;
+  // Was web_path.
+  reserved 4;
 }
-
-message SetSharedSiteHostRequest {
-  // Like map.example.com; empty for none.
-  string host = 1;
-}
-
-message SetSharedSiteHostResponse {}
 
 message SetModuleSiteResponse {
   Module module = 1;

@@ -26,9 +26,6 @@ pub struct Module {
     pub web_host: Option<String>,
     /// Anyone can open its web page at that address.
     pub web_public: bool,
-    /// Its path on the shared address for modules' pages, when it's there
-    /// rather than on its own address.
-    pub web_path: Option<String>,
     /// Unix ms.
     pub created_at: i64,
     /// Unix ms.
@@ -86,8 +83,7 @@ impl Store {
         let row = sqlx::query_as!(
             Module,
             r#"SELECT id AS "id!", server_id, template, name, settings_json, lifecycle, memory_mb,
-                      web_port, web_host, web_public AS "web_public: bool", web_path, created_at,
-                      updated_at
+                      web_port, web_host, web_public AS "web_public: bool", created_at, updated_at
                FROM server_modules WHERE id = ?1"#,
             id,
         )
@@ -101,8 +97,7 @@ impl Store {
         let rows = sqlx::query_as!(
             Module,
             r#"SELECT id AS "id!", server_id, template, name, settings_json, lifecycle, memory_mb,
-                      web_port, web_host, web_public AS "web_public: bool", web_path, created_at,
-                      updated_at
+                      web_port, web_host, web_public AS "web_public: bool", created_at, updated_at
                FROM server_modules WHERE ?1 IS NULL OR server_id = ?1
                ORDER BY server_id, name"#,
             server_id,
@@ -137,23 +132,19 @@ impl Store {
         Ok(result.rows_affected() == 1)
     }
 
-    /// Sets where a module's web page is (its path on the shared address,
-    /// or its own address when `web_path` is `None`) and whether anyone can
-    /// open it. Returns whether it exists.
+    /// Sets a module's own address and whether anyone can open it. Returns
+    /// whether it exists.
     pub async fn set_module_site(
         &self,
         id: &str,
         web_host: Option<&str>,
-        web_path: Option<&str>,
         web_public: bool,
     ) -> Result<bool> {
         let now = now_ms();
         let result = sqlx::query!(
-            "UPDATE server_modules SET web_host = ?2, web_path = ?3, web_public = ?4, updated_at = ?5
-             WHERE id = ?1",
+            "UPDATE server_modules SET web_host = ?2, web_public = ?3, updated_at = ?4 WHERE id = ?1",
             id,
             web_host,
-            web_path,
             web_public,
             now,
         )

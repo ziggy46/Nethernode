@@ -280,22 +280,6 @@ async fn http_status(port: u16) -> Option<u16> {
     line.split_whitespace().nth(1)?.parse().ok()
 }
 
-/// The body of `/` on 127.0.0.1:`port`.
-async fn http_body(port: u16) -> Option<String> {
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
-    let mut stream = tokio::net::TcpStream::connect(("127.0.0.1", port))
-        .await
-        .ok()?;
-    stream
-        .write_all(b"GET / HTTP/1.0\r\nHost: localhost\r\n\r\n")
-        .await
-        .ok()?;
-    let mut all = Vec::new();
-    stream.read_to_end(&mut all).await.ok()?;
-    let text = String::from_utf8_lossy(&all).into_owned();
-    Some(text.split_once("\r\n\r\n")?.1.to_owned())
-}
-
 #[tokio::test(flavor = "multi_thread")]
 #[ignore = "needs Docker and downloads a Minecraft server and BlueMap"]
 async fn bluemap_module_runs_next_to_its_server() {
@@ -371,13 +355,6 @@ async fn bluemap_module_runs_next_to_its_server() {
         started.elapsed()
     );
     assert_eq!(answered, 200);
-    // Its page links to its files relatively, so it also works from a
-    // path on the shared address (map.example.com/mc1/).
-    let index = http_body(port).await.unwrap_or_default();
-    assert!(
-        !index.contains("src=\"/") && !index.contains("href=\"/"),
-        "BlueMap's page uses absolute links:\n{index}"
-    );
     let slug = &server.slug;
     let module_dir = servers_dir.join(slug).join("modules").join("bluemap");
     let core = std::fs::read_to_string(module_dir.join("config/core.conf")).unwrap();

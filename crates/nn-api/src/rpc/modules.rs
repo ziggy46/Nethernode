@@ -69,17 +69,8 @@ impl ModuleRpc {
             message: None,
         });
         let site_addresses = self.site_addresses(&module).await;
-        let shared_address = match (
-            &module.web_path,
-            module_sites::shared_host(self.state.auth.store()).await,
-        ) {
-            (Some(path), Some(host)) => format!("{host}/{path}/"),
-            _ => String::new(),
-        };
         pb::Module {
             site_addresses,
-            shared_address,
-            web_path: module.web_path.clone().unwrap_or_default(),
             web_host: module.web_host.clone().unwrap_or_default(),
             web_public: module.web_public,
             web_address: module
@@ -207,9 +198,6 @@ impl pb::ModuleService for ModuleRpc {
         Response::ok(pb::ListModulesResponse {
             modules,
             unavailable,
-            shared_host: module_sites::shared_host(self.state.auth.store())
-                .await
-                .unwrap_or_default(),
             ..Default::default()
         })
     }
@@ -378,51 +366,26 @@ impl pb::ModuleService for ModuleRpc {
                 "This module has no web page.",
             ));
         }
+        let host =
+            module_sites::check_host(request.web_host).map_err(ConnectError::invalid_argument)?;
         let store = self.state.auth.store();
-        let others: Vec<nn_store::Module> = store
-            .list_modules(None)
-            .await
-            .map_err(store_error)?
-            .into_iter()
-            .filter(|o| o.id != module.id && o.web_public)
-            .collect();
-        let (host, path) = if request.web_path.trim().is_empty() {
-            let host = module_sites::check_host(request.web_host)
-                .map_err(ConnectError::invalid_argument)?;
-            // Each hostname can lead to one module.
-            let mut mine = module.clone();
-            mine.web_host = Some(host.clone());
-            mine.web_path = None;
-            let wanted = self.site_addresses(&mine).await;
-            for other in others.iter().filter(|o| o.web_path.is_none()) {
-                let theirs = self.site_addresses(other).await;
-                if let Some(taken) = wanted.iter().find(|a| theirs.contains(a)) {
-                    return Err(ConnectError::already_exists(format!(
-                        "{taken} is already another module's address."
-                    )));
-                }
+        // Each hostname can lead to one module.
+        let mut mine = module.clone();
+        mine.web_host = Some(host.clone());
+        let wanted = self.site_addresses(&mine).await;
+        for other in store.list_modules(None).await.map_err(store_error)? {
+            if other.id == module.id || !other.web_public {
+                continue;
             }
-            (Some(host), None)
-        } else {
-            let path = module_sites::check_path(request.web_path)
-                .map_err(ConnectError::invalid_argument)?;
-            if others
-                .iter()
-                .any(|o| o.web_path.as_deref() == Some(path.as_str()))
-            {
+            let theirs = self.site_addresses(&other).await;
+            if let Some(taken) = wanted.iter().find(|a| theirs.contains(a)) {
                 return Err(ConnectError::already_exists(format!(
-                    "/{path}/ is already another module's page."
+                    "{taken} is already another module's address."
                 )));
             }
-            (module.web_host.clone(), Some(path))
-        };
+        }
         store
-            .set_module_site(
-                &module.id,
-                host.as_deref(),
-                path.as_deref(),
-                request.web_public,
-            )
+            .set_module_site(&module.id, Some(&host), request.web_public)
             .await
             .map_err(store_error)?;
         module_sites::refresh(&self.state).await;
@@ -431,7 +394,7 @@ impl pb::ModuleService for ModuleRpc {
             &user,
             "module.site",
             ("server", &module.server_id),
-            json!({ "module": module.id, "name": module.name, "web_host": host, "web_path": path, "public": request.web_public }),
+            json!({ "module": module.id, "name": module.name, "web_host": host, "public": request.web_public }),
         )
         .await;
         let saved = store
@@ -443,43 +406,6 @@ impl pb::ModuleService for ModuleRpc {
             module: self.to_proto(&node, saved, None).await.into(),
             ..Default::default()
         })
-    }
-
-    async fn set_shared_site_host(
-        &self,
-        ctx: RequestContext,
-        request: ServiceRequest<'_, pb::SetSharedSiteHostRequest>,
-    ) -> ServiceResult<pb::SetSharedSiteHostResponse> {
-        let user = require(&ctx, Permission::ManageSettings)?.clone();
-        let host = match request.host.trim() {
-            "" => String::new(),
-            typed => {
-                let host =
-                    module_sites::check_host(typed).map_err(ConnectError::invalid_argument)?;
-                if !host.contains('.') {
-                    return Err(ConnectError::invalid_argument(
-                        "Enter a whole hostname, like map.example.com.",
-                    ));
-                }
-                host
-            }
-        };
-        self.state
-            .auth
-            .store()
-            .set_setting(module_sites::SHARED_HOST_SETTING, &host)
-            .await
-            .map_err(store_error)?;
-        module_sites::refresh(&self.state).await;
-        audit(
-            &self.state,
-            &user,
-            "module.shared_host",
-            ("settings", "modules"),
-            json!({ "host": host }),
-        )
-        .await;
-        Response::ok(pb::SetSharedSiteHostResponse::default())
     }
 
     async fn get_module_logs(
