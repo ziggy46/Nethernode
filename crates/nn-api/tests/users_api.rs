@@ -213,6 +213,9 @@ async fn two_factor_sign_in_over_http() {
     let setup = owner.ok("AccountService/BeginTotpSetup", json!({})).await;
     let secret = setup["secret"].as_str().unwrap().to_owned();
     assert!(setup["qrSvg"].as_str().unwrap().contains("<svg"));
+    // The very code used to enroll, reused below: computing it again could
+    // land in the next 30-second window and be a fresh, valid code.
+    let enrolled = code_for(&secret);
     let (status, _) = owner
         .call(
             "AccountService/ConfirmTotpSetup",
@@ -223,7 +226,7 @@ async fn two_factor_sign_in_over_http() {
     let confirmed = owner
         .ok(
             "AccountService/ConfirmTotpSetup",
-            json!({ "code": code_for(&secret) }),
+            json!({ "code": enrolled }),
         )
         .await;
     let recovery: Vec<String> = serde_json::from_value(confirmed["recoveryCodes"].clone()).unwrap();
@@ -244,7 +247,7 @@ async fn two_factor_sign_in_over_http() {
     let (status, _) = laptop
         .call(
             "AuthService/FinishSignIn",
-            json!({ "challenge": challenge, "code": code_for(&secret) }),
+            json!({ "challenge": challenge, "code": enrolled }),
         )
         .await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
