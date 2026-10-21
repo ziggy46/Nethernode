@@ -169,28 +169,36 @@ export default function ModulesTab({ server }: { server: Server }) {
                   {m.webAddress && (
                     <p className="flex flex-wrap items-center gap-x-1.5 text-meta text-text-muted">
                       <Globe className="size-3.5" aria-hidden />
-                      {m.webPublic && m.siteAddresses.length > 0 ? (
-                        <>
-                          Open to anyone at{" "}
-                          {m.siteAddresses.map((a, i) => (
-                            <span key={a}>
-                              {i > 0 && ", "}
-                              <a
-                                href={`https://${a}`}
-                                target="_blank"
-                                rel="noreferrer noopener"
-                                className="font-mono text-text-secondary underline underline-offset-2"
-                              >
-                                {a}
-                              </a>
-                            </span>
-                          ))}
-                        </>
-                      ) : m.webPublic ? (
-                        "Open to anyone, but the server has no address for the prefix to go in front of."
-                      ) : (
-                        "Not on an address of its own."
-                      )}
+                      {(() => {
+                        const where = m.webPath
+                          ? m.sharedAddress
+                            ? [m.sharedAddress]
+                            : []
+                          : m.siteAddresses;
+                        if (!m.webPublic) return "Not open to anyone.";
+                        if (where.length === 0)
+                          return m.webPath
+                            ? "Open to anyone, but no shared address is set."
+                            : "Open to anyone, but the server has no address for the prefix to go in front of.";
+                        return (
+                          <>
+                            Open to anyone at{" "}
+                            {where.map((a, i) => (
+                              <span key={a}>
+                                {i > 0 && ", "}
+                                <a
+                                  href={`https://${a}`}
+                                  target="_blank"
+                                  rel="noreferrer noopener"
+                                  className="font-mono text-text-secondary underline underline-offset-2"
+                                >
+                                  {a}
+                                </a>
+                              </span>
+                            ))}
+                          </>
+                        );
+                      })()}
                       <button
                         type="button"
                         className="text-text-secondary underline underline-offset-2"
@@ -312,7 +320,15 @@ export default function ModulesTab({ server }: { server: Server }) {
         />
       )}
       {logs && <LogsDialog module={logs} onClose={() => setLogs(null)} />}
-      {site && <SiteDialog server={server} module={site} onClose={() => setSite(null)} onSaved={refresh} />}
+      {site && (
+        <SiteDialog
+          server={server}
+          module={site}
+          sharedHost={list.data.sharedHost}
+          onClose={() => setSite(null)}
+          onSaved={refresh}
+        />
+      )}
       <ConfirmDialog
         open={removing !== null}
         onOpenChange={(open) => !open && setRemoving(null)}
@@ -567,40 +583,72 @@ function LogsDialog({ module, onClose }: { module: Module; onClose: () => void }
   );
 }
 
-/** A module's own address, and whether anyone can open it there. */
+/** Where anyone can open a module's web page: a path on the shared address, or an address of its own. */
 function SiteDialog({
   server,
   module,
+  sharedHost,
   onClose,
   onSaved,
 }: {
   server: Server;
   module: Module;
+  sharedHost: string;
   onClose: () => void;
   onSaved: () => void;
 }) {
   const id = useId();
   const routes = useQuery(routesQuery);
+  const [mode, setMode] = useState<"shared" | "own">(module.webPath || !module.webHost ? "shared" : "own");
+  const [shared, setShared] = useState(sharedHost);
+  const [path, setPath] = useState(module.webPath || server.slug);
   const [host, setHost] = useState(module.webHost || "map");
   const [open, setOpen] = useState(module.webPublic);
-  const error = siteError(host);
-  const preview = siteAddresses(host, serverAddresses(server, routes.data ?? []));
+  const pathError = siteError(path) ?? (path.includes(".") ? "A path has no dots, like mc1." : undefined);
+  const sharedError = shared.trim() ? siteError(shared) : "Enter the shared address, like map.example.com.";
+  const error = mode === "shared" ? (sharedError ?? pathError) : siteError(host);
+  const preview =
+    mode === "shared"
+      ? [`${shared.trim().toLowerCase()}/${path.trim().toLowerCase()}/`]
+      : siteAddresses(host, serverAddresses(server, routes.data ?? []));
   const save = useMutation({
-    mutationFn: () => client.setModuleSite({ id: module.id, webHost: host.trim(), webPublic: open }),
+    mutationFn: async () => {
+      if (mode === "shared" && shared.trim() !== sharedHost)
+        await client.setSharedSiteHost({ host: shared.trim() });
+      await client.setModuleSite({
+        id: module.id,
+        webHost: mode === "own" ? host.trim() : "",
+        webPath: mode === "shared" ? path.trim() : "",
+        webPublic: open,
+      });
+    },
     onSuccess: () => {
-      toast.success(open ? `${module.name} is open at its own address.` : `${module.name}'s address is off.`);
+      toast.success(open ? `${module.name} is open to anyone.` : `${module.name} isn't open to anyone.`);
       onSaved();
       onClose();
     },
   });
+  const choice = (value: "shared" | "own", label: string, hint: string) => (
+    <label className="flex cursor-pointer items-start gap-2 text-label">
+      <input
+        type="radio"
+        name={`${id}-mode`}
+        className="mt-1 accent-primary"
+        checked={mode === value}
+        onChange={() => setMode(value)}
+      />
+      <span>
+        {label}
+        <span className="block text-meta text-text-muted">{hint}</span>
+      </span>
+    </label>
+  );
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="w-[560px]">
+      <DialogContent className="w-[580px]">
         <DialogHeader>
-          <DialogTitle>{module.name}'s own address</DialogTitle>
-          <DialogDescription>
-            A web address for its page that anyone can open, like a map to share with players.
-          </DialogDescription>
+          <DialogTitle>Where anyone can open {module.name}</DialogTitle>
+          <DialogDescription>A web address for its page, like a map to share with players.</DialogDescription>
         </DialogHeader>
         <form
           onSubmit={(e) => {
@@ -608,16 +656,50 @@ function SiteDialog({
             if (!error) save.mutate();
           }}
         >
-          <Field
-            label="Address"
-            hint="A prefix for the server's address (map), or a whole hostname."
-            value={host}
-            onChange={(e) => setHost(e.target.value)}
-            error={host ? error : undefined}
-            className="[&_input]:font-mono"
-          />
+          <fieldset className="mb-4 flex flex-col gap-2.5">
+            <legend className="sr-only">Address</legend>
+            {choice(
+              "shared",
+              "On the shared address",
+              "One address for every server's pages, each at its own path: map.example.com/mc1/. One DNS name or tunnel hostname covers them all.",
+            )}
+            {choice(
+              "own",
+              "On an address of its own",
+              "A name in front of the server's address (map.mc1.example.com), or any hostname.",
+            )}
+          </fieldset>
+          {mode === "shared" ? (
+            <div className="grid grid-cols-[1fr_auto_10rem] items-start gap-2">
+              <Field
+                label="Shared address"
+                hint="For every module's page; set once."
+                value={shared}
+                onChange={(e) => setShared(e.target.value)}
+                error={shared ? sharedError : undefined}
+                className="[&_input]:font-mono"
+              />
+              <span className="pt-9 text-text-muted">/</span>
+              <Field
+                label="Path"
+                value={path}
+                onChange={(e) => setPath(e.target.value)}
+                error={path ? pathError : undefined}
+                className="[&_input]:font-mono"
+              />
+            </div>
+          ) : (
+            <Field
+              label="Address"
+              hint="A prefix for the server's address (map), or a whole hostname."
+              value={host}
+              onChange={(e) => setHost(e.target.value)}
+              error={host ? siteError(host) : undefined}
+              className="[&_input]:font-mono"
+            />
+          )}
           <p className="mb-4 text-meta text-text-secondary">
-            {preview.length > 0 ? (
+            {!error && preview.length > 0 && preview[0] ? (
               <>
                 It'll be at{" "}
                 {preview.map((a, i) => (
@@ -628,9 +710,9 @@ function SiteDialog({
                 ))}
                 .
               </>
-            ) : (
+            ) : mode === "own" && !siteError(host) ? (
               `${server.name} has no address yet for the prefix to go in front of. Give it one on Proxy & routes, or type a whole hostname.`
-            )}
+            ) : null}
           </p>
           <div className="mb-4 flex items-start justify-between gap-5">
             <label htmlFor={id} className="text-label">
@@ -642,9 +724,8 @@ function SiteDialog({
             <Switch id={id} checked={open} onCheckedChange={setOpen} />
           </div>
           <p className="mb-4 rounded-md border border-info/25 bg-info-subtle px-3 py-2 text-meta text-text-secondary">
-            For the address to reach NetherNode, point its DNS where the panel's address points, and if a
-            reverse proxy (like Pangolin) is in front of the panel, add the name there too, sent to
-            NetherNode.
+            The address has to reach NetherNode's web port, like the panel's own address does: a Cloudflare
+            Tunnel public hostname sent to NetherNode, or DNS plus your reverse proxy (like Pangolin).
           </p>
           {save.error && <ErrorAlert>{errorMessage(save.error)}</ErrorAlert>}
           <DialogFooter>

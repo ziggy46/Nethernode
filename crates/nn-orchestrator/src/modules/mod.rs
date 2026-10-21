@@ -823,6 +823,7 @@ mod tests {
             web_port: Some(8100),
             web_host: Some("map".into()),
             web_public: false,
+            web_path: None,
             created_at: 0,
             updated_at: 0,
         }

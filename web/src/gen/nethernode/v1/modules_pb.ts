@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file nethernode/v1/modules.proto.
  */
 export const file_nethernode_v1_modules: GenFile = /*@__PURE__*/
-  fileDesc("ChtuZXRoZXJub2RlL3YxL21vZHVsZXMucHJvdG8SDW5ldGhlcm5vZGUudjEitAEKDU1vZHVsZVNldHRpbmcSCwoDa2V5GAEgASgJEg0KBWxhYmVsGAIgASgJEgwKBGhlbHAYAyABKAkSDAoEa2luZBgEIAEoCRIUCgxkZWZhdWx0X2pzb24YBSABKAkSEAoIcmVxdWlyZWQYBiABKAgSEAoDbWluGAcgASgDSACIAQESEAoDbWF4GAggASgDSAGIAQESDwoHY2hvaWNlcxgJIAMoCUIGCgRfbWluQgYKBF9tYXgi1QEKDk1vZHVsZVRlbXBsYXRlEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkSDwoHdmVyc2lvbhgEIAEoCRINCgVpbWFnZRgFIAEoCRIRCglsaWZlY3ljbGUYBiABKAkSEQoJbWVtb3J5X21iGAcgASgNEg8KB2hhc193ZWIYCCABKAgSDQoFbm90ZXMYCSABKAkSLgoIc2V0dGluZ3MYCiADKAsyHC5uZXRoZXJub2RlLnYxLk1vZHVsZVNldHRpbmci+AEKBk1vZHVsZRIKCgJpZBgBIAEoCRIRCglzZXJ2ZXJfaWQYAiABKAkSEAoIdGVtcGxhdGUYAyABKAkSDAoEbmFtZRgEIAEoCRIVCg1zZXR0aW5nc19qc29uGAUgASgJEhEKCWxpZmVjeWNsZRgGIAEoCRIRCgltZW1vcnlfbWIYByABKA0SEwoLd2ViX2FkZHJlc3MYCCABKAkSDgoGc3RhdHVzGAkgASgJEg8KB21lc3NhZ2UYCiABKAkSEAoId2ViX2hvc3QYCyABKAkSEgoKd2ViX3B1YmxpYxgMIAEoCBIWCg5zaXRlX2FkZHJlc3NlcxgNIAMoCSIcChpMaXN0TW9kdWxlVGVtcGxhdGVzUmVxdWVzdCJPChtMaXN0TW9kdWxlVGVtcGxhdGVzUmVzcG9uc2USMAoJdGVtcGxhdGVzGAEgAygLMh0ubmV0aGVybm9kZS52MS5Nb2R1bGVUZW1wbGF0ZSInChJMaXN0TW9kdWxlc1JlcXVlc3QSEQoJc2VydmVyX2lkGAEgASgJIlIKE0xpc3RNb2R1bGVzUmVzcG9uc2USJgoHbW9kdWxlcxgBIAMoCzIVLm5ldGhlcm5vZGUudjEuTW9kdWxlEhMKC3VuYXZhaWxhYmxlGAIgASgJIoIBChBBZGRNb2R1bGVSZXF1ZXN0EhEKCXNlcnZlcl9pZBgBIAEoCRIQCgh0ZW1wbGF0ZRgCIAEoCRIMCgRuYW1lGAMgASgJEhUKDXNldHRpbmdzX2pzb24YBCABKAkSEQoJbGlmZWN5Y2xlGAUgASgJEhEKCW1lbW9yeV9tYhgGIAEoDSI6ChFBZGRNb2R1bGVSZXNwb25zZRIlCgZtb2R1bGUYASABKAsyFS5uZXRoZXJub2RlLnYxLk1vZHVsZSJeChNVcGRhdGVNb2R1bGVSZXF1ZXN0EgoKAmlkGAEgASgJEhUKDXNldHRpbmdzX2pzb24YAiABKAkSEQoJbGlmZWN5Y2xlGAMgASgJEhEKCW1lbW9yeV9tYhgEIAEoDSI9ChRVcGRhdGVNb2R1bGVSZXNwb25zZRIlCgZtb2R1bGUYASABKAsyFS5uZXRoZXJub2RlLnYxLk1vZHVsZSIgChJTdGFydE1vZHVsZVJlcXVlc3QSCgoCaWQYASABKAkiFQoTU3RhcnRNb2R1bGVSZXNwb25zZSIfChFTdG9wTW9kdWxlUmVxdWVzdBIKCgJpZBgBIAEoCSIUChJTdG9wTW9kdWxlUmVzcG9uc2UiNwoTUmVtb3ZlTW9kdWxlUmVxdWVzdBIKCgJpZBgBIAEoCRIUCgxkZWxldGVfZmlsZXMYAiABKAgiFgoUUmVtb3ZlTW9kdWxlUmVzcG9uc2UiMQoUR2V0TW9kdWxlTG9nc1JlcXVlc3QSCgoCaWQYASABKAkSDQoFbGluZXMYAiABKA0iJgoVR2V0TW9kdWxlTG9nc1Jlc3BvbnNlEg0KBWxpbmVzGAEgAygJIkgKFFNldE1vZHVsZVNpdGVSZXF1ZXN0EgoKAmlkGAEgASgJEhAKCHdlYl9ob3N0GAIgASgJEhIKCndlYl9wdWJsaWMYAyABKAgiPgoVU2V0TW9kdWxlU2l0ZVJlc3BvbnNlEiUKBm1vZHVsZRgBIAEoCzIVLm5ldGhlcm5vZGUudjEuTW9kdWxlMsUGCg1Nb2R1bGVTZXJ2aWNlEnEKE0xpc3RNb2R1bGVUZW1wbGF0ZXMSKS5uZXRoZXJub2RlLnYxLkxpc3RNb2R1bGVUZW1wbGF0ZXNSZXF1ZXN0GioubmV0aGVybm9kZS52MS5MaXN0TW9kdWxlVGVtcGxhdGVzUmVzcG9uc2UiA5ACARJZCgtMaXN0TW9kdWxlcxIhLm5ldGhlcm5vZGUudjEuTGlzdE1vZHVsZXNSZXF1ZXN0GiIubmV0aGVybm9kZS52MS5MaXN0TW9kdWxlc1Jlc3BvbnNlIgOQAgESTgoJQWRkTW9kdWxlEh8ubmV0aGVybm9kZS52MS5BZGRNb2R1bGVSZXF1ZXN0GiAubmV0aGVybm9kZS52MS5BZGRNb2R1bGVSZXNwb25zZRJXCgxVcGRhdGVNb2R1bGUSIi5uZXRoZXJub2RlLnYxLlVwZGF0ZU1vZHVsZVJlcXVlc3QaIy5uZXRoZXJub2RlLnYxLlVwZGF0ZU1vZHVsZVJlc3BvbnNlElQKC1N0YXJ0TW9kdWxlEiEubmV0aGVybm9kZS52MS5TdGFydE1vZHVsZVJlcXVlc3QaIi5uZXRoZXJub2RlLnYxLlN0YXJ0TW9kdWxlUmVzcG9uc2USUQoKU3RvcE1vZHVsZRIgLm5ldGhlcm5vZGUudjEuU3RvcE1vZHVsZVJlcXVlc3QaIS5uZXRoZXJub2RlLnYxLlN0b3BNb2R1bGVSZXNwb25zZRJXCgxSZW1vdmVNb2R1bGUSIi5uZXRoZXJub2RlLnYxLlJlbW92ZU1vZHVsZVJlcXVlc3QaIy5uZXRoZXJub2RlLnYxLlJlbW92ZU1vZHVsZVJlc3BvbnNlEloKDVNldE1vZHVsZVNpdGUSIy5uZXRoZXJub2RlLnYxLlNldE1vZHVsZVNpdGVSZXF1ZXN0GiQubmV0aGVybm9kZS52MS5TZXRNb2R1bGVTaXRlUmVzcG9uc2USXwoNR2V0TW9kdWxlTG9ncxIjLm5ldGhlcm5vZGUudjEuR2V0TW9kdWxlTG9nc1JlcXVlc3QaJC5uZXRoZXJub2RlLnYxLkdldE1vZHVsZUxvZ3NSZXNwb25zZSIDkAIBYgZwcm90bzM");
+  fileDesc("ChtuZXRoZXJub2RlL3YxL21vZHVsZXMucHJvdG8SDW5ldGhlcm5vZGUudjEitAEKDU1vZHVsZVNldHRpbmcSCwoDa2V5GAEgASgJEg0KBWxhYmVsGAIgASgJEgwKBGhlbHAYAyABKAkSDAoEa2luZBgEIAEoCRIUCgxkZWZhdWx0X2pzb24YBSABKAkSEAoIcmVxdWlyZWQYBiABKAgSEAoDbWluGAcgASgDSACIAQESEAoDbWF4GAggASgDSAGIAQESDwoHY2hvaWNlcxgJIAMoCUIGCgRfbWluQgYKBF9tYXgi1QEKDk1vZHVsZVRlbXBsYXRlEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkSDwoHdmVyc2lvbhgEIAEoCRINCgVpbWFnZRgFIAEoCRIRCglsaWZlY3ljbGUYBiABKAkSEQoJbWVtb3J5X21iGAcgASgNEg8KB2hhc193ZWIYCCABKAgSDQoFbm90ZXMYCSABKAkSLgoIc2V0dGluZ3MYCiADKAsyHC5uZXRoZXJub2RlLnYxLk1vZHVsZVNldHRpbmciogIKBk1vZHVsZRIKCgJpZBgBIAEoCRIRCglzZXJ2ZXJfaWQYAiABKAkSEAoIdGVtcGxhdGUYAyABKAkSDAoEbmFtZRgEIAEoCRIVCg1zZXR0aW5nc19qc29uGAUgASgJEhEKCWxpZmVjeWNsZRgGIAEoCRIRCgltZW1vcnlfbWIYByABKA0SEwoLd2ViX2FkZHJlc3MYCCABKAkSDgoGc3RhdHVzGAkgASgJEg8KB21lc3NhZ2UYCiABKAkSEAoId2ViX2hvc3QYCyABKAkSEgoKd2ViX3B1YmxpYxgMIAEoCBIWCg5zaXRlX2FkZHJlc3NlcxgNIAMoCRIQCgh3ZWJfcGF0aBgOIAEoCRIWCg5zaGFyZWRfYWRkcmVzcxgPIAEoCSIcChpMaXN0TW9kdWxlVGVtcGxhdGVzUmVxdWVzdCJPChtMaXN0TW9kdWxlVGVtcGxhdGVzUmVzcG9uc2USMAoJdGVtcGxhdGVzGAEgAygLMh0ubmV0aGVybm9kZS52MS5Nb2R1bGVUZW1wbGF0ZSInChJMaXN0TW9kdWxlc1JlcXVlc3QSEQoJc2VydmVyX2lkGAEgASgJImcKE0xpc3RNb2R1bGVzUmVzcG9uc2USJgoHbW9kdWxlcxgBIAMoCzIVLm5ldGhlcm5vZGUudjEuTW9kdWxlEhMKC3NoYXJlZF9ob3N0GAMgASgJEhMKC3VuYXZhaWxhYmxlGAIgASgJIoIBChBBZGRNb2R1bGVSZXF1ZXN0EhEKCXNlcnZlcl9pZBgBIAEoCRIQCgh0ZW1wbGF0ZRgCIAEoCRIMCgRuYW1lGAMgASgJEhUKDXNldHRpbmdzX2pzb24YBCABKAkSEQoJbGlmZWN5Y2xlGAUgASgJEhEKCW1lbW9yeV9tYhgGIAEoDSI6ChFBZGRNb2R1bGVSZXNwb25zZRIlCgZtb2R1bGUYASABKAsyFS5uZXRoZXJub2RlLnYxLk1vZHVsZSJeChNVcGRhdGVNb2R1bGVSZXF1ZXN0EgoKAmlkGAEgASgJEhUKDXNldHRpbmdzX2pzb24YAiABKAkSEQoJbGlmZWN5Y2xlGAMgASgJEhEKCW1lbW9yeV9tYhgEIAEoDSI9ChRVcGRhdGVNb2R1bGVSZXNwb25zZRIlCgZtb2R1bGUYASABKAsyFS5uZXRoZXJub2RlLnYxLk1vZHVsZSIgChJTdGFydE1vZHVsZVJlcXVlc3QSCgoCaWQYASABKAkiFQoTU3RhcnRNb2R1bGVSZXNwb25zZSIfChFTdG9wTW9kdWxlUmVxdWVzdBIKCgJpZBgBIAEoCSIUChJTdG9wTW9kdWxlUmVzcG9uc2UiNwoTUmVtb3ZlTW9kdWxlUmVxdWVzdBIKCgJpZBgBIAEoCRIUCgxkZWxldGVfZmlsZXMYAiABKAgiFgoUUmVtb3ZlTW9kdWxlUmVzcG9uc2UiMQoUR2V0TW9kdWxlTG9nc1JlcXVlc3QSCgoCaWQYASABKAkSDQoFbGluZXMYAiABKA0iJgoVR2V0TW9kdWxlTG9nc1Jlc3BvbnNlEg0KBWxpbmVzGAEgAygJIloKFFNldE1vZHVsZVNpdGVSZXF1ZXN0EgoKAmlkGAEgASgJEhAKCHdlYl9ob3N0GAIgASgJEhIKCndlYl9wdWJsaWMYAyABKAgSEAoId2ViX3BhdGgYBCABKAkiKAoYU2V0U2hhcmVkU2l0ZUhvc3RSZXF1ZXN0EgwKBGhvc3QYASABKAkiGwoZU2V0U2hhcmVkU2l0ZUhvc3RSZXNwb25zZSI+ChVTZXRNb2R1bGVTaXRlUmVzcG9uc2USJQoGbW9kdWxlGAEgASgLMhUubmV0aGVybm9kZS52MS5Nb2R1bGUyrQcKDU1vZHVsZVNlcnZpY2UScQoTTGlzdE1vZHVsZVRlbXBsYXRlcxIpLm5ldGhlcm5vZGUudjEuTGlzdE1vZHVsZVRlbXBsYXRlc1JlcXVlc3QaKi5uZXRoZXJub2RlLnYxLkxpc3RNb2R1bGVUZW1wbGF0ZXNSZXNwb25zZSIDkAIBElkKC0xpc3RNb2R1bGVzEiEubmV0aGVybm9kZS52MS5MaXN0TW9kdWxlc1JlcXVlc3QaIi5uZXRoZXJub2RlLnYxLkxpc3RNb2R1bGVzUmVzcG9uc2UiA5ACARJOCglBZGRNb2R1bGUSHy5uZXRoZXJub2RlLnYxLkFkZE1vZHVsZVJlcXVlc3QaIC5uZXRoZXJub2RlLnYxLkFkZE1vZHVsZVJlc3BvbnNlElcKDFVwZGF0ZU1vZHVsZRIiLm5ldGhlcm5vZGUudjEuVXBkYXRlTW9kdWxlUmVxdWVzdBojLm5ldGhlcm5vZGUudjEuVXBkYXRlTW9kdWxlUmVzcG9uc2USVAoLU3RhcnRNb2R1bGUSIS5uZXRoZXJub2RlLnYxLlN0YXJ0TW9kdWxlUmVxdWVzdBoiLm5ldGhlcm5vZGUudjEuU3RhcnRNb2R1bGVSZXNwb25zZRJRCgpTdG9wTW9kdWxlEiAubmV0aGVybm9kZS52MS5TdG9wTW9kdWxlUmVxdWVzdBohLm5ldGhlcm5vZGUudjEuU3RvcE1vZHVsZVJlc3BvbnNlElcKDFJlbW92ZU1vZHVsZRIiLm5ldGhlcm5vZGUudjEuUmVtb3ZlTW9kdWxlUmVxdWVzdBojLm5ldGhlcm5vZGUudjEuUmVtb3ZlTW9kdWxlUmVzcG9uc2USWgoNU2V0TW9kdWxlU2l0ZRIjLm5ldGhlcm5vZGUudjEuU2V0TW9kdWxlU2l0ZVJlcXVlc3QaJC5uZXRoZXJub2RlLnYxLlNldE1vZHVsZVNpdGVSZXNwb25zZRJmChFTZXRTaGFyZWRTaXRlSG9zdBInLm5ldGhlcm5vZGUudjEuU2V0U2hhcmVkU2l0ZUhvc3RSZXF1ZXN0GigubmV0aGVybm9kZS52MS5TZXRTaGFyZWRTaXRlSG9zdFJlc3BvbnNlEl8KDUdldE1vZHVsZUxvZ3MSIy5uZXRoZXJub2RlLnYxLkdldE1vZHVsZUxvZ3NSZXF1ZXN0GiQubmV0aGVybm9kZS52MS5HZXRNb2R1bGVMb2dzUmVzcG9uc2UiA5ACAWIGcHJvdG8z");
 
 /**
  * One field of a module's settings form.
@@ -238,6 +238,22 @@ export type Module = Message<"nethernode.v1.Module"> & {
    * @generated from field: repeated string site_addresses = 13;
    */
   siteAddresses: string[];
+
+  /**
+   * Its path on the shared address (like "mc1"), when it's there rather
+   * than on its own address.
+   *
+   * @generated from field: string web_path = 14;
+   */
+  webPath: string;
+
+  /**
+   * Where that is, like map.example.com/mc1/ (empty without a shared
+   * address).
+   *
+   * @generated from field: string shared_address = 15;
+   */
+  sharedAddress: string;
 };
 
 /**
@@ -302,6 +318,13 @@ export type ListModulesResponse = Message<"nethernode.v1.ListModulesResponse"> &
    * @generated from field: repeated nethernode.v1.Module modules = 1;
    */
   modules: Module[];
+
+  /**
+   * The shared address for modules' pages; empty if none is set.
+   *
+   * @generated from field: string shared_host = 3;
+   */
+  sharedHost: string;
 
   /**
    * Why this server can't have modules (it's on another machine, or Docker
@@ -583,7 +606,8 @@ export type SetModuleSiteRequest = Message<"nethernode.v1.SetModuleSiteRequest">
   id: string;
 
   /**
-   * A prefix like "map", or a whole hostname.
+   * Its own address: a prefix like "map", or a whole hostname. Used when
+   * web_path is empty.
    *
    * @generated from field: string web_host = 2;
    */
@@ -593,6 +617,13 @@ export type SetModuleSiteRequest = Message<"nethernode.v1.SetModuleSiteRequest">
    * @generated from field: bool web_public = 3;
    */
   webPublic: boolean;
+
+  /**
+   * A path on the shared address, like "mc1"; empty to use web_host.
+   *
+   * @generated from field: string web_path = 4;
+   */
+  webPath: string;
 };
 
 /**
@@ -601,6 +632,38 @@ export type SetModuleSiteRequest = Message<"nethernode.v1.SetModuleSiteRequest">
  */
 export const SetModuleSiteRequestSchema: GenMessage<SetModuleSiteRequest> = /*@__PURE__*/
   messageDesc(file_nethernode_v1_modules, 19);
+
+/**
+ * @generated from message nethernode.v1.SetSharedSiteHostRequest
+ */
+export type SetSharedSiteHostRequest = Message<"nethernode.v1.SetSharedSiteHostRequest"> & {
+  /**
+   * Like map.example.com; empty for none.
+   *
+   * @generated from field: string host = 1;
+   */
+  host: string;
+};
+
+/**
+ * Describes the message nethernode.v1.SetSharedSiteHostRequest.
+ * Use `create(SetSharedSiteHostRequestSchema)` to create a new message.
+ */
+export const SetSharedSiteHostRequestSchema: GenMessage<SetSharedSiteHostRequest> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_modules, 20);
+
+/**
+ * @generated from message nethernode.v1.SetSharedSiteHostResponse
+ */
+export type SetSharedSiteHostResponse = Message<"nethernode.v1.SetSharedSiteHostResponse"> & {
+};
+
+/**
+ * Describes the message nethernode.v1.SetSharedSiteHostResponse.
+ * Use `create(SetSharedSiteHostResponseSchema)` to create a new message.
+ */
+export const SetSharedSiteHostResponseSchema: GenMessage<SetSharedSiteHostResponse> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_modules, 21);
 
 /**
  * @generated from message nethernode.v1.SetModuleSiteResponse
@@ -617,7 +680,7 @@ export type SetModuleSiteResponse = Message<"nethernode.v1.SetModuleSiteResponse
  * Use `create(SetModuleSiteResponseSchema)` to create a new message.
  */
 export const SetModuleSiteResponseSchema: GenMessage<SetModuleSiteResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_modules, 20);
+  messageDesc(file_nethernode_v1_modules, 22);
 
 /**
  * Modules: helper containers that run next to a server, made from
@@ -699,9 +762,10 @@ export const ModuleService: GenService<{
     output: typeof RemoveModuleResponseSchema;
   },
   /**
-   * A module's own address for its web page (a prefix for the server's
-   * address, like "map", or a whole hostname) and whether anyone can open
-   * it there. The panel passes requests for that hostname to the module.
+   * Where anyone can open a module's web page: at a path on the shared
+   * address for modules' pages (map.example.com/mc1/), or on an address of
+   * its own (a prefix for the server's address, like "map", or a whole
+   * hostname). The panel passes those requests to the module.
    *
    * @generated from rpc nethernode.v1.ModuleService.SetModuleSite
    */
@@ -709,6 +773,17 @@ export const ModuleService: GenService<{
     methodKind: "unary";
     input: typeof SetModuleSiteRequestSchema;
     output: typeof SetModuleSiteResponseSchema;
+  },
+  /**
+   * Sets the shared address for modules' pages, like map.example.com
+   * (empty: none). Owners and administrators.
+   *
+   * @generated from rpc nethernode.v1.ModuleService.SetSharedSiteHost
+   */
+  setSharedSiteHost: {
+    methodKind: "unary";
+    input: typeof SetSharedSiteHostRequestSchema;
+    output: typeof SetSharedSiteHostResponseSchema;
   },
   /**
    * What a module printed last.

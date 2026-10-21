@@ -260,3 +260,82 @@ async fn a_modules_own_address_reaches_its_page() {
     .await;
     assert!(!get("map.mc1.example.com").await.1.contains("map page"));
 }
+
+#[tokio::test]
+async fn pages_on_the_shared_address_go_to_their_modules() {
+    let h = harness().await;
+    let id = h.server("mc2", "vanilla").await;
+    let page = Router::new().fallback(|uri: http::Uri| async move { format!("page at {uri}") });
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    tokio::spawn(async move { axum::serve(listener, page).await.unwrap() });
+    let module = h
+        .store
+        .insert_module(NewModule {
+            server_id: &id,
+            template: "bluemap",
+            name: "bluemap",
+            settings_json: "{}",
+            lifecycle: "manual",
+            memory_mb: 2048,
+            web_port: Some(i64::from(port)),
+            web_host: Some("map"),
+        })
+        .await
+        .unwrap();
+    let get = |path: &'static str| {
+        let app = h.app.clone();
+        async move {
+            let req = Request::get(path)
+                .header(header::HOST, "maps.example.com")
+                .body(Body::empty())
+                .unwrap();
+            let response = app.oneshot(req).await.unwrap();
+            let status = response.status();
+            let location = response
+                .headers()
+                .get(header::LOCATION)
+                .map(|l| l.to_str().unwrap().to_owned());
+            let body = response.into_body().collect().await.unwrap().to_bytes();
+            (
+                status,
+                location,
+                String::from_utf8_lossy(&body).into_owned(),
+            )
+        }
+    };
+
+    let (_, body) = h.call("SetSharedSiteHost", json!({ "host": "maps" })).await;
+    assert_eq!(body["code"], "invalid_argument", "a whole hostname: {body}");
+    let (status, body) = h
+        .call("SetSharedSiteHost", json!({ "host": "Maps.Example.com" }))
+        .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let (status, body) = h
+        .call(
+            "SetModuleSite",
+            json!({ "id": module.id, "webPath": "MC2", "webPublic": true }),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(body["module"]["webPath"], "mc2");
+    assert_eq!(body["module"]["sharedAddress"], "maps.example.com/mc2/");
+
+    let (status, _, page) = get("/mc2/maps/world/0.json?t=1").await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        page, "page at /maps/world/0.json?t=1",
+        "the path's prefix is taken off"
+    );
+    let (status, location, _) = get("/mc2").await;
+    assert_eq!(status, StatusCode::PERMANENT_REDIRECT);
+    assert_eq!(location.as_deref(), Some("/mc2/"));
+    let (status, _, list) = get("/").await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(list.contains(r#"href="/mc2/""#), "{list}");
+    let (status, _, _) = get("/nothing/").await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+
+    let (_, body) = h.call("ListModules", json!({ "serverId": id })).await;
+    assert_eq!(body["sharedHost"], "maps.example.com");
+}

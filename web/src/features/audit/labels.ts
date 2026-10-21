@@ -71,6 +71,7 @@ const LABELS: Record<string, string> = {
   "module.stop": "Stopped a module",
   "module.remove": "Removed a module",
   "module.site": "Changed a module's address",
+  "module.shared_host": "Set the shared address for modules' pages",
   "backup.create": "Backed up a server",
   "backup.restore": "Restored a backup",
   "backup.delete": "Deleted a backup",
