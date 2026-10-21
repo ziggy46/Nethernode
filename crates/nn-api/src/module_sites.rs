@@ -63,16 +63,36 @@ pub(crate) fn server_addresses(server: &Server, routes: &[Route]) -> Vec<String>
 
 /// A module's addresses: `web_host` in front of each of the server's
 /// addresses, or `web_host` itself when it's a whole hostname.
-pub(crate) fn addresses(web_host: &str, server_addresses: &[String]) -> Vec<String> {
+///
+/// Under a domain in `flat_zones` (Cloudflare's, whose free certificate
+/// covers only one level below the domain) the prefix joins with a dash, so
+/// the name stays one level down: `map` and `mc1.example.com` make
+/// `map-mc1.example.com`, not `map.mc1.example.com`.
+pub(crate) fn addresses(
+    web_host: &str,
+    server_addresses: &[String],
+    flat_zones: &[String],
+) -> Vec<String> {
     let host = web_host.trim().to_ascii_lowercase();
     if host.contains('.') {
-        vec![host]
-    } else {
-        server_addresses
-            .iter()
-            .map(|a| format!("{host}.{a}"))
-            .collect()
+        return vec![host];
     }
+    server_addresses
+        .iter()
+        .map(|a| {
+            let zone = flat_zones
+                .iter()
+                .filter(|z| a.ends_with(&format!(".{z}")))
+                .max_by_key(|z| z.len());
+            match zone {
+                Some(zone) => {
+                    let below = &a[..a.len() - zone.len() - 1];
+                    format!("{host}-{}.{zone}", below.replace('.', "-"))
+                }
+                None => format!("{host}.{a}"),
+            }
+        })
+        .collect()
 }
 
 /// Checks an address someone typed: a prefix (one label) or a hostname.
@@ -106,6 +126,7 @@ pub async fn refresh(state: &AppState) {
         return;
     };
     let servers: HashMap<&str, &Server> = servers.iter().map(|s| (s.id.as_str(), s)).collect();
+    let flat = crate::cloudflare::zones(state).await;
     let mut table = HashMap::new();
     for module in modules.iter().filter(|m| m.web_public) {
         let (Some(host), Some(port), Some(server)) = (
@@ -119,7 +140,7 @@ pub async fn refresh(state: &AppState) {
         let target = node
             .module_address(port)
             .unwrap_or_else(|| format!("http://127.0.0.1:{port}"));
-        for address in addresses(host, &server_addresses(server, &routes)) {
+        for address in addresses(host, &server_addresses(server, &routes), &flat) {
             table.entry(address).or_insert_with(|| target.clone());
         }
     }
@@ -271,12 +292,37 @@ mod tests {
         let found = server_addresses(&server, &routes);
         assert_eq!(found, ["play.example.org", "mc1.xtra-pickles.com"]);
         assert_eq!(
-            addresses("Map", &found),
+            addresses("Map", &found, &[]),
             ["map.play.example.org", "map.mc1.xtra-pickles.com"]
         );
         assert_eq!(
-            addresses("bluemap.example.net", &found),
+            addresses("bluemap.example.net", &found, &[]),
             ["bluemap.example.net"]
+        );
+    }
+
+    #[test]
+    fn under_cloudflare_addresses_stay_one_level_down() {
+        let zones = ["xtra-pickles.com".to_owned()];
+        let found = [
+            "mc1.xtra-pickles.com".to_owned(),
+            "a.b.xtra-pickles.com".to_owned(),
+            "xtra-pickles.com".to_owned(),
+            "play.example.org".to_owned(),
+        ];
+        assert_eq!(
+            addresses("map", &found, &zones),
+            [
+                "map-mc1.xtra-pickles.com",
+                "map-a-b.xtra-pickles.com",
+                "map.xtra-pickles.com",
+                "map.play.example.org"
+            ]
+        );
+        // A whole hostname is used as typed.
+        assert_eq!(
+            addresses("map.mc1.xtra-pickles.com", &found, &zones),
+            ["map.mc1.xtra-pickles.com"]
         );
     }
 

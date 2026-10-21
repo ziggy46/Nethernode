@@ -37,6 +37,9 @@ struct Saved {
     /// DNS records and routes are kept in step.
     #[serde(default)]
     dns: bool,
+    /// The domains the token can manage, as last seen.
+    #[serde(default)]
+    zones: Vec<String>,
 }
 
 /// How the last sync went, for Settings.
@@ -80,6 +83,21 @@ fn service(state: &AppState) -> String {
         port => port,
     };
     format!("http://127.0.0.1:{port}")
+}
+
+/// The domains Cloudflare manages for NetherNode (empty when it isn't
+/// connected). Under these, modules' addresses stay one level below the
+/// domain, which is all Cloudflare's free certificate covers.
+pub(crate) async fn zones(state: &AppState) -> Vec<String> {
+    state
+        .auth
+        .store()
+        .get_setting::<Saved>(SETTING)
+        .await
+        .ok()
+        .flatten()
+        .map(|s| s.zones)
+        .unwrap_or_default()
 }
 
 async fn saved(state: &AppState) -> Option<Saved> {
@@ -209,6 +227,7 @@ pub(crate) async fn connect(state: &AppState, token: &str) -> Result<(), Connect
         tunnel_id,
         tunnel_token,
         dns: previous.is_some_and(|p| p.dns),
+        zones: zones.iter().map(|z| z.name.clone()).collect(),
     };
     save(state, &next).await?;
     set_status(|s| {
@@ -274,8 +293,8 @@ pub(crate) async fn disconnect(state: &AppState) -> Result<(), ConnectError> {
 }
 
 /// The addresses that should lead to the tunnel: every open module's own
-/// addresses.
-async fn wanted(state: &AppState) -> Vec<String> {
+/// addresses (one level below `zones` where they're under them).
+async fn wanted(state: &AppState, zones: &[String]) -> Vec<String> {
     let store = state.auth.store();
     let (Ok(modules), Ok(servers), Ok(routes)) = (
         store.list_modules(None).await,
@@ -298,6 +317,7 @@ async fn wanted(state: &AppState) -> Vec<String> {
         out.extend(module_sites::addresses(
             host,
             &module_sites::server_addresses(server, &routes),
+            zones,
         ));
     }
     out.sort();
@@ -333,7 +353,19 @@ pub(crate) async fn sync(state: &AppState, mode: Mode) -> Result<Vec<String>, St
     let api = Api::new(base(state), &saved.token);
     let result = async {
         let zones = api.zones().await?;
-        let all = wanted(state).await;
+        let names: Vec<String> = zones.iter().map(|z| z.name.clone()).collect();
+        if names != saved.zones {
+            save(
+                state,
+                &Saved {
+                    zones: names.clone(),
+                    ..saved.clone()
+                },
+            )
+            .await
+            .map_err(|e| e.message.unwrap_or_default())?;
+        }
+        let all = wanted(state, &names).await;
         let wanted = match mode {
             Mode::Preview => all.clone(),
             Mode::Apply if saved.dns => all.clone(),

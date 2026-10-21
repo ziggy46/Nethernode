@@ -55,7 +55,12 @@ impl ModuleRpc {
         ) else {
             return Vec::new();
         };
-        module_sites::addresses(host, &module_sites::server_addresses(&server, &routes))
+        let zones = crate::cloudflare::zones(&self.state).await;
+        module_sites::addresses(
+            host,
+            &module_sites::server_addresses(&server, &routes),
+            &zones,
+        )
     }
 
     async fn to_proto(

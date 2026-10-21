@@ -309,6 +309,25 @@ async fn connect_preview_manage_and_disconnect() {
         .set_module_site(&module.id, Some("map"), true)
         .await
         .unwrap();
+    // And one typed as a whole hostname two levels down, under mc1.
+    let stats = h
+        .store
+        .insert_module(NewModule {
+            server_id: &server.id,
+            template: "bluemap",
+            name: "stats",
+            settings_json: "{}",
+            lifecycle: "manual",
+            memory_mb: 2048,
+            web_port: Some(8101),
+            web_host: None,
+        })
+        .await
+        .unwrap();
+    h.store
+        .set_module_site(&stats.id, Some("stats.mc1.xtra-pickles.com"), true)
+        .await
+        .unwrap();
 
     let (status, preview) = h.call("PreviewCloudflare", json!({})).await;
     assert_eq!(status, StatusCode::OK, "{preview}");
@@ -318,28 +337,41 @@ async fn connect_preview_manage_and_disconnect() {
         .iter()
         .map(|c| c.as_str().unwrap())
         .collect();
-    assert_eq!(changes.len(), 2, "{changes:?}");
+    assert_eq!(changes.len(), 3, "{changes:?}");
     assert!(
         changes[0].starts_with("Add A mc1.xtra-pickles.com → 203.0.113.5"),
-        "the copy comes first: {changes:?}"
+        "the copy for the name under mc1 comes first: {changes:?}"
     );
-    assert!(changes[1].starts_with("Add CNAME map.mc1.xtra-pickles.com → tun1.cfargotunnel.com"));
+    // The prefix stays one level below the domain (Cloudflare's free
+    // certificate covers only that).
+    assert!(
+        changes
+            .iter()
+            .any(|c| c.starts_with("Add CNAME map-mc1.xtra-pickles.com → tun1.cfargotunnel.com")),
+        "{changes:?}"
+    );
+    assert!(
+        changes
+            .iter()
+            .any(|c| c.starts_with("Add CNAME stats.mc1.xtra-pickles.com → tun1.cfargotunnel.com")),
+        "{changes:?}"
+    );
     assert_eq!(h.names(), untouched, "a preview changes nothing");
 
     let (status, body) = h.call("SetCloudflareDns", json!({ "enabled": true })).await;
     assert_eq!(status, StatusCode::OK, "{body}");
     let names = h.names();
-    assert!(
-        names.contains(&"A mc1.xtra-pickles.com 203.0.113.5".to_owned()),
-        "{names:?}"
-    );
-    assert!(
-        names.contains(&"CNAME map.mc1.xtra-pickles.com tun1.cfargotunnel.com".to_owned()),
-        "{names:?}"
-    );
-    assert_eq!(h.fake.lock().unwrap().ingress, ["map.mc1.xtra-pickles.com"]);
+    for want in [
+        "A mc1.xtra-pickles.com 203.0.113.5",
+        "CNAME map-mc1.xtra-pickles.com tun1.cfargotunnel.com",
+        "CNAME stats.mc1.xtra-pickles.com tun1.cfargotunnel.com",
+    ] {
+        assert!(names.contains(&want.to_owned()), "{want}: {names:?}");
+    }
+    let routed = ["map-mc1.xtra-pickles.com", "stats.mc1.xtra-pickles.com"];
+    assert_eq!(h.fake.lock().unwrap().ingress, routed);
     let (_, info) = h.call("GetCloudflare", json!({})).await;
-    assert_eq!(info["routed"], json!(["map.mc1.xtra-pickles.com"]));
+    assert_eq!(info["routed"], json!(routed));
 
     let (status, body) = h
         .call("SetCloudflareDns", json!({ "enabled": false }))

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { serverAddresses, siteAddresses, siteError } from "./site";
+import { beyondCertificate, serverAddresses, siteAddresses, siteError } from "./site";
 
 describe("module sites", () => {
   const routes = [
@@ -22,5 +22,15 @@ describe("module sites", () => {
     expect(siteError("map")).toBeUndefined();
     expect(siteError("map.mc1.example.com")).toBeUndefined();
     for (const bad of ["", "-map", "ma p", "map..x.com", "map_1"]) expect(siteError(bad)).toBeDefined();
+  });
+
+  it("stays one level below a domain Cloudflare manages", () => {
+    const zones = ["xtra-pickles.com"];
+    expect(
+      siteAddresses("map", ["mc1.xtra-pickles.com", "a.b.xtra-pickles.com", "xtra-pickles.com"], zones),
+    ).toEqual(["map-mc1.xtra-pickles.com", "map-a-b.xtra-pickles.com", "map.xtra-pickles.com"]);
+    expect(beyondCertificate("map.mc1.xtra-pickles.com", zones)).toBe(true);
+    expect(beyondCertificate("map-mc1.xtra-pickles.com", zones)).toBe(false);
+    expect(beyondCertificate("map.example.org", zones)).toBe(false);
   });
 });

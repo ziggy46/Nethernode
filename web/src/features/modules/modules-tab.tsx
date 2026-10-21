@@ -45,7 +45,7 @@ import { errorMessage, transport } from "@/lib/api";
 
 import { cloudflareKey } from "../cloudflare/queries";
 import { routesQuery } from "../proxy/queries";
-import { serverAddresses, siteAddresses, siteError } from "./site";
+import { beyondCertificate, serverAddresses, siteAddresses, siteError } from "./site";
 
 const client = createClient(ModuleService, transport);
 const cloudflareClient = createClient(CloudflareService, transport);
@@ -587,13 +587,15 @@ function SiteDialog({
   const [host, setHost] = useState(module.webHost || "map");
   const [open, setOpen] = useState(module.webPublic);
   const error = siteError(host);
-  const preview = siteAddresses(host, serverAddresses(server, routes.data ?? []));
   // Only owners and administrators can see this; others get the manual steps.
   const cloudflare = useQuery({
     queryKey: cloudflareKey,
     queryFn: () => cloudflareClient.getCloudflare({}),
     retry: false,
   }).data;
+  const zones = cloudflare?.connected ? cloudflare.zones : [];
+  const preview = siteAddresses(host, serverAddresses(server, routes.data ?? []), zones);
+  const tooDeep = preview.filter((a) => beyondCertificate(a, zones));
   const managed =
     cloudflare?.connected &&
     cloudflare.dns &&
@@ -646,6 +648,14 @@ function SiteDialog({
               `${server.name} has no address yet for the prefix to go in front of. Give it one on Proxy & routes, or type a whole hostname.`
             )}
           </p>
+          {tooDeep.length > 0 && (
+            <p className="mb-4 rounded-md border border-warning/30 bg-warning-subtle px-3 py-2 text-meta text-text-secondary">
+              {tooDeep.join(", ")} is more than one level below {zones.join(", ")}, and Cloudflare's free
+              certificate only covers one level, so browsers won't open it over HTTPS. Use a name like{" "}
+              <span className="font-mono">map-{tooDeep[0]?.split(".")[1] ?? "server"}</span> instead (a prefix
+              does this for you), or add a certificate for it in Cloudflare.
+            </p>
+          )}
           <div className="mb-4 flex items-start justify-between gap-5">
             <label htmlFor={id} className="text-label">
               <span className="block font-[550]">Open to anyone</span>

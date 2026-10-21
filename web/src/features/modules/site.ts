@@ -16,11 +16,32 @@ export function serverAddresses(server: { id: string; slug: string }, routes: Ro
   return [...new Set([...exact, ...bySlug])];
 }
 
-/** A module's hostnames: the prefix in front of each server address, or a whole hostname as it is. */
-export function siteAddresses(webHost: string, addresses: string[]): string[] {
+/** The longest of `zones` that `name` is below (not the zone itself). */
+function zoneOf(name: string, zones: string[]): string | undefined {
+  return zones.filter((z) => name.endsWith(`.${z}`)).sort((a, b) => b.length - a.length)[0];
+}
+
+/**
+ * A module's hostnames: the prefix in front of each server address, or a whole hostname as it is. Under a
+ * domain Cloudflare manages (`flatZones`), the prefix joins with a dash so the name stays one level below the
+ * domain, which is all Cloudflare's free certificate covers: map-mc1.example.com.
+ */
+export function siteAddresses(webHost: string, addresses: string[], flatZones: string[] = []): string[] {
   const host = webHost.trim().toLowerCase().replace(/\.$/, "");
   if (!host) return [];
-  return host.includes(".") ? [host] : addresses.map((a) => `${host}.${a}`);
+  if (host.includes(".")) return [host];
+  return addresses.map((a) => {
+    const zone = zoneOf(a, flatZones);
+    if (!zone) return `${host}.${a}`;
+    const below = a.slice(0, a.length - zone.length - 1).replaceAll(".", "-");
+    return `${host}-${below}.${zone}`;
+  });
+}
+
+/** Whether a hostname is too deep for Cloudflare's free certificate (more than one level below its domain). */
+export function beyondCertificate(name: string, zones: string[]): boolean {
+  const zone = zoneOf(name, zones);
+  return zone !== undefined && name.slice(0, name.length - zone.length - 1).includes(".");
 }
 
 /** Why an address won't do, if it won't. */
