@@ -72,15 +72,11 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm exec tsc -p .
           pnpm audit --audit-level high
-      - uses: actions/upload-artifact@v4
-        with:
-          name: web-dist
-          path: web/dist
-          retention-days: 3
 
+  # Runs alongside the web job: the binary embeds the built panel when it's
+  # there (allow_missing), and these checks don't need it.
   rust:
     name: Rust
-    needs: web
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -90,10 +86,6 @@ jobs:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
-      - uses: actions/download-artifact@v4
-        with:
-          name: web-dist
-          path: web/dist
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-deny
