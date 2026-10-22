@@ -235,7 +235,16 @@ export default function ConsoleView({ server }: { server: Server }) {
     });
     observer.observe(el);
     fit.fit();
+    // With the pointer over the console, the wheel scrolls only the console,
+    // never the page behind it (even at the top or bottom of the output).
+    // The terminal has already handled the event by the time it gets here.
+    // Ctrl/⌘ + wheel is left alone: that's the browser's zoom.
+    const keepScrollInside = (event: WheelEvent) => {
+      if (!event.ctrlKey && !event.metaKey) event.preventDefault();
+    };
+    el.addEventListener("wheel", keepScrollInside, { passive: false });
     return () => {
+      el.removeEventListener("wheel", keepScrollInside);
       observer.disconnect();
       cancelAnimationFrame(frame);
       results.dispose();

@@ -53,3 +53,13 @@ export interface PullProgress {
   status: string;
 }
 export const pullKey = (id: string) => ["servers", "pull", id] as const;
+
+/** How far a server's deletion has got, from `server_delete_progress`
+ * events: `container`, `modules`, `record`, then `files` (`done` of
+ * `total`). */
+export interface DeleteProgress {
+  step: string;
+  done: number;
+  total: number;
+}
+export const deleteProgressKey = (id: string) => ["delete-progress", id] as const;

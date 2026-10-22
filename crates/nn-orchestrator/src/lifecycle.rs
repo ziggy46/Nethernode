@@ -1037,8 +1037,17 @@ impl Orchestrator {
         let rt = self.runtime(id);
         let _op = rt.op.lock().await;
         let server = self.load(id).await?;
+        let step = |step: &str, done: u64, total: u64| {
+            self.events.publish(Event::ServerDeleteProgress {
+                server_id: id.to_owned(),
+                step: step.to_owned(),
+                done,
+                total,
+            });
+        };
         rt.state().expected_exit = Some("stopped");
         rt.state().stop_tasks();
+        step("container", 0, 0);
         let name = spec::container_name(&server.slug);
         let options = RemoveContainerOptionsBuilder::default().force(true).build();
         if let Err(e) = self.docker.remove_container(&name, Some(options)).await
@@ -1047,7 +1056,9 @@ impl Orchestrator {
             return Err(e.into());
         }
         // Its module records go with it, so their containers go first.
+        step("modules", 0, 0);
         self.remove_server_modules(&server).await?;
+        step("record", 0, 0);
         self.store.delete_server(id).await?;
         self.runtimes
             .lock()
@@ -1056,7 +1067,20 @@ impl Orchestrator {
         if delete_data {
             let dir = self.server_dir(&server.slug)?;
             if dir.exists() {
-                std::fs::remove_dir_all(&dir)?;
+                step("files", 0, 0);
+                let (events, server_id) = (self.events.clone(), id.to_owned());
+                tokio::task::spawn_blocking(move || {
+                    remove_dir_counting(&dir, |done, total| {
+                        events.publish(Event::ServerDeleteProgress {
+                            server_id: server_id.clone(),
+                            step: "files".into(),
+                            done,
+                            total,
+                        });
+                    })
+                })
+                .await
+                .map_err(|e| std::io::Error::other(format!("deleting files: {e}")))??;
             }
         }
         self.events.publish(Event::ServerStatusChanged {
@@ -1329,6 +1353,62 @@ fn folder_size(path: &std::path::Path) -> u64 {
     total
 }
 
+/// Deletes `dir` and everything in it, not following links, telling
+/// `progress` how many files are gone of how many (a few times a second,
+/// and once at the end).
+fn remove_dir_counting(
+    dir: &std::path::Path,
+    mut progress: impl FnMut(u64, u64),
+) -> std::io::Result<()> {
+    fn count(dir: &std::path::Path) -> u64 {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return 0;
+        };
+        entries
+            .flatten()
+            .map(|e| match e.file_type() {
+                Ok(t) if t.is_dir() => count(&e.path()),
+                _ => 1,
+            })
+            .sum()
+    }
+    fn remove(
+        dir: &std::path::Path,
+        done: &mut u64,
+        report: &mut dyn FnMut(u64),
+    ) -> std::io::Result<()> {
+        for entry in std::fs::read_dir(dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            let gone = |r: std::io::Result<()>| match r {
+                Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e),
+                _ => Ok(()),
+            };
+            if entry.file_type()?.is_dir() {
+                remove(&path, done, report)?;
+                gone(std::fs::remove_dir(&path))?;
+            } else {
+                gone(std::fs::remove_file(&path))?;
+                *done += 1;
+                report(*done);
+            }
+        }
+        Ok(())
+    }
+    let total = count(dir);
+    let mut done = 0;
+    let mut last = std::time::Instant::now();
+    remove(dir, &mut done, &mut |done| {
+        if last.elapsed() >= Duration::from_millis(250) {
+            last = std::time::Instant::now();
+            progress(done, total);
+        }
+    })?;
+    std::fs::remove_dir(dir)?;
+    progress(total, total);
+    Ok(())
+}
+
 /// Lowercase letters, digits, and single dashes; at most 32 characters.
 pub fn slugify(name: &str) -> String {
     let mut slug = String::new();
@@ -1385,6 +1465,34 @@ fn is_not_running(e: &bollard::errors::Error) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn folders_are_deleted_counting_their_files() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join("server");
+        std::fs::create_dir_all(dir.join("world/region")).unwrap();
+        std::fs::create_dir_all(dir.join("mods")).unwrap();
+        for f in [
+            "server.properties",
+            "world/level.dat",
+            "world/region/r.0.0.mca",
+            "mods/a.jar",
+        ] {
+            std::fs::write(dir.join(f), b"x").unwrap();
+        }
+        // A link is removed, not followed.
+        let outside = tmp.path().join("outside");
+        std::fs::create_dir(&outside).unwrap();
+        std::fs::write(outside.join("keep"), b"x").unwrap();
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(&outside, dir.join("link")).unwrap();
+        let mut seen = Vec::new();
+        remove_dir_counting(&dir, |done, total| seen.push((done, total))).unwrap();
+        assert!(!dir.exists());
+        assert!(outside.join("keep").exists());
+        let files = if cfg!(unix) { 5 } else { 4 };
+        assert_eq!(seen.last(), Some(&(files, files)));
+    }
 
     #[test]
     fn slugs_are_dns_safe() {

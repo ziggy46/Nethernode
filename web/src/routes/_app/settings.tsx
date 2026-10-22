@@ -8,6 +8,7 @@ import {
   HardDrive,
   LogOut,
   Palette,
+  RefreshCw,
   UserRound,
 } from "lucide-react";
 import type * as React from "react";
@@ -43,15 +44,42 @@ const CurseForgeKey = lazy(() =>
 
 type Access = "everyone" | "admins" | "owners";
 
-const SECTIONS: { id: string; label: string; icon: React.ReactNode; access: Access }[] = [
-  { id: "account", label: "Account", icon: <UserRound />, access: "everyone" },
-  { id: "appearance", label: "Appearance", icon: <Palette />, access: "everyone" },
-  { id: "domains", label: "Domains", icon: <Globe />, access: "admins" },
-  { id: "cloudflare", label: "Cloudflare", icon: <Cloud />, access: "admins" },
-  { id: "notifications", label: "Notifications", icon: <Bell />, access: "admins" },
-  { id: "mods", label: "Mods and modpacks", icon: <Box />, access: "admins" },
-  { id: "storage", label: "Storage", icon: <HardDrive />, access: "admins" },
-  { id: "stats", label: "Anonymous stats", icon: <ChartNoAxesColumn />, access: "owners" },
+interface SectionInfo {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  access: Access;
+}
+
+/** The sections, grouped by what they're about. */
+const GROUPS: { label: string; sections: SectionInfo[] }[] = [
+  {
+    label: "You",
+    sections: [
+      { id: "account", label: "Account", icon: <UserRound />, access: "everyone" },
+      { id: "appearance", label: "Appearance", icon: <Palette />, access: "everyone" },
+    ],
+  },
+  {
+    label: "Panel",
+    sections: [
+      { id: "updates", label: "Updates", icon: <RefreshCw />, access: "admins" },
+      { id: "notifications", label: "Notifications", icon: <Bell />, access: "admins" },
+      { id: "storage", label: "Storage", icon: <HardDrive />, access: "admins" },
+      { id: "stats", label: "Anonymous stats", icon: <ChartNoAxesColumn />, access: "owners" },
+    ],
+  },
+  {
+    label: "Network",
+    sections: [
+      { id: "domains", label: "Domains", icon: <Globe />, access: "admins" },
+      { id: "cloudflare", label: "Cloudflare", icon: <Cloud />, access: "admins" },
+    ],
+  },
+  {
+    label: "Content",
+    sections: [{ id: "mods", label: "Mods and modpacks", icon: <Box />, access: "admins" }],
+  },
 ];
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
@@ -66,7 +94,10 @@ function SettingsPage() {
   const { section } = Route.useSearch();
   const allowed = (access: Access) =>
     access === "everyone" || (access === "admins" ? canManage : user.role === Role.OWNER);
-  const sections = SECTIONS.filter((s) => allowed(s.access));
+  const groups = GROUPS.map((g) => ({ ...g, sections: g.sections.filter((s) => allowed(s.access)) })).filter(
+    (g) => g.sections.length > 0,
+  );
+  const sections = groups.flatMap((g) => g.sections);
   const current = sections.find((s) => s.id === section) ?? sections[0];
   useDocumentTitle(current && current.id !== "account" ? `${current.label} · Settings` : "Settings");
 
@@ -80,28 +111,37 @@ function SettingsPage() {
       <div className="flex items-start gap-7 below-lg:flex-col below-lg:gap-4">
         <nav
           aria-label="Settings"
-          className="sticky top-5 flex w-[210px] shrink-0 flex-col gap-0.5 below-lg:static below-lg:w-full below-lg:flex-row below-lg:overflow-x-auto"
+          className="sticky top-5 flex w-[210px] shrink-0 flex-col gap-4 below-lg:static below-lg:w-full below-lg:flex-row below-lg:gap-0.5 below-lg:overflow-x-auto"
         >
-          {sections.map((s) => {
-            const active = s.id === current?.id;
-            return (
-              <Link
-                key={s.id}
-                to="/settings"
-                search={{ section: s.id }}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "flex shrink-0 items-center gap-2.5 rounded-md px-3 py-2 text-nav transition-colors duration-(--nn-transition) [&_svg]:size-4",
-                  active
-                    ? "bg-surface-elevated text-text-primary"
-                    : "text-text-secondary hover:bg-surface-subtle hover:text-text-primary",
-                )}
-              >
-                {s.icon}
-                {s.label}
-              </Link>
-            );
-          })}
+          {groups.map((g) => (
+            <div key={g.label} className="flex flex-col gap-0.5 below-lg:contents">
+              {groups.length > 1 && (
+                <p className="px-3 pb-1 font-[650] text-eyebrow text-text-muted uppercase below-lg:hidden">
+                  {g.label}
+                </p>
+              )}
+              {g.sections.map((s) => {
+                const active = s.id === current?.id;
+                return (
+                  <Link
+                    key={s.id}
+                    to="/settings"
+                    search={{ section: s.id }}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "flex shrink-0 items-center gap-2.5 rounded-md px-3 py-2 text-nav transition-colors duration-(--nn-transition) [&_svg]:size-4",
+                      active
+                        ? "bg-surface-elevated text-text-primary"
+                        : "text-text-secondary hover:bg-surface-subtle hover:text-text-primary",
+                    )}
+                  >
+                    {s.icon}
+                    {s.label}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
         <div className="flex w-full max-w-[720px] min-w-0 flex-col gap-[18px]">
           <Section id={current?.id ?? "account"} />
@@ -135,10 +175,15 @@ function Section({ id }: { id: string }) {
           <CloudflarePanel />
         </Suspense>
       );
-    case "notifications":
+    case "updates":
       return (
         <Suspense fallback={<Loading height="h-48" />}>
           <UpdateCheckPanel />
+        </Suspense>
+      );
+    case "notifications":
+      return (
+        <Suspense fallback={<Loading height="h-48" />}>
           <DiscordPanel />
         </Suspense>
       );

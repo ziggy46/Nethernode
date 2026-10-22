@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Panel, PanelHeader } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { CopyChip } from "@/components/ui/copy-chip";
 import {
   Dialog,
   DialogContent,
@@ -20,9 +21,12 @@ import { Switch } from "@/components/ui/switch";
 import { CardTheme, type Server } from "@/gen/nethernode/v1/servers_pb";
 import { errorMessage, serverClient } from "@/lib/api";
 import { useCanManage } from "@/lib/session";
+import { cn } from "@/lib/utils";
 import { CopyServer } from "./copy-server";
+import { DeleteProgressView } from "./delete-progress";
 import { LOADERS, loaderName } from "./format";
 import { MoveServer } from "./move-server";
+import { deleteProgressKey } from "./queries";
 import { THEME_NAMES } from "./world-banner";
 
 const GameSettings = lazy(() => import("./game-settings"));
@@ -132,205 +136,221 @@ export function ConfigurationTab({ server }: { server: Server }) {
     if (valid) save.mutate();
   };
 
+  // Wide screens get two columns: the server's own settings and what can be
+  // done with it on the left, the long list of game settings on the right.
+  // Narrower ones stack them, game settings second.
   return (
-    <div className="flex max-w-[720px] flex-col gap-[18px]">
-      <form onSubmit={onSubmit} noValidate>
-        <Panel>
-          <PanelHeader title="Server configuration" icon={<Settings />} />
-          {save.isError && <ErrorAlert>{errorMessage(save.error)}</ErrorAlert>}
-          <fieldset disabled={!canManage} className="disabled:opacity-60">
-            <Field
-              label="Server name"
-              maxLength={40}
-              value={form.name}
-              onChange={(e) => set("name", e.target.value)}
-              error={errors.name}
-            />
-            <Field
-              label="Message of the day"
-              maxLength={120}
-              hint="Shown under the server's name in the server list."
-              value={form.motd}
-              onChange={(e) => set("motd", e.target.value)}
-            />
-            <div className="grid grid-cols-2 gap-[13px] below-sm:grid-cols-1">
+    <div
+      className={cn(
+        "flex items-start gap-[18px] below-xl:max-w-[720px] below-xl:flex-col below-xl:items-stretch",
+        !canManage && "max-w-[720px]",
+      )}
+    >
+      <div className="flex min-w-0 flex-1 flex-col gap-[18px] below-xl:contents">
+        <form onSubmit={onSubmit} noValidate className="below-xl:order-1">
+          <Panel>
+            <PanelHeader title="Server configuration" icon={<Settings />} />
+            {save.isError && <ErrorAlert>{errorMessage(save.error)}</ErrorAlert>}
+            <fieldset disabled={!canManage} className="disabled:opacity-60">
               <Field
-                label="Memory allocation (GB)"
-                inputMode="decimal"
-                value={form.memoryGb}
-                onChange={(e) => set("memoryGb", e.target.value)}
-                error={errors.memory}
+                label="Server name"
+                maxLength={40}
+                value={form.name}
+                onChange={(e) => set("name", e.target.value)}
+                error={errors.name}
               />
               <Field
-                label="Maximum players"
-                inputMode="numeric"
-                value={form.maxPlayers}
-                onChange={(e) => set("maxPlayers", e.target.value)}
-                error={errors.players}
+                label="Message of the day"
+                maxLength={120}
+                hint="Shown under the server's name in the server list."
+                value={form.motd}
+                onChange={(e) => set("motd", e.target.value)}
               />
-            </div>
-
-            <ToggleRow
-              id={ids.sleep}
-              checked={form.sleepWhenEmpty}
-              onChange={(v) => set("sleepWhenEmpty", v)}
-              title="Sleep when empty"
-            >
-              Stop after a stretch with no players; start again when someone joins.
-            </ToggleRow>
-            {form.sleepWhenEmpty && (
-              <div className="mb-[17px] flex items-center gap-2 pl-0.5 text-label text-text-secondary">
-                <label htmlFor={`${ids.sleep}-minutes`}>Sleep after</label>
-                <Input
-                  id={`${ids.sleep}-minutes`}
-                  inputMode="numeric"
-                  className="h-9 w-20"
-                  value={form.idleMinutes}
-                  aria-invalid={errors.idle ? true : undefined}
-                  onChange={(e) => set("idleMinutes", e.target.value)}
+              <div className="grid grid-cols-2 gap-[13px] below-sm:grid-cols-1">
+                <Field
+                  label="Memory allocation (GB)"
+                  inputMode="decimal"
+                  value={form.memoryGb}
+                  onChange={(e) => set("memoryGb", e.target.value)}
+                  error={errors.memory}
                 />
-                <span>minutes without players</span>
+                <Field
+                  label="Maximum players"
+                  inputMode="numeric"
+                  value={form.maxPlayers}
+                  onChange={(e) => set("maxPlayers", e.target.value)}
+                  error={errors.players}
+                />
               </div>
-            )}
-            <ToggleRow
-              id={ids.auto}
-              checked={form.autoStart}
-              onChange={(v) => set("autoStart", v)}
-              title="Start with NetherNode"
-            >
-              Bring this server online when NetherNode starts.
-            </ToggleRow>
-            <ToggleRow
-              id={ids.crash}
-              checked={form.restartOnCrash}
-              onChange={(v) => set("restartOnCrash", v)}
-              title="Restart after a crash"
-            >
-              Up to 3 times in 10 minutes.
-            </ToggleRow>
 
-            <div className="mb-[17px]">
-              <label htmlFor={ids.theme} className="mb-[7px] block text-label text-text-secondary">
-                Card theme
-              </label>
-              <Select
-                id={ids.theme}
-                value={form.cardTheme}
-                onChange={(e) => set("cardTheme", Number(e.target.value) as CardTheme)}
+              <ToggleRow
+                id={ids.sleep}
+                checked={form.sleepWhenEmpty}
+                onChange={(v) => set("sleepWhenEmpty", v)}
+                title="Sleep when empty"
               >
-                {Object.entries(THEME_NAMES).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
-            </div>
+                Stop after a stretch with no players; start again when someone joins.
+              </ToggleRow>
+              {form.sleepWhenEmpty && (
+                <div className="mb-[17px] flex items-center gap-2 pl-0.5 text-label text-text-secondary">
+                  <label htmlFor={`${ids.sleep}-minutes`}>Sleep after</label>
+                  <Input
+                    id={`${ids.sleep}-minutes`}
+                    inputMode="numeric"
+                    className="h-9 w-20"
+                    value={form.idleMinutes}
+                    aria-invalid={errors.idle ? true : undefined}
+                    onChange={(e) => set("idleMinutes", e.target.value)}
+                  />
+                  <span>minutes without players</span>
+                </div>
+              )}
+              <ToggleRow
+                id={ids.auto}
+                checked={form.autoStart}
+                onChange={(v) => set("autoStart", v)}
+                title="Start with NetherNode"
+              >
+                Bring this server online when NetherNode starts.
+              </ToggleRow>
+              <ToggleRow
+                id={ids.crash}
+                checked={form.restartOnCrash}
+                onChange={(v) => set("restartOnCrash", v)}
+                title="Restart after a crash"
+              >
+                Up to 3 times in 10 minutes.
+              </ToggleRow>
 
-            <details className="mb-[17px] rounded-md border border-divider px-3 py-2.5">
-              <summary className="cursor-pointer text-label text-text-secondary">
-                Advanced: software, Java, and image
-              </summary>
-              <div className="mt-4">
-                <p className="mb-4 flex gap-2 text-meta text-warning">
-                  <TriangleAlert className="mt-px size-3.5 shrink-0" aria-hidden />
-                  Changing the software or version on an existing world can break it. Back up first.
-                </p>
-                <div className="grid grid-cols-2 gap-[13px] below-sm:grid-cols-1">
+              <div className="mb-[17px]">
+                <label htmlFor={ids.theme} className="mb-[7px] block text-label text-text-secondary">
+                  Card theme
+                </label>
+                <Select
+                  id={ids.theme}
+                  value={form.cardTheme}
+                  onChange={(e) => set("cardTheme", Number(e.target.value) as CardTheme)}
+                >
+                  {Object.entries(THEME_NAMES).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+
+              <details className="mb-[17px] rounded-md border border-divider px-3 py-2.5">
+                <summary className="cursor-pointer text-label text-text-secondary">
+                  Advanced: software, Java, and image
+                </summary>
+                <div className="mt-4">
+                  <p className="mb-4 flex gap-2 text-meta text-warning">
+                    <TriangleAlert className="mt-px size-3.5 shrink-0" aria-hidden />
+                    Changing the software or version on an existing world can break it. Back up first.
+                  </p>
+                  <div className="grid grid-cols-2 gap-[13px] below-sm:grid-cols-1">
+                    <div className="mb-[17px]">
+                      <label htmlFor={ids.loader} className="mb-[7px] block text-label text-text-secondary">
+                        Server software
+                      </label>
+                      <Select
+                        id={ids.loader}
+                        value={form.loader}
+                        disabled={isModpack}
+                        onChange={(e) => set("loader", e.target.value)}
+                      >
+                        {(isModpack ? [form.loader] : LOADERS).map((l) => (
+                          <option key={l} value={l}>
+                            {loaderName(l)}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                    <Field
+                      label="Minecraft version"
+                      className="[&_input]:font-mono"
+                      value={form.mcVersion}
+                      disabled={isModpack}
+                      hint={isModpack ? "Set by the modpack." : undefined}
+                      onChange={(e) => set("mcVersion", e.target.value)}
+                      error={errors.version}
+                    />
+                  </div>
+                  <Field
+                    label="Loader or build version"
+                    className="[&_input]:font-mono"
+                    hint={
+                      isModpack ? "Set by the modpack." : "Leave empty for the recommended or latest build."
+                    }
+                    disabled={isModpack}
+                    value={form.loaderVersion}
+                    onChange={(e) => set("loaderVersion", e.target.value)}
+                  />
                   <div className="mb-[17px]">
-                    <label htmlFor={ids.loader} className="mb-[7px] block text-label text-text-secondary">
-                      Server software
+                    <label htmlFor={ids.java} className="mb-[7px] block text-label text-text-secondary">
+                      Java version
                     </label>
                     <Select
-                      id={ids.loader}
-                      value={form.loader}
-                      disabled={isModpack}
-                      onChange={(e) => set("loader", e.target.value)}
+                      id={ids.java}
+                      value={form.javaVersion}
+                      onChange={(e) => set("javaVersion", e.target.value)}
                     >
-                      {(isModpack ? [form.loader] : LOADERS).map((l) => (
-                        <option key={l} value={l}>
-                          {loaderName(l)}
+                      <option value="">Automatic (matches the Minecraft version)</option>
+                      {[8, 11, 17, 21, 25].map((j) => (
+                        <option key={j} value={j}>
+                          Java {j}
                         </option>
                       ))}
                     </Select>
                   </div>
                   <Field
-                    label="Minecraft version"
+                    label="Custom image"
                     className="[&_input]:font-mono"
-                    value={form.mcVersion}
-                    disabled={isModpack}
-                    hint={isModpack ? "Set by the modpack." : undefined}
-                    onChange={(e) => set("mcVersion", e.target.value)}
-                    error={errors.version}
+                    placeholder="itzg/minecraft-server (default)"
+                    hint="Leave empty to use itzg/minecraft-server with the right Java version."
+                    value={form.image}
+                    onChange={(e) => set("image", e.target.value)}
                   />
-                </div>
-                <Field
-                  label="Loader or build version"
-                  className="[&_input]:font-mono"
-                  hint={
-                    isModpack ? "Set by the modpack." : "Leave empty for the recommended or latest build."
-                  }
-                  disabled={isModpack}
-                  value={form.loaderVersion}
-                  onChange={(e) => set("loaderVersion", e.target.value)}
-                />
-                <div className="mb-[17px]">
-                  <label htmlFor={ids.java} className="mb-[7px] block text-label text-text-secondary">
-                    Java version
-                  </label>
-                  <Select
-                    id={ids.java}
-                    value={form.javaVersion}
-                    onChange={(e) => set("javaVersion", e.target.value)}
+                  <ToggleRow
+                    id={ids.aikar}
+                    checked={form.useAikarFlags}
+                    onChange={(v) => set("useAikarFlags", v)}
+                    title="Aikar's JVM flags"
                   >
-                    <option value="">Automatic (matches the Minecraft version)</option>
-                    {[8, 11, 17, 21, 25].map((j) => (
-                      <option key={j} value={j}>
-                        Java {j}
-                      </option>
-                    ))}
-                  </Select>
+                    Garbage-collection tuning that reduces lag spikes.
+                  </ToggleRow>
                 </div>
-                <Field
-                  label="Custom image"
-                  className="[&_input]:font-mono"
-                  placeholder="itzg/minecraft-server (default)"
-                  hint="Leave empty to use itzg/minecraft-server with the right Java version."
-                  value={form.image}
-                  onChange={(e) => set("image", e.target.value)}
-                />
-                <ToggleRow
-                  id={ids.aikar}
-                  checked={form.useAikarFlags}
-                  onChange={(v) => set("useAikarFlags", v)}
-                  title="Aikar's JVM flags"
-                >
-                  Garbage-collection tuning that reduces lag spikes.
-                </ToggleRow>
-              </div>
-            </details>
+              </details>
 
-            {canManage && (
-              <div className="flex items-center gap-3">
-                <Button type="submit" variant="primary" disabled={save.isPending || !valid}>
-                  <Save />
-                  {save.isPending ? "Saving…" : "Save configuration"}
-                </Button>
-                <p className="text-meta text-text-muted">
-                  Most changes apply the next time the server starts.
-                </p>
-              </div>
-            )}
-          </fieldset>
-        </Panel>
-      </form>
+              {canManage && (
+                <div className="flex items-center gap-3">
+                  <Button type="submit" variant="primary" disabled={save.isPending || !valid}>
+                    <Save />
+                    {save.isPending ? "Saving…" : "Save configuration"}
+                  </Button>
+                  <p className="text-meta text-text-muted">
+                    Most changes apply the next time the server starts.
+                  </p>
+                </div>
+              )}
+            </fieldset>
+          </Panel>
+        </form>
+        {canManage && (
+          <div className="flex flex-col gap-[18px] below-xl:order-3">
+            <MoveServer server={server} />
+            <CopyServer server={server} />
+            <DangerZone server={server} />
+          </div>
+        )}
+      </div>
       {canManage && (
-        <Suspense fallback={<div className="h-48 animate-pulse rounded-lg bg-surface-subtle" aria-busy />}>
-          <GameSettings server={server} />
-        </Suspense>
+        <div className="min-w-0 flex-1 below-xl:order-2">
+          <Suspense fallback={<div className="h-48 animate-pulse rounded-lg bg-surface-subtle" aria-busy />}>
+            <GameSettings server={server} />
+          </Suspense>
+        </div>
       )}
-      {canManage && <MoveServer server={server} />}
-      {canManage && <CopyServer server={server} />}
-      {canManage && <DangerZone server={server} />}
     </div>
   );
 }
@@ -368,14 +388,22 @@ function DangerZone({ server }: { server: Server }) {
   const dataId = useId();
 
   const remove = useMutation({
-    mutationFn: () => serverClient.deleteServer({ id: server.id, deleteData }),
+    mutationFn: () => {
+      queryClient.removeQueries({ queryKey: deleteProgressKey(server.id) });
+      return serverClient.deleteServer({ id: server.id, deleteData });
+    },
     onSuccess: async () => {
+      // A moment on the finished steps before leaving.
+      await new Promise((resolve) => setTimeout(resolve, 700));
       setOpen(false);
+      queryClient.removeQueries({ queryKey: deleteProgressKey(server.id) });
       await queryClient.invalidateQueries({ queryKey: ["servers"] });
       toast.success(`${server.name} deleted.`);
       await navigate({ to: "/servers" });
     },
   });
+  // Once started, the dialog follows the deletion instead of asking.
+  const started = !remove.isIdle;
 
   return (
     <Panel className="border-danger/30">
@@ -395,6 +423,8 @@ function DangerZone({ server }: { server: Server }) {
       <Dialog
         open={open}
         onOpenChange={(next) => {
+          // It can't be closed while the deletion runs.
+          if (!next && (remove.isPending || remove.isSuccess)) return;
           setOpen(next);
           if (!next) {
             setConfirmName("");
@@ -404,46 +434,82 @@ function DangerZone({ server }: { server: Server }) {
         }}
       >
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete {server.name}?</DialogTitle>
-            <DialogDescription>
-              Players are disconnected and the server's routes are removed.
-            </DialogDescription>
-          </DialogHeader>
-          {remove.isError && <ErrorAlert>{errorMessage(remove.error)}</ErrorAlert>}
-          <div className="mb-[17px] flex items-start gap-3">
-            <Checkbox
-              id={dataId}
-              checked={deleteData}
-              onCheckedChange={(v) => setDeleteData(v === true)}
-              className="mt-0.5"
-            />
-            <label htmlFor={dataId} className="text-label">
-              <span className="block font-[550]">Also delete the world and files</span>
-              <span className="mt-0.5 block text-meta text-text-muted">
-                {deleteData
-                  ? "Permanent. The world can't be recovered."
-                  : "Files stay on disk in the data directory."}
-              </span>
-            </label>
-          </div>
-          <Field
-            label={`Type ${server.name} to confirm`}
-            autoComplete="off"
-            value={confirmName}
-            onChange={(e) => setConfirmName(e.target.value)}
-          />
-          <DialogFooter>
-            <Button onClick={() => setOpen(false)}>Cancel</Button>
-            <Button
-              variant="danger"
-              disabled={confirmName !== server.name || remove.isPending}
-              onClick={() => remove.mutate()}
-            >
-              <Trash2 />
-              {remove.isPending ? "Deleting…" : "Delete server"}
-            </Button>
-          </DialogFooter>
+          {started ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>
+                  {remove.isSuccess
+                    ? `${server.name} deleted`
+                    : remove.isError
+                      ? `${server.name} couldn't be deleted`
+                      : `Deleting ${server.name}…`}
+                </DialogTitle>
+                <DialogDescription>
+                  {remove.isError
+                    ? "It stopped at the step marked below."
+                    : "This can take a few minutes for a big world."}
+                </DialogDescription>
+              </DialogHeader>
+              {remove.isError && <ErrorAlert>{errorMessage(remove.error)}</ErrorAlert>}
+              <DeleteProgressView
+                serverId={server.id}
+                deleteData={deleteData}
+                state={remove.isSuccess ? "done" : remove.isError ? "failed" : "running"}
+              />
+              {remove.isError && (
+                <DialogFooter>
+                  <Button onClick={() => setOpen(false)}>Close</Button>
+                </DialogFooter>
+              )}
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>Delete {server.name}?</DialogTitle>
+                <DialogDescription>
+                  Players are disconnected and the server's routes are removed.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="mb-[17px] flex items-start gap-3">
+                <Checkbox
+                  id={dataId}
+                  checked={deleteData}
+                  onCheckedChange={(v) => setDeleteData(v === true)}
+                  className="mt-0.5"
+                />
+                <label htmlFor={dataId} className="text-label">
+                  <span className="block font-[550]">Also delete the world and files</span>
+                  <span className="mt-0.5 block text-meta text-text-muted">
+                    {deleteData
+                      ? "Permanent. The world can't be recovered."
+                      : "Files stay on disk in the data directory."}
+                  </span>
+                </label>
+              </div>
+              <div className="mb-[17px]">
+                <p className="mb-[7px] flex flex-wrap items-center gap-1.5 text-label text-text-secondary">
+                  Type <CopyChip text={server.name} /> to confirm.
+                </p>
+                <Input
+                  aria-label={`Type ${server.name} to confirm`}
+                  autoComplete="off"
+                  value={confirmName}
+                  onChange={(e) => setConfirmName(e.target.value)}
+                />
+              </div>
+              <DialogFooter>
+                <Button onClick={() => setOpen(false)}>Cancel</Button>
+                <Button
+                  variant="danger"
+                  disabled={confirmName !== server.name || remove.isPending}
+                  onClick={() => remove.mutate()}
+                >
+                  <Trash2 />
+                  Delete server
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </Panel>

@@ -157,6 +157,19 @@ pub enum Event {
         /// Server ID.
         server_id: Option<String>,
     },
+    /// A server being deleted moved on: `container` (stopping it and
+    /// removing its container), `modules`, `record` (removing it from
+    /// NetherNode), then `files` with how many of its files are gone.
+    ServerDeleteProgress {
+        /// The server.
+        server_id: String,
+        /// The step it's on.
+        step: String,
+        /// Files deleted so far (the `files` step).
+        done: u64,
+        /// Files in all (the `files` step).
+        total: u64,
+    },
     /// A background file job (extract, compress) made progress.
     FileJobProgress {
         /// Server whose files are involved.

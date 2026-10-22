@@ -10,14 +10,15 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
-
+import { Badge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, Input, Select } from "@/components/ui/field";
 import { proxyClient } from "@/features/proxy/client";
-import { Platform, ProjectKind } from "@/gen/nethernode/v1/catalog_pb";
+import { Platform, ProjectKind, type ProjectVersion } from "@/gen/nethernode/v1/catalog_pb";
 import { type Node, NodeStatus } from "@/gen/nethernode/v1/nodes_pb";
 import { errorMessage } from "@/lib/api";
+import { dateTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
 import { PlatformTabs, ProjectIcon, ProjectSearch } from "../../catalog/project-search";
@@ -228,10 +229,14 @@ export function VersionStep({ draft, update }: { draft: Draft; update: Update })
   );
 }
 
-/** Step 2 for modpacks: which pack and version. */
-export function ModpackStep({ draft, update }: { draft: Draft; update: Update }) {
+/** Step 2 for modpacks: which pack and version. With `fixed` (a pack chosen
+ * on the Modpacks page), only that pack's versions. */
+export function ModpackStep({ draft, update, fixed }: { draft: Draft; update: Update; fixed?: boolean }) {
   const [platform, setPlatform] = useState(draft.pack?.platform ?? Platform.MODRINTH);
   const curseForgeKey = useQuery(curseForgeStatusQuery);
+  if (fixed && draft.pack?.project) {
+    return <ChosenPack pack={draft.pack} onChange={(p) => update({ pack: p })} />;
+  }
   const pack = draft.pack?.platform === platform ? draft.pack : undefined;
   const choose = (p: PackChoice) => update({ pack: p, name: draft.name || p.title.slice(0, 40) });
   const keyless = platform === Platform.CURSEFORGE && curseForgeKey.data === false;
@@ -270,6 +275,115 @@ export function ModpackStep({ draft, update }: { draft: Draft; update: Update })
           />
           {pack && <PackVersion pack={pack} onChange={(p) => update({ pack: p })} />}
         </>
+      )}
+    </div>
+  );
+}
+
+/** The pack chosen on the Modpacks page, and its versions to pick from. */
+function ChosenPack({ pack, onChange }: { pack: PackChoice; onChange: (pack: PackChoice) => void }) {
+  const versions = useQuery(projectVersionsQuery(pack.platform, pack.project));
+  const choose = (v: ProjectVersion) =>
+    onChange({
+      ...pack,
+      versionId: v.id,
+      versionName: v.versionNumber,
+      mcVersion: v.gameVersions[v.gameVersions.length - 1] ?? "",
+      loader: v.loaders[0] ?? pack.loader,
+    });
+  // The newest release to start with.
+  useEffect(() => {
+    if (!versions.data || pack.versionId) return;
+    const pick = versions.data.find((v) => v.channel === "release") ?? versions.data[0];
+    if (pick)
+      onChange({
+        ...pack,
+        versionId: pick.id,
+        versionName: pick.versionNumber,
+        mcVersion: pick.gameVersions[pick.gameVersions.length - 1] ?? "",
+        loader: pick.loaders[0] ?? pack.loader,
+      });
+  }, [versions.data, pack, onChange]);
+  const list = versions.data?.slice(0, 50) ?? [];
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center gap-3 rounded-lg border border-border px-3.5 py-3">
+        <ProjectIcon url={pack.iconUrl} size={40} />
+        <div className="min-w-0">
+          <p className="truncate font-medium text-label">{pack.title}</p>
+          <p className="text-meta text-text-muted">
+            {pack.platform === Platform.CURSEFORGE ? "CurseForge" : "Modrinth"} modpack
+          </p>
+        </div>
+      </div>
+      {versions.isError ? (
+        <Hint tone="danger">{errorMessage(versions.error)}</Hint>
+      ) : versions.isPending ? (
+        <div className="h-48 animate-pulse rounded-lg bg-surface-subtle" aria-busy />
+      ) : list.length === 0 ? (
+        <Hint tone="danger">{pack.title} has no versions to install.</Hint>
+      ) : (
+        <fieldset>
+          <legend className="mb-[7px] text-label text-text-secondary">Version</legend>
+          <div className="max-h-[340px] divide-y divide-divider overflow-y-auto rounded-lg border border-border">
+            {list.map((v) => {
+              const chosen = v.id === pack.versionId;
+              return (
+                <label
+                  key={v.id}
+                  className={cn(
+                    "flex cursor-pointer items-center gap-3 px-3.5 py-2.5 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-primary has-[:focus-visible]:-outline-offset-2",
+                    chosen ? "bg-primary-subtle" : "hover:bg-surface-subtle",
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name={`pack-version-${pack.project}`}
+                    value={v.id}
+                    checked={chosen}
+                    onChange={() => choose(v)}
+                    className="sr-only"
+                  />
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "grid size-4 shrink-0 place-items-center rounded-full border",
+                      chosen ? "border-primary" : "border-border-strong",
+                    )}
+                  >
+                    {chosen && <span className="size-2 rounded-full bg-primary" />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="truncate font-medium text-label">{v.versionNumber || v.name}</span>
+                      {v.channel !== "release" && (
+                        <Badge tone="warning" icon={<TriangleAlert className="size-3" />}>
+                          {v.channel === "beta" ? "Beta" : "Alpha"}
+                        </Badge>
+                      )}
+                    </span>
+                    <span className="block text-meta text-text-muted">
+                      {[
+                        v.gameVersions.length > 0 && `Minecraft ${v.gameVersions.join(", ")}`,
+                        v.loaders.length > 0 && v.loaders.map(loaderName).join(", "),
+                        v.publishedMs ? dateTime(v.publishedMs) : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
+      )}
+      {pack.mcVersion && (
+        <Hint>
+          Runs Minecraft {pack.mcVersion}
+          {pack.loader ? ` with ${loaderName(pack.loader)}` : ""}.
+        </Hint>
       )}
     </div>
   );

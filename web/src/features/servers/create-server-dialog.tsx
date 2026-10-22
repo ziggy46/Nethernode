@@ -287,7 +287,7 @@ export function CreateServerDialog({
             )}
             {step === 1 &&
               (isPack ? (
-                <ModpackStep draft={draft} update={update} />
+                <ModpackStep draft={draft} update={update} fixed={Boolean(preset?.pack?.project)} />
               ) : (
                 <VersionStep draft={draft} update={update} />
               ))}

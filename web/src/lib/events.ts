@@ -1,7 +1,14 @@
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 
-import { type LiveStats, liveStatsKey, type PullProgress, pullKey } from "@/features/servers/queries";
+import {
+  type DeleteProgress,
+  deleteProgressKey,
+  type LiveStats,
+  liveStatsKey,
+  type PullProgress,
+  pullKey,
+} from "@/features/servers/queries";
 import { uploadFinished } from "@/features/uploads/store";
 import { jobFinished, jobProgress } from "@/lib/jobs";
 import { withToast } from "@/lib/toast";
@@ -60,6 +67,7 @@ type DataEvent =
       failed: boolean;
     }
   | { type: "file_job_progress"; server_id: string; job_id: string; kind: string; percent: number }
+  | { type: "server_delete_progress"; server_id: string; step: string; done: number; total: number }
   | {
       type: "file_job_finished";
       server_id: string;
@@ -76,6 +84,7 @@ const DATA_EVENTS = [
   "server_status_changed",
   "file_job_progress",
   "file_job_finished",
+  "server_delete_progress",
   "upload_finished",
 ];
 
@@ -115,6 +124,11 @@ function applyData(client: QueryClient, event: DataEvent) {
     case "file_job_progress":
       jobProgress(event.job_id, event.percent);
       break;
+    case "server_delete_progress": {
+      const progress: DeleteProgress = { step: event.step, done: event.done, total: event.total };
+      client.setQueryData(deleteProgressKey(event.server_id), progress);
+      break;
+    }
     case "file_job_finished":
       jobFinished(event.job_id, { message: event.message, failed: event.failed });
       void client.invalidateQueries({ queryKey: ["files", event.server_id] });

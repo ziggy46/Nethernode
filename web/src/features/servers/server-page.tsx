@@ -19,6 +19,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { EmptyState, Panel, PanelHeader } from "@/components/page";
 import { ServerStatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
+import { CopyChip } from "@/components/ui/copy-chip";
 import { BackupStatus } from "@/gen/nethernode/v1/backups_pb";
 import { type Server, ServerStatus } from "@/gen/nethernode/v1/servers_pb";
 import { errorMessage } from "@/lib/api";
@@ -87,18 +88,15 @@ export function ServerPage({ id }: { id: string }) {
         <div className="min-w-0">
           <p className="mb-1.5 font-[650] text-eyebrow text-primary uppercase">Server</p>
           <h1 className="mb-[7px] truncate font-[650] text-page below-md:text-[25px]">{s.name}</h1>
-          <p className="text-label text-text-muted">
-            {s.modpack
-              ? `${s.modpack.title}${s.modpack.versionName ? ` ${s.modpack.versionName}` : ""} · Minecraft`
-              : loaderName(s.loader)}{" "}
-            {versionLabel(s.mcVersion)}
-            {s.nodeId !== "local" && ` · on ${s.nodeName}`}
-            {address && (
-              <>
-                {" · "}
-                <span className="font-mono">{address}</span>
-              </>
-            )}
+          <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-label text-text-muted">
+            <span>
+              {s.modpack
+                ? `${s.modpack.title}${s.modpack.versionName ? ` ${s.modpack.versionName}` : ""} · Minecraft`
+                : loaderName(s.loader)}{" "}
+              {versionLabel(s.mcVersion)}
+              {s.nodeId !== "local" && ` · on ${s.nodeName}`}
+            </span>
+            {address && <CopyChip text={address} mono className="text-label" />}
           </p>
         </div>
       </div>
