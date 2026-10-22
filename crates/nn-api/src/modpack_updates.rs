@@ -456,12 +456,48 @@ async fn switch(
         .await
         .map_err(|e| e.to_string())?
         .ok_or("The server was deleted.")?;
+    // Each way of installing removes only what it put there itself, so
+    // moving between the modpack and its server pack starts the mods over
+    // (the backup above keeps the old ones).
+    let server_pack = |p: &Modpack| p.server_pack_install().is_some();
+    if server_pack(&plan.from) != server_pack(&plan.to) {
+        clear_mods(state, &current)
+            .await
+            .map_err(|e| format!("The old mods couldn't be cleared out: {e}"))?;
+    }
     let mut settings = current.settings();
     settings.modpack_json = Some(serde_json::to_string(&plan.to).map_err(|e| e.to_string())?);
     settings.mc_version = plan.mc_version.clone();
     apply(state, &current, settings)
         .await
         .map_err(|e| format!("The new version couldn't be saved: {e}"))?;
+    Ok(())
+}
+
+/// Moves the mods (`mods/*.jar`) to the trash.
+async fn clear_mods(state: &AppState, server: &Server) -> Result<(), String> {
+    let folder = state
+        .nodes
+        .for_server(server)
+        .folder(server)
+        .await
+        .map_err(|e| e.to_string())?;
+    let mods = nn_files::RelPath::parse("mods").map_err(|e| e.to_string())?;
+    let jars: Vec<nn_files::RelPath> = match folder.list(&mods).await {
+        Ok(entries) => entries
+            .into_iter()
+            .filter(|e| e.kind == nn_files::EntryKind::File && e.name.ends_with(".jar"))
+            .filter_map(|e| nn_files::RelPath::parse(&format!("mods/{}", e.name)).ok())
+            .collect(),
+        // No mods folder yet: nothing to clear.
+        Err(_) => return Ok(()),
+    };
+    if !jars.is_empty() {
+        folder
+            .delete(jars, nn_files::TRASH_RETENTION)
+            .await
+            .map_err(|e| e.to_string())?;
+    }
     Ok(())
 }
 
@@ -563,6 +599,7 @@ mod tests {
             published_ms,
             files: Vec::new(),
             dependencies: Vec::new(),
+            server_pack_id: None,
         }
     }
 
@@ -601,6 +638,7 @@ mod tests {
             loader: Some("fabric".into()),
             icon_url: None,
             page_url: None,
+            ..Default::default()
         })
         .unwrap()
     }

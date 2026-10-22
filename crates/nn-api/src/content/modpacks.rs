@@ -4,7 +4,7 @@
 use connectrpc::ConnectError;
 use nn_catalog::content::MOD_LOADERS;
 use nn_catalog::{ProjectKind, ProjectVersion, compare_versions};
-use nn_orchestrator::spec::Modpack;
+use nn_orchestrator::spec::{Modpack, ServerPack};
 
 use super::{Content, catalog_error};
 
@@ -87,6 +87,7 @@ impl Content {
                 version_id: Some(version.id),
                 icon_url: project.icon_url,
                 page_url: Some(project.page_url),
+                ..Default::default()
             },
         })
     }
@@ -137,6 +138,10 @@ impl Content {
                     page_url: Some(format!(
                         "https://www.curseforge.com/minecraft/modpacks/{project}"
                     )),
+                    no_server_pack: Some(
+                        "NetherNode needs a CurseForge API key to find the server pack.".into(),
+                    ),
+                    ..Default::default()
                 },
             });
         };
@@ -164,24 +169,99 @@ impl Content {
                 ConnectError::not_found(format!("{} has no files to install", found.title))
             })?,
         };
-        let mc_version = newest_game_version(&version).ok_or_else(|| {
+        let mut mc_version = newest_game_version(&version).ok_or_else(|| {
             ConnectError::failed_precondition(
                 "this pack file doesn't say which Minecraft version it's for",
             )
         })?;
+        let mut modpack = Modpack {
+            platform: "curseforge".into(),
+            project_id: found.id,
+            slug: found.slug,
+            title: found.title,
+            loader: mod_loader(&version),
+            version_name: Some(version.name.clone()),
+            version_id: Some(version.id.clone()),
+            icon_url: found.icon_url,
+            page_url: Some(found.page_url),
+            ..Default::default()
+        };
+        // Servers are installed from the author's server pack when there is
+        // one; otherwise from the modpack, leaving out what the image knows
+        // only runs in the game.
+        match self.server_pack(&key, &modpack.project_id, &version).await {
+            Ok((pack, manifest)) => {
+                mc_version = manifest.mc_version;
+                modpack.loader = Some(manifest.loader);
+                modpack.loader_version = Some(manifest.loader_version);
+                modpack.server_pack = Some(pack);
+            }
+            Err(why) => {
+                tracing::info!(pack = %modpack.slug, file = %version.id, %why, "installing from the modpack, not a server pack");
+                modpack.no_server_pack = Some(why);
+            }
+        }
         Ok(Resolved {
             mc_version,
-            modpack: Modpack {
-                platform: "curseforge".into(),
-                project_id: found.id,
-                slug: found.slug,
-                title: found.title,
-                loader: mod_loader(&version),
-                version_name: Some(version.name.clone()),
-                version_id: Some(version.id),
-                icon_url: found.icon_url,
-                page_url: Some(found.page_url),
-            },
+            modpack,
         })
     }
+
+    /// The server pack published with a CurseForge pack file, and what the
+    /// pack's manifest says it runs on (the server pack's own files don't
+    /// say reliably). Errors say why there's none to use.
+    async fn server_pack(
+        &self,
+        key: &str,
+        project: &str,
+        version: &ProjectVersion,
+    ) -> Result<(ServerPack, nn_catalog::PackManifest), String> {
+        let catalog = &self.catalog;
+        let id = version
+            .server_pack_id
+            .as_deref()
+            .ok_or("The author doesn't publish a server pack for this version.")?;
+        let file = catalog
+            .curseforge_version(key, project, id)
+            .await
+            .map_err(|e| format!("The server pack couldn't be looked up: {e}"))?;
+        let file = file
+            .files
+            .into_iter()
+            .next()
+            .ok_or("The server pack has no file.")?;
+        let url = file
+            .url
+            .ok_or("The author doesn't allow other apps to download the server pack.")?;
+        let modpack = version
+            .files
+            .first()
+            .ok_or("The modpack has no file to read its manifest from.")?;
+        let zip = catalog
+            .download(modpack, MAX_MODPACK_ZIP)
+            .await
+            .map_err(|e| format!("The modpack couldn't be read: {e}"))?;
+        let manifest = nn_catalog::pack_manifest(&zip)
+            .map_err(|e| format!("{}.", sentence_case(&e.to_string())))?;
+        Ok((
+            ServerPack {
+                file_id: id.to_owned(),
+                file_name: file.filename,
+                url,
+            },
+            manifest,
+        ))
+    }
+}
+
+/// The largest modpack zip read for its manifest (they're mostly a list of
+/// mods plus configs).
+const MAX_MODPACK_ZIP: u64 = 256 * 1024 * 1024;
+
+fn sentence_case(s: &str) -> String {
+    let mut chars = s.chars();
+    chars
+        .next()
+        .map(|c| c.to_uppercase().chain(chars).collect())
+        .unwrap_or_default()
 }

@@ -94,6 +94,9 @@ struct File {
     hashes: Vec<Hash>,
     #[serde(default)]
     dependencies: Vec<FileDependency>,
+    /// The server pack published with this file (0 or absent: none).
+    #[serde(default)]
+    server_pack_file_id: Option<u64>,
 }
 
 #[derive(Deserialize)]
@@ -220,7 +223,80 @@ fn version(f: File) -> ProjectVersion {
                 required: d.relation_type == 3,
             })
             .collect(),
+        server_pack_id: f
+            .server_pack_file_id
+            .filter(|id| *id != 0)
+            .map(|id| id.to_string()),
     }
+}
+
+/// What a CurseForge modpack's `manifest.json` says it runs on.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PackManifest {
+    /// The Minecraft version.
+    pub mc_version: String,
+    /// `forge`, `neoforge`, `fabric` or `quilt`.
+    pub loader: String,
+    /// The loader's version (`47.4.23`).
+    pub loader_version: String,
+}
+
+#[derive(Deserialize)]
+struct RawManifest {
+    minecraft: RawMinecraft,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawMinecraft {
+    version: String,
+    #[serde(default)]
+    mod_loaders: Vec<RawModLoader>,
+}
+
+#[derive(Deserialize)]
+struct RawModLoader {
+    id: String,
+    #[serde(default)]
+    primary: bool,
+}
+
+/// Reads `manifest.json` from a CurseForge modpack zip: the Minecraft
+/// version and the mod loader it's built on (`forge-47.4.23`).
+pub fn pack_manifest(zip: &[u8]) -> Result<PackManifest, Error> {
+    use std::io::Read as _;
+    let bad = |why: String| Error::Upstream(format!("the modpack's manifest.json {why}"));
+    let mut archive = zip::ZipArchive::new(std::io::Cursor::new(zip))
+        .map_err(|e| bad(format!("couldn't be read: {e}")))?;
+    let mut raw = String::new();
+    archive
+        .by_name("manifest.json")
+        .map_err(|_| bad("is missing".into()))?
+        .take(1024 * 1024)
+        .read_to_string(&mut raw)
+        .map_err(|e| bad(format!("couldn't be read: {e}")))?;
+    let manifest: RawManifest =
+        serde_json::from_str(raw.trim_start_matches('\u{feff}')).map_err(|e| bad(e.to_string()))?;
+    let loader = manifest
+        .minecraft
+        .mod_loaders
+        .iter()
+        .find(|l| l.primary)
+        .or_else(|| manifest.minecraft.mod_loaders.first())
+        .ok_or_else(|| bad("doesn't name a mod loader".into()))?;
+    let (name, version) = loader
+        .id
+        .split_once('-')
+        .ok_or_else(|| bad(format!("names an unknown mod loader, {}", loader.id)))?;
+    let name = name.to_ascii_lowercase();
+    if !["forge", "neoforge", "fabric", "quilt"].contains(&name.as_str()) || version.is_empty() {
+        return Err(bad(format!("names an unknown mod loader, {}", loader.id)));
+    }
+    Ok(PackManifest {
+        mc_version: manifest.minecraft.version,
+        loader: name,
+        loader_version: version.to_owned(),
+    })
 }
 
 pub(crate) fn parse_search(raw: &str) -> Result<SearchPage, Error> {
@@ -413,5 +489,50 @@ mod tests {
             files[1].files[0].url.is_none(),
             "not allowed for third-party download"
         );
+        assert_eq!(files[0].server_pack_id.as_deref(), Some("5000002"));
+    }
+
+    fn pack(manifest: &str) -> Vec<u8> {
+        use std::io::Write as _;
+        let mut out = std::io::Cursor::new(Vec::new());
+        let mut zip = zip::ZipWriter::new(&mut out);
+        zip.start_file("manifest.json", zip::write::SimpleFileOptions::default())
+            .unwrap();
+        zip.write_all(manifest.as_bytes()).unwrap();
+        zip.finish().unwrap();
+        out.into_inner()
+    }
+
+    #[test]
+    fn the_manifest_names_the_loader_and_its_version() {
+        let found = pack_manifest(&pack(
+            r#"{"minecraft":{"version":"1.20.1","modLoaders":[{"id":"forge-47.4.23","primary":true}]},"files":[]}"#,
+        ))
+        .unwrap();
+        assert_eq!(
+            found,
+            PackManifest {
+                mc_version: "1.20.1".into(),
+                loader: "forge".into(),
+                loader_version: "47.4.23".into(),
+            }
+        );
+        // The primary loader wins; NeoForge's versions have dashes too.
+        let found = pack_manifest(&pack(
+            "\u{feff}{\"minecraft\":{\"version\":\"1.21.1\",\"modLoaders\":[{\"id\":\"forge-1\"},{\"id\":\"neoforge-21.1.77-beta\",\"primary\":true}]}}",
+        ))
+        .unwrap();
+        assert_eq!(
+            (found.loader.as_str(), found.loader_version.as_str()),
+            ("neoforge", "21.1.77-beta")
+        );
+        for bad in [
+            r#"{"minecraft":{"version":"1.20.1","modLoaders":[]}}"#,
+            r#"{"minecraft":{"version":"1.20.1","modLoaders":[{"id":"liteloader-1"}]}}"#,
+            "not json",
+        ] {
+            assert!(pack_manifest(&pack(bad)).is_err(), "{bad}");
+        }
+        assert!(pack_manifest(b"not a zip").is_err());
     }
 }

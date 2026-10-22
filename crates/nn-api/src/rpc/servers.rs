@@ -504,6 +504,9 @@ pub(crate) fn proto_modpack(json: Option<&str>) -> Option<pb::Modpack> {
         version_name: pack.version_name.unwrap_or_default(),
         loader: pack.loader.unwrap_or_default(),
         page_url: pack.page_url.unwrap_or_default(),
+        loader_version: pack.loader_version.unwrap_or_default(),
+        server_pack: pack.server_pack.map(|p| p.file_name).unwrap_or_default(),
+        no_server_pack: pack.no_server_pack.unwrap_or_default(),
         ..Default::default()
     })
 }

@@ -120,6 +120,14 @@ message Modpack {
   string loader = 7;
   string icon_url = 8;
   string page_url = 9;
+  // The mod loader's version, when known (CurseForge packs).
+  string loader_version = 10;
+  // CurseForge: the author's server pack the server is installed from
+  // (its file name), or empty when it's installed from the modpack itself
+  // (with the image leaving out mods it knows only run in the game).
+  string server_pack = 11;
+  // CurseForge: why there's no server pack, when there isn't.
+  string no_server_pack = 12;
 }
 
 // The modpack to create a server from. NetherNode looks up the rest

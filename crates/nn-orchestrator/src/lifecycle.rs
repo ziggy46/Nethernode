@@ -545,6 +545,8 @@ impl Orchestrator {
             )));
         }
         let is_modpack = spec::MODPACK_LOADERS.contains(&s.loader.as_str());
+        // The loader that actually runs, for picking Java (a pack's own).
+        let mut runs_on = s.loader.clone();
         match (is_modpack, s.modpack_json.as_deref()) {
             (true, Some(json)) => {
                 let pack: spec::Modpack = serde_json::from_str(json).map_err(|_| {
@@ -552,6 +554,9 @@ impl Orchestrator {
                 })?;
                 if pack.slug.is_empty() && pack.project_id.is_empty() {
                     return Err(OrchestratorError::InvalidInput("Choose a modpack.".into()));
+                }
+                if let Some(loader) = pack.loader {
+                    runs_on = loader;
                 }
             }
             (true, None) => {
@@ -600,7 +605,7 @@ impl Orchestrator {
         // Custom images are kept; the default image follows the Java version.
         if s.image.is_empty() || s.image.starts_with(java::DEFAULT_IMAGE) {
             let java = s.java_version.and_then(|j| u32::try_from(j).ok());
-            s.image = java::default_image(&s.mc_version, &s.loader, java);
+            s.image = java::default_image(&s.mc_version, &runs_on, java);
         }
         Ok(s)
     }

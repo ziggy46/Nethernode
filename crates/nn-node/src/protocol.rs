@@ -20,8 +20,9 @@ pub enum Request {
     ListServers,
     /// Create a server; the reply is the new server.
     Create {
-        /// What to create, with the panel's slug and ports to avoid.
-        input: CreateServer,
+        /// What to create, with the panel's slug and ports to avoid
+        /// (boxed: it's much larger than the other requests).
+        input: Box<CreateServer>,
     },
     /// Start a stopped server.
     Start {

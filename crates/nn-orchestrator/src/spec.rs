@@ -53,6 +53,12 @@ pub const RESERVED_ENV: &[&str] = &[
     "CF_PAGE_URL",
     "CF_FILE_ID",
     "CF_DOWNLOADS_REPO",
+    "GENERIC_PACK",
+    "GENERIC_PACKS",
+    "FORGE_VERSION",
+    "NEOFORGE_VERSION",
+    "FABRIC_LOADER_VERSION",
+    "QUILT_LOADER_VERSION",
 ];
 
 /// `server.properties` keys NetherNode controls, with why. The image
@@ -156,8 +162,20 @@ pub const MODPACK_LOADERS: &[&str] = &["modrinth", "curseforge"];
 /// download itself go (the image's downloads repo).
 pub const CURSEFORGE_DOWNLOADS_DIR: &str = "downloads";
 
-/// The modpack a server is installed from, stored as JSON with the server.
+/// A CurseForge modpack's server pack: the files its author put together
+/// for servers, without the mods that only work in the game itself.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct ServerPack {
+    /// CurseForge file ID.
+    pub file_id: String,
+    /// Its file name, for display.
+    pub file_name: String,
+    /// Where it's downloaded from.
+    pub url: String,
+}
+
+/// The modpack a server is installed from, stored as JSON with the server.
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Modpack {
     /// `modrinth` or `curseforge`.
     pub platform: String,
@@ -180,6 +198,34 @@ pub struct Modpack {
     pub icon_url: Option<String>,
     /// The pack's page.
     pub page_url: Option<String>,
+    /// The mod loader's version, from the pack's manifest (CurseForge).
+    #[serde(default)]
+    pub loader_version: Option<String>,
+    /// The author's server pack (CurseForge). With it the server gets the
+    /// mod loader itself and the server pack's files, instead of the
+    /// modpack the game installs.
+    #[serde(default)]
+    pub server_pack: Option<ServerPack>,
+    /// Why a CurseForge pack is installed from the modpack rather than a
+    /// server pack, for display.
+    #[serde(default)]
+    pub no_server_pack: Option<String>,
+}
+
+impl Modpack {
+    /// For a CurseForge pack installed from its server pack: the loader's
+    /// `TYPE` and version-pin variable, the loader version, and the pack's
+    /// URL.
+    pub fn server_pack_install(&self) -> Option<(&'static str, &'static str, &str, &str)> {
+        if self.platform != "curseforge" {
+            return None;
+        }
+        let pack = self.server_pack.as_ref()?;
+        let version = self.loader_version.as_deref().filter(|v| !v.is_empty())?;
+        let loader = self.loader.as_deref()?;
+        let (_, ty, pin) = LOADERS.iter().find(|(id, ..)| *id == loader)?;
+        Some((ty, (*pin)?, version, &pack.url))
+    }
 }
 
 /// Everything needed to define a server's container.
@@ -262,11 +308,21 @@ pub fn container_name(slug: &str) -> String {
 
 /// Builds the container definition.
 pub fn build(input: &SpecInput<'_>) -> ContainerSpec {
-    let (_, ty, pin_var) = LOADERS
+    let (_, mut ty, mut pin_var) = LOADERS
         .iter()
         .find(|(id, ..)| *id == input.loader)
         .copied()
         .unwrap_or(("vanilla", "VANILLA", None));
+    // A CurseForge pack with a server pack runs as its own loader, with the
+    // server pack's files laid over it.
+    let server_pack = input
+        .modpack
+        .filter(|_| input.loader == "curseforge")
+        .and_then(Modpack::server_pack_install);
+    let mut loader_version = input.loader_version;
+    if let Some((pack_ty, pin, version, _)) = server_pack {
+        (ty, pin_var, loader_version) = (pack_ty, Some(pin), Some(version));
+    }
 
     // BTreeMap keeps env order stable, so the hash is too.
     let mut env: BTreeMap<String, String> = BTreeMap::new();
@@ -280,10 +336,12 @@ pub fn build(input: &SpecInput<'_>) -> ContainerSpec {
     }
     env.insert("TYPE".into(), ty.into());
     // A CurseForge pack decides its own Minecraft version.
-    if input.loader != "curseforge" {
+    if input.loader != "curseforge" || server_pack.is_some() {
         env.insert("VERSION".into(), input.mc_version.trim().to_owned());
     }
-    if let Some(pack) = input.modpack {
+    if let Some((.., url)) = server_pack {
+        env.insert("GENERIC_PACK".into(), url.to_owned());
+    } else if let Some(pack) = input.modpack {
         match input.loader {
             "modrinth" => {
                 let project = if pack.project_id.is_empty() {
@@ -328,7 +386,7 @@ pub fn build(input: &SpecInput<'_>) -> ContainerSpec {
     if let Some(motd) = input.motd.filter(|m| !m.is_empty()) {
         env.insert("MOTD".into(), motd.into());
     }
-    if let (Some(var), Some(pin)) = (pin_var, input.loader_version.filter(|v| !v.is_empty())) {
+    if let (Some(var), Some(pin)) = (pin_var, loader_version.filter(|v| !v.is_empty())) {
         env.insert(var.into(), pin.into());
     }
 
@@ -631,6 +689,7 @@ mod tests {
             loader: Some("fabric".into()),
             icon_url: None,
             page_url: None,
+            ..Default::default()
         }
     }
 
@@ -718,5 +777,53 @@ mod tests {
                 .iter()
                 .any(|e| e.starts_with("CF_API_KEY"))
         );
+    }
+
+    #[test]
+    fn curseforge_packs_with_a_server_pack_run_as_their_loader() {
+        let extra = BTreeMap::from([("GENERIC_PACK".to_owned(), "https://evil".to_owned())]);
+        let dir = PathBuf::from("/srv/nn/servers");
+        let pack = Modpack {
+            loader: Some("forge".into()),
+            loader_version: Some("47.4.23".into()),
+            server_pack: Some(ServerPack {
+                file_id: "8853075".into(),
+                file_name: "ServerFiles-2.1.4.zip".into(),
+                url: "https://edge.forgecdn.net/files/8853/75/ServerFiles-2.1.4.zip".into(),
+            }),
+            ..pack("curseforge")
+        };
+        let spec = build(&SpecInput {
+            loader: "curseforge",
+            modpack: Some(&pack),
+            curseforge_api_key: Some("$2a$10$abc"),
+            ..input(&extra, &dir)
+        });
+        let vars = env(&spec);
+        for want in [
+            "TYPE=FORGE",
+            "VERSION=1.20.1",
+            "FORGE_VERSION=47.4.23",
+            "GENERIC_PACK=https://edge.forgecdn.net/files/8853/75/ServerFiles-2.1.4.zip",
+        ] {
+            assert!(vars.contains(&want.to_owned()), "{want} in {vars:?}");
+        }
+        for gone in ["CF_SLUG", "CF_FILE_ID", "CF_API_KEY", "CF_DOWNLOADS_REPO"] {
+            assert!(
+                !vars.iter().any(|e| e.starts_with(gone)),
+                "{gone} in {vars:?}"
+            );
+        }
+        // Without the loader's version it can't be installed that way.
+        let unsure = Modpack {
+            loader_version: None,
+            ..pack.clone()
+        };
+        let spec = build(&SpecInput {
+            loader: "curseforge",
+            modpack: Some(&unsure),
+            ..input(&extra, &dir)
+        });
+        assert!(env(&spec).contains(&"TYPE=AUTO_CURSEFORGE".to_owned()));
     }
 }

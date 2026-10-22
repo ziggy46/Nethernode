@@ -5,7 +5,7 @@ import { useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
-import type { ProjectVersion } from "@/gen/nethernode/v1/catalog_pb";
+import { Platform, type ProjectVersion } from "@/gen/nethernode/v1/catalog_pb";
 import type { Server } from "@/gen/nethernode/v1/servers_pb";
 import { errorMessage } from "@/lib/api";
 import { trackJob } from "@/lib/jobs";
@@ -83,6 +83,7 @@ export function ModpackCard({ server }: { server: Server }) {
           >
             {status}
           </p>
+          <InstalledFrom pack={pack} />
         </div>
         <Button size="mini" onClick={() => check.refetch()} disabled={check.isFetching}>
           <RefreshCw className={cn(check.isFetching && "animate-spin")} />
@@ -172,4 +173,26 @@ export function ModpackCard({ server }: { server: Server }) {
       />
     </section>
   );
+}
+
+/** Where a CurseForge server's files come from: the author's server pack, or
+ * the modpack itself. */
+function InstalledFrom({ pack }: { pack: NonNullable<Server["modpack"]> }) {
+  if (pack.platform !== Platform.CURSEFORGE) return null;
+  const loader = pack.loaderVersion ? ` · ${loaderName(pack.loader)} ${pack.loaderVersion}` : "";
+  return pack.serverPack ? (
+    <p className="text-meta text-text-muted">
+      From the server pack <span className="font-mono">{pack.serverPack}</span>
+      {loader}
+    </p>
+  ) : (
+    <p className="text-meta text-text-muted">
+      From the modpack, leaving out the mods known to run only in the game.
+      {pack.noServerPack ? ` ${pack.noServerPack}` : ""}
+    </p>
+  );
+}
+
+function loaderName(loader: string): string {
+  return loader === "neoforge" ? "NeoForge" : loader.charAt(0).toUpperCase() + loader.slice(1);
 }

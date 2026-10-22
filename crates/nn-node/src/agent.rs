@@ -451,7 +451,7 @@ fn reply<T: Serialize>(result: crate::Result<T>) -> Reply {
 async fn answer(node: &Node, request: Request) -> Reply {
     match request {
         Request::ListServers => reply(servers(node).await),
-        Request::Create { input } => reply(node.create(input).await),
+        Request::Create { input } => reply(node.create(*input).await),
         Request::Start { id } => reply(node.start(&id).await),
         Request::Wake { id } => reply(node.wake(&id).await),
         Request::Stop { id, sleep } => reply(node.stop(&id, sleep).await),

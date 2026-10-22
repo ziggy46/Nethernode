@@ -209,7 +209,12 @@ impl Node {
     pub async fn create(&self, input: CreateServer) -> Result<Server> {
         match self {
             Self::Local(node) => Ok(node.orchestrator()?.create(input).await?),
-            Self::Remote(node) => node.call(Request::Create { input }).await,
+            Self::Remote(node) => {
+                node.call(Request::Create {
+                    input: Box::new(input),
+                })
+                .await
+            }
         }
     }
 

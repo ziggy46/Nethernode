@@ -30,6 +30,9 @@ pub const REGENERATED: &[&str] = &[
     "logs",
     "crash-reports",
     "downloads",
+    // Modpack archives the image keeps after unpacking them (it downloads
+    // them again when they're missing).
+    "packs",
     TRASH_DIR,
 ];
 

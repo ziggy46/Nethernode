@@ -96,6 +96,10 @@ pub struct ProjectVersion {
     /// Other projects it needs or works with.
     #[serde(default)]
     pub dependencies: Vec<Dependency>,
+    /// The file ID of the server pack the author published alongside this
+    /// version (CurseForge modpacks).
+    #[serde(default)]
+    pub server_pack_id: Option<String>,
 }
 
 /// Another project a version depends on.

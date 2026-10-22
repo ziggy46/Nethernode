@@ -109,6 +109,7 @@ fn version(v: Version) -> ProjectVersion {
                 required: d.dependency_type == "required",
             })
             .collect(),
+        server_pack_id: None,
     }
 }
 

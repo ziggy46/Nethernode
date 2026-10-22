@@ -197,6 +197,7 @@ async fn modpack_update_swaps_the_packs_files() {
         loader: Some("fabric".into()),
         icon_url: None,
         page_url: None,
+        ..Default::default()
     };
     let dir = tempfile::tempdir_in(std::env::current_dir().unwrap()).unwrap();
     let servers_dir = dir.path().join("servers");
