@@ -45,7 +45,10 @@ impl Mojang {
     pub fn with_endpoints(api: &str, sessions: &str) -> Self {
         let http = reqwest::Client::builder()
             .timeout(Duration::from_secs(10))
-            .user_agent(concat!("NetherNode/", env!("CARGO_PKG_VERSION")))
+            .user_agent(format!(
+                "NetherNode/{}",
+                option_env!("NETHERNODE_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"))
+            ))
             .build()
             .unwrap_or_default();
         Self {

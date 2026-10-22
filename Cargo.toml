@@ -126,6 +126,13 @@ codegen-units = 1
 strip = true
 panic = "abort"
 
+# Edge builds: optimized, but without the slow whole-program passes, so a
+# push to edge publishes in minutes. Tagged releases use `release`.
+[profile.edge]
+inherits = "release"
+lto = false
+codegen-units = 16
+
 # Proc macros and build scripts: stripping their dylibs breaks loading them
 # on some macOS toolchains. The shipped binary is still stripped.
 [profile.release.build-override]

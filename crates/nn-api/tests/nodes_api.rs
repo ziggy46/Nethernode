@@ -129,7 +129,7 @@ fn agent(dir: &std::path::Path, url: Option<&str>, code: Option<&str>) -> AgentA
         dir: dir.to_owned(),
         panel_url: url.map(str::to_owned),
         code: code.map(str::to_owned),
-        version: env!("CARGO_PKG_VERSION").to_owned(),
+        version: nn_api::VERSION.to_owned(),
         // Never the real thing in tests.
         updater: Some(Arc::new(|version| {
             Box::pin(async move { Err(format!("tests don't update (asked for {version})")) })
@@ -212,7 +212,7 @@ async fn an_agent_joins_reconnects_and_is_removed() {
         n["status"] == "NODE_STATUS_ONLINE" && n.get("host").is_some()
     })
     .await;
-    assert_eq!(online["version"], env!("CARGO_PKG_VERSION"));
+    assert_eq!(online["version"], nn_api::VERSION);
     // That machine's agent has no Docker in this test, and says so.
     assert!(online["host"]["dockerError"].as_str().is_some());
     assert!(dir.path().join("agent.json").exists());
@@ -294,7 +294,7 @@ async fn an_agent_joins_reconnects_and_is_removed() {
         .unwrap();
     let hello = nn_link::messages::Hello {
         protocol: nn_link::PROTOCOL,
-        version: env!("CARGO_PKG_VERSION").to_owned(),
+        version: nn_api::VERSION.to_owned(),
         join: None,
     };
     let result = nn_node::agent::connect(&url, &state.key, &state.panel_key, &hello).await;
@@ -327,7 +327,7 @@ async fn outdated_agents_moves_and_removing_a_machine_with_servers() {
 
     // Older agents are asked to update as they connect, to the panel's
     // version (this test agent answers without updating).
-    let version = env!("CARGO_PKG_VERSION");
+    let version = nn_api::VERSION;
     let asked = format!("asked for {version}");
     let node = wait_for(&mut admin, &id, |n| {
         n["updating"] != true

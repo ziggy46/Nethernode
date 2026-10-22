@@ -25,7 +25,7 @@ const DAY: Duration = Duration::from_secs(24 * 60 * 60);
 
 /// What's reported, for showing people exactly that.
 pub fn payload(id: &str) -> serde_json::Value {
-    json!({ "id": id, "version": env!("CARGO_PKG_VERSION") })
+    json!({ "id": id, "version": crate::VERSION })
 }
 
 /// The settings screen's view.
@@ -72,7 +72,7 @@ impl InstallCount {
             client: reqwest::Client::builder()
                 .redirect(reqwest::redirect::Policy::none())
                 .timeout(Duration::from_secs(15))
-                .user_agent(concat!("NetherNode/", env!("CARGO_PKG_VERSION")))
+                .user_agent(format!("NetherNode/{}", crate::VERSION))
                 .build()
                 .expect("HTTP client"),
             wake: Notify::new(),

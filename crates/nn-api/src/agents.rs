@@ -38,7 +38,7 @@ const MAX_HANDSHAKES: usize = 16;
 /// Silence after which a link is closed (three missed heartbeats).
 const SILENCE: Duration = Duration::from_secs(30);
 /// This panel's version, which agents are updated to.
-const VERSION: &str = env!("CARGO_PKG_VERSION");
+use crate::VERSION;
 /// Whether the panel updates agents on another version to its own.
 const AUTO_UPDATE_SETTING: &str = "nodes.auto_update";
 /// How long an agent may take to answer an update (pulling an image can be
@@ -292,7 +292,7 @@ impl Agents {
         }
         let remote = self.nodes.remote(&node.id);
         remote.set_name(&node.name);
-        let compatible = compatible(env!("CARGO_PKG_VERSION"), &version);
+        let compatible = compatible(crate::VERSION, &version);
         // An agent on another version reports in but runs nothing.
         if compatible {
             remote.attach(session.clone());

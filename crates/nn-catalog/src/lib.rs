@@ -24,7 +24,12 @@ pub use versions::{LoaderVersion, McVersion, compare_versions};
 
 /// Identifies NetherNode to upstream APIs (Modrinth asks for this). No
 /// personal details.
-pub const USER_AGENT: &str = concat!("NetherNode/", env!("CARGO_PKG_VERSION"));
+pub static USER_AGENT: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    format!(
+        "NetherNode/{}",
+        option_env!("NETHERNODE_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"))
+    )
+});
 
 /// How long cached answers stay fresh.
 pub const CACHE_TTL: Duration = Duration::from_secs(6 * 3600);
@@ -134,12 +139,12 @@ impl Catalog {
     /// A catalog caching under `cache_dir` (`None`: no disk cache).
     pub fn new(cache_dir: Option<PathBuf>, endpoints: Endpoints) -> Self {
         let http = reqwest::Client::builder()
-            .user_agent(USER_AGENT)
+            .user_agent(USER_AGENT.as_str())
             .timeout(REQUEST_TIMEOUT)
             .build()
             .unwrap_or_default();
         let downloads = reqwest::Client::builder()
-            .user_agent(USER_AGENT)
+            .user_agent(USER_AGENT.as_str())
             .connect_timeout(REQUEST_TIMEOUT)
             .redirect(reqwest::redirect::Policy::custom(|attempt| {
                 if attempt.previous().len() < 5 && download_allowed(attempt.url()) {

@@ -15,7 +15,7 @@ use crate::middleware::CurrentUser;
 
 /// `GET /healthz`: liveness probe. Unauthenticated; reveals only the version.
 pub(crate) async fn healthz() -> impl IntoResponse {
-    Json(json!({ "status": "ok", "version": env!("CARGO_PKG_VERSION") }))
+    Json(json!({ "status": "ok", "version": crate::VERSION }))
 }
 
 /// `GET /metrics`: Prometheus text format, owner only.

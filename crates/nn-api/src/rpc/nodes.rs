@@ -17,7 +17,7 @@ const JOIN_CODE_LIFETIME_MS: i64 = 30 * 60 * 1000;
 const NAME_MAX: usize = 40;
 /// Where agents' images come from.
 const AGENT_IMAGE: &str = "ghcr.io/ziggy46/nethernode";
-const VERSION: &str = env!("CARGO_PKG_VERSION");
+use crate::VERSION;
 
 pub(crate) struct NodeRpc {
     state: AppState,

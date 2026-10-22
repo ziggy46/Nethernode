@@ -45,7 +45,7 @@ impl pb::NotificationService for NotificationRpc {
             latest_version: crate::notices::latest_release()
                 .map(|r| r.version)
                 .unwrap_or_default(),
-            current_version: env!("CARGO_PKG_VERSION").to_owned(),
+            current_version: crate::VERSION.to_owned(),
             update_available: crate::notices::latest_release()
                 .is_some_and(|r| crate::notices::offered(&r)),
             update_is_switch: crate::notices::latest_release()
@@ -97,21 +97,18 @@ impl pb::NotificationService for NotificationRpc {
                 "This panel already runs the newest release.",
             ));
         }
-        let next = nn_node::update::prepare(
-            self.state.nodes.local(),
-            env!("CARGO_PKG_VERSION"),
-            &release.version,
-        )
-        .await
-        .map_err(|e| {
-            ConnectError::failed_precondition(format!("The update couldn't start: {e}"))
-        })?;
+        let next =
+            nn_node::update::prepare(self.state.nodes.local(), crate::VERSION, &release.version)
+                .await
+                .map_err(|e| {
+                    ConnectError::failed_precondition(format!("The update couldn't start: {e}"))
+                })?;
         audit(
             &self.state,
             &user,
             "settings.update_panel",
             ("settings", "updates"),
-            json!({ "from": env!("CARGO_PKG_VERSION"), "to": release.version, "channel": release.channel.as_str() }),
+            json!({ "from": crate::VERSION, "to": release.version, "channel": release.channel.as_str() }),
         )
         .await;
         tracing::info!(to = %release.version, "updating the panel");

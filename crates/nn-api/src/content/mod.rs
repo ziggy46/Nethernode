@@ -45,7 +45,7 @@ impl Default for Content {
             cache_dir: None,
             icon_fetches: tokio::sync::Semaphore::new(4),
             icon_http: reqwest::Client::builder()
-                .user_agent(nn_catalog::USER_AGENT)
+                .user_agent(nn_catalog::USER_AGENT.as_str())
                 .redirect(reqwest::redirect::Policy::none())
                 .timeout(std::time::Duration::from_secs(15))
                 .build()

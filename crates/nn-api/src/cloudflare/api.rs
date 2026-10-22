@@ -79,7 +79,7 @@ impl Api {
         Self {
             http: reqwest::Client::builder()
                 .timeout(Duration::from_secs(30))
-                .user_agent(concat!("NetherNode/", env!("CARGO_PKG_VERSION")))
+                .user_agent(format!("NetherNode/{}", crate::VERSION))
                 .build()
                 .unwrap_or_default(),
             base: base.trim_end_matches('/').to_owned(),

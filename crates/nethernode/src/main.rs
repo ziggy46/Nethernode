@@ -76,7 +76,7 @@ enum Command {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     if let Some(Command::Version) = cli.command {
-        println!("nethernode {}", env!("CARGO_PKG_VERSION"));
+        println!("nethernode {}", nn_api::VERSION);
         return Ok(());
     }
 
@@ -201,7 +201,7 @@ async fn serve(config: Config) -> Result<()> {
         .with_context(|| format!("binding {}", config.http.bind))?;
     let addr = listener.local_addr()?;
     tracing::info!(
-        version = env!("CARGO_PKG_VERSION"),
+        version = nn_api::VERSION,
         "NetherNode panel listening on http://{addr}"
     );
     if auth.needs_setup().await? {
@@ -266,13 +266,10 @@ async fn agent(config: Config, join: Option<String>, code: Option<String>) -> Re
         dir: config.data.dir.clone(),
         panel_url: join,
         code,
-        version: env!("CARGO_PKG_VERSION").to_owned(),
+        version: nn_api::VERSION.to_owned(),
         updater: None,
     };
-    tracing::info!(
-        version = env!("CARGO_PKG_VERSION"),
-        "NetherNode agent starting"
-    );
+    tracing::info!(version = nn_api::VERSION, "NetherNode agent starting");
     // Partial archives and half-swapped restores from before a crash.
     node.local().recover_backups(&[]).await;
     tokio::select! {

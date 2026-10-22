@@ -2,7 +2,7 @@
 //! attention. Worked out fresh on each request from the servers, nodes,
 //! backups and disks, plus a newer NetherNode release (on the panel's
 //! channel: stable releases, or edge builds too) and newer modpack versions
-//! when checking for those is on (Settings › Notifications).
+//! when checking for those is on (Settings › Updates).
 
 use std::sync::Mutex;
 use std::time::Duration;
@@ -25,7 +25,7 @@ pub(crate) const UPDATE_CHECK_SETTING: &str = "updates.check";
 pub(crate) const CHANNEL_SETTING: &str = "updates.channel";
 const RELEASES_URL: &str = "https://api.github.com/repos/ziggy46/Nethernode/releases";
 const CHECK_EVERY: Duration = Duration::from_secs(12 * 60 * 60);
-const VERSION: &str = env!("CARGO_PKG_VERSION");
+use crate::VERSION;
 /// Below this much free disk (or a tenth of it), a machine is low.
 const LOW_DISK: u64 = 5 * 1024 * 1024 * 1024;
 const DAY_MS: i64 = 24 * 60 * 60 * 1000;
@@ -160,7 +160,7 @@ struct GitHubRelease {
 async fn fetch_latest(channel: Channel) -> Result<Release, String> {
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(15))
-        .user_agent(concat!("NetherNode/", env!("CARGO_PKG_VERSION")))
+        .user_agent(format!("NetherNode/{}", crate::VERSION))
         .build()
         .map_err(|e| e.to_string())?;
     let get = |url: String| {
@@ -273,9 +273,9 @@ async fn gather(state: &AppState, admin: bool) -> Vec<Notice> {
                 format!("NetherNode {} is available", release.version)
             },
             detail: format!(
-                "This panel runs {VERSION}. Update it from Settings › Notifications; nodes on other machines follow on their own."
+                "This panel runs {VERSION}. Update it from Settings › Updates; nodes on other machines follow on their own."
             ),
-            link: Some("/settings?section=notifications".into()),
+            link: Some("/settings?section=updates".into()),
         });
     }
 

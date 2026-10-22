@@ -29,6 +29,14 @@ use tower_http::compression::CompressionLayer;
 use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::trace::TraceLayer;
 
+/// NetherNode's version: the build's (`NETHERNODE_VERSION`, which edge
+/// builds set, so a new edge version doesn't rebuild every crate) or the
+/// package's.
+pub const VERSION: &str = match option_env!("NETHERNODE_VERSION") {
+    Some(v) => v,
+    None => env!("CARGO_PKG_VERSION"),
+};
+
 pub mod agents;
 pub mod backups;
 pub mod cache;
