@@ -1,14 +1,17 @@
 name: Publish
 
-# Builds the image from the Dockerfile and publishes it to GitHub Container
-# Registry as ghcr.io/<owner>/nethernode, with a GitHub Release holding the
-# static binaries (copied out of the image builds):
+# Compiles the static binary on each architecture's own runner (with its
+# compiled dependencies cached between runs), packs it into the image
+# (.github/docker/Dockerfile.prebuilt, the same image the root Dockerfile
+# builds from source) and publishes it to GitHub Container Registry as
+# ghcr.io/<owner>/nethernode, with a GitHub Release holding the binaries:
 #   a tag like v0.1.0      -> 0.1.0, 0.1, latest, and a release
 #   a push to edge, once   -> an edge build, 0.1.1-edge.<run>: images
 #   CI passes on it           0.1.1-edge.<run>, edge and sha-<commit>, and a
 #                             pre-release (its tag is made here)
 # On the edge branch, Cargo.toml holds the next release's version, so edge
-# builds sort between the last release and the next. Panels on the edge
+# builds sort between the last release and the next (the build is told its
+# full version through NETHERNODE_VERSION). Panels on the edge
 # update channel follow edge builds. Each architecture builds natively on
 # its own runner.
 
@@ -100,13 +103,65 @@ jobs:
       packages: write
     env:
       VERSION: ${{ needs.version.outputs.version }}
+      # Edge builds skip the slow whole-program optimization; releases get it.
+      PROFILE: ${{ needs.version.outputs.edge == 'true' && 'edge' || 'release' }}
     steps:
       - uses: actions/checkout@v5
         with:
           ref: ${{ env.SHA }}
-      - name: Stamp the edge version
-        if: needs.version.outputs.edge == 'true'
-        run: python3 .github/scripts/set-version.py "$VERSION"
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 26
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - name: Build the panel
+        working-directory: web
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+      # The compiled dependencies, kept between builds of this architecture
+      # and profile, so only NetherNode's own crates compile each time.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .build-cache/registry
+            .build-cache/target
+          key: publish-${{ matrix.arch }}-${{ env.PROFILE }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: publish-${{ matrix.arch }}-${{ env.PROFILE }}-
+      # Compiled in the same Alpine (musl) toolchain as the Dockerfile, so the
+      # binary is static. NETHERNODE_VERSION names the build without changing
+      # Cargo.toml, which would make every crate compile again.
+      - name: Compile
+        run: |
+          mkdir -p .build-cache/registry .build-cache/target image
+          docker run --rm \
+            -v "$PWD:/src" -w /src \
+            -v "$PWD/.build-cache/registry:/usr/local/cargo/registry" \
+            -e CARGO_TARGET_DIR=/src/.build-cache/target \
+            -e SQLX_OFFLINE=true \
+            -e NETHERNODE_VERSION="$VERSION" \
+            -e PROFILE \
+            -e OWNER="$(id -u):$(id -g)" \
+            rust:1.96-alpine sh -euc '
+              apk add --no-cache build-base cmake perl protobuf-dev ca-certificates >/dev/null
+              cargo build --locked -p nethernode --profile "$PROFILE"
+              cp ".build-cache/target/$PROFILE/nethernode" image/nethernode
+              cp /etc/ssl/certs/ca-certificates.crt image/
+              chown -R "$OWNER" .build-cache image
+            '
+          image/nethernode --version | grep -qx "nethernode $VERSION"
+          mkdir -p out
+          cp image/nethernode "out/nethernode-${{ matrix.arch }}"
+      # They compile again every time anyway; leaving them out keeps the
+      # cache from growing with old builds.
+      - name: Keep only the dependencies in the cache
+        run: |
+          cd ".build-cache/target/$PROFILE"
+          rm -rf nethernode deps/nethernode-* deps/libnn_* deps/nn_* \
+            .fingerprint/nethernode-* .fingerprint/nn-* build/nethernode-* build/nn-*
       - name: Image name
         id: name
         run: echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/nethernode" >> "$GITHUB_OUTPUT"
@@ -126,12 +181,11 @@ jobs:
       - uses: docker/build-push-action@v6
         id: build
         with:
-          context: .
+          context: image
+          file: .github/docker/Dockerfile.prebuilt
           platforms: linux/${{ matrix.arch }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,name=${{ steps.name.outputs.image }},push-by-digest=true,name-canonical=true,push=true
-          cache-from: type=gha,scope=${{ matrix.arch }}
-          cache-to: type=gha,scope=${{ matrix.arch }},mode=max
       - name: Save digest
         run: |
           mkdir -p digests
@@ -144,14 +198,6 @@ jobs:
           path: digests/*
           if-no-files-found: error
           retention-days: 1
-      # The same build again, answered from this runner's build cache,
-      # written out as files instead of an image.
-      - name: Copy out the binary
-        run: |
-          docker buildx build --platform "linux/${{ matrix.arch }}" --output type=local,dest=image .
-          mkdir -p out
-          cp image/nethernode "out/nethernode-${{ matrix.arch }}"
-          "out/nethernode-${{ matrix.arch }}" --version | grep -qx "nethernode $VERSION"
       - uses: actions/upload-artifact@v4
         with:
           name: binary-${{ matrix.arch }}

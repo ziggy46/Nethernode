@@ -1,0 +1,14 @@
+# The image publish.yml makes from a binary it has already compiled (with a
+# build cache that Docker's own cache mounts can't keep between runs). The
+# context holds `nethernode` and `ca-certificates.crt`. Keep the settings
+# below the same as the last stage of the Dockerfile at the repository root,
+# which builds the same image from source.
+FROM scratch
+COPY ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY nethernode /nethernode
+ENV NETHERNODE_DATA__DIR=/data \
+    NETHERNODE_HTTP__BIND=0.0.0.0:8080
+VOLUME ["/data"]
+EXPOSE 8080 25565
+ENTRYPOINT ["/nethernode"]
+CMD ["serve"]
