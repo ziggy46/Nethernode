@@ -1,8 +1,9 @@
 name: Nightly
 
-# Slow checks: the orchestrator starting and stopping real Minecraft server
-# containers (on main and on edge), and a minute of fuzzing for each parser
-# that reads untrusted input.
+# The tests (CI only checks that everything builds and lints): unit,
+# integration and browser tests, the orchestrator starting and stopping
+# real Minecraft server containers (on main and on edge), and a minute of
+# fuzzing for each parser that reads untrusted input.
 
 on:
   schedule:
@@ -17,6 +18,67 @@ env:
   SQLX_OFFLINE: "true"
 
 jobs:
+  tests:
+    name: Tests (${{ matrix.branch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: [main, edge]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ matrix.branch }}
+      - run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.96.0"
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 26
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - name: Web tests and build
+        working-directory: web
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm test
+          pnpm build
+      - name: Install counter tests
+        working-directory: counter
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm test
+      - run: cargo nextest run --workspace --locked
+      - run: cargo test --workspace --doc --locked
+      # Browser tests against the binary, which embeds the UI built above.
+      # No Docker socket: these cover everything that doesn't start a
+      # Minecraft server; server lifecycle runs in the docker job.
+      - run: cargo build -p nethernode --locked
+      - name: Browser tests
+        working-directory: web
+        env:
+          NN_BIN: ../target/debug/nethernode
+        run: |
+          pnpm exec playwright install --with-deps chromium
+          pnpm e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-${{ matrix.branch }}
+          path: |
+            web/playwright-report
+            web/test-results
+          retention-days: 7
+
   docker:
     name: Real Docker integration (${{ matrix.branch }})
     strategy:
