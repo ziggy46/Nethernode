@@ -27,7 +27,8 @@ use config::Config;
 #[derive(Debug, Parser)]
 #[command(
     name = "nethernode",
-    version,
+    // The build's version (edge builds set it), not just the package's.
+    version = nn_api::VERSION,
     about = "Self-hosted Minecraft server manager"
 )]
 struct Cli {
