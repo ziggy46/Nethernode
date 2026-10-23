@@ -39,6 +39,7 @@ import { hasMods, ModsPanel } from "../mods/mods-panel";
 import { ModulesPanel } from "../modules/modules-panel";
 import { PlayersPanel } from "../players/players-panel";
 import { ConfigurationTab } from "./configuration-tab";
+import { CrashPanel } from "./crash-panel";
 import { useDockerAvailable } from "./docker-notice";
 import { gb, loaderName, memoryLimitBytes, versionLabel } from "./format";
 import { PerformancePanel } from "./performance-panel";
@@ -157,6 +158,7 @@ export function ServerPage({ id }: { id: string }) {
 }
 
 function ConsoleTab({ server }: { server: Server }) {
+  const canManage = useCanManage();
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_260px] gap-5 below-lg:grid-cols-1">
       <div className="flex min-w-0 flex-col gap-5">
@@ -178,7 +180,10 @@ function ConsoleTab({ server }: { server: Server }) {
             </div>
           </section>
         ) : (
-          <ConsolePanel server={server} />
+          <>
+            {server.status === ServerStatus.CRASHED && <CrashPanel server={server} canManage={canManage} />}
+            <ConsolePanel server={server} />
+          </>
         )}
 
         <PerformancePanel server={server} />

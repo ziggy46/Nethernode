@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file nethernode/v1/servers.proto.
  */
 export const file_nethernode_v1_servers: GenFile = /*@__PURE__*/
-  fileDesc("ChtuZXRoZXJub2RlL3YxL3NlcnZlcnMucHJvdG8SDW5ldGhlcm5vZGUudjEihQUKBlNlcnZlchIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHNsdWcYAyABKAkSKwoGc3RhdHVzGAQgASgOMhsubmV0aGVybm9kZS52MS5TZXJ2ZXJTdGF0dXMSEgoKbWNfdmVyc2lvbhgFIAEoCRIOCgZsb2FkZXIYBiABKAkSFQoNaW50ZXJuYWxfcG9ydBgHIAEoDRIYChBzbGVlcF93aGVuX2VtcHR5GAggASgIEi8KCHNldHRpbmdzGAkgASgLMh0ubmV0aGVybm9kZS52MS5TZXJ2ZXJTZXR0aW5ncxIVCg1jcmVhdGVkX2F0X21zGAogASgDEh8KEmxhc3Rfc3RhcnRlZF9hdF9tcxgLIAEoA0gAiAEBEhsKDnBsYXllcnNfb25saW5lGAwgASgNSAGIAQESGAoLcGxheWVyc19tYXgYDSABKA1IAogBARIRCglob3N0bmFtZXMYDiADKAkSGAoQcmVzdGFydF9yZXF1aXJlZBgPIAEoCBIsCgdtb2RwYWNrGBAgASgLMhYubmV0aGVybm9kZS52MS5Nb2RwYWNrSAOIAQESDwoHbm9kZV9pZBgRIAEoCRIRCglub2RlX25hbWUYEiABKAkSFAoMbm9kZV9vZmZsaW5lGBMgASgIEhoKEm5vZGVfdXBkYXRlX25lZWRlZBgUIAEoCBIOCgZwYXVzZWQYFSABKAgSEQoJY291bnRkb3duGBYgASgJEhcKD2NvdW50ZG93bl9hdF9tcxgXIAEoA0IVChNfbGFzdF9zdGFydGVkX2F0X21zQhEKD19wbGF5ZXJzX29ubGluZUIOCgxfcGxheWVyc19tYXhCCgoIX21vZHBhY2siuwMKDlNlcnZlclNldHRpbmdzEgwKBG5hbWUYASABKAkSEgoKbWNfdmVyc2lvbhgCIAEoCRIOCgZsb2FkZXIYAyABKAkSFgoObG9hZGVyX3ZlcnNpb24YBCABKAkSEgoFaW1hZ2UYBSABKAlIAIgBARIZCgxqYXZhX3ZlcnNpb24YBiABKA1IAYgBARIRCgltZW1vcnlfbWIYByABKA0SFgoJY3B1X2xpbWl0GAggASgBSAKIAQESEgoKYXV0b19zdGFydBgJIAEoCBIYChBzbGVlcF93aGVuX2VtcHR5GAogASgIEhkKDGlkbGVfbWludXRlcxgLIAEoDUgDiAEBEhgKEHJlc3RhcnRfb25fY3Jhc2gYDCABKAgSFwoPdXNlX2Fpa2FyX2ZsYWdzGA0gASgIEgwKBG1vdGQYDiABKAkSEwoLbWF4X3BsYXllcnMYDyABKA0SLAoKY2FyZF90aGVtZRgQIAEoDjIYLm5ldGhlcm5vZGUudjEuQ2FyZFRoZW1lQggKBl9pbWFnZUIPCg1famF2YV92ZXJzaW9uQgwKCl9jcHVfbGltaXRCDwoNX2lkbGVfbWludXRlcyIUChJMaXN0U2VydmVyc1JlcXVlc3QiPQoTTGlzdFNlcnZlcnNSZXNwb25zZRImCgdzZXJ2ZXJzGAEgAygLMhUubmV0aGVybm9kZS52MS5TZXJ2ZXIiHgoQR2V0U2VydmVyUmVxdWVzdBIKCgJpZBgBIAEoCSI6ChFHZXRTZXJ2ZXJSZXNwb25zZRIlCgZzZXJ2ZXIYASABKAsyFS5uZXRoZXJub2RlLnYxLlNlcnZlciKtAgoTQ3JlYXRlU2VydmVyUmVxdWVzdBIMCgRuYW1lGAEgASgJEg4KBmxvYWRlchgCIAEoCRISCgptY192ZXJzaW9uGAMgASgJEhYKDmxvYWRlcl92ZXJzaW9uGAQgASgJEhEKCW1lbW9yeV9tYhgFIAEoDRIsCgpjYXJkX3RoZW1lGAYgASgOMhgubmV0aGVybm9kZS52MS5DYXJkVGhlbWUSFQoNZXVsYV9hY2NlcHRlZBgHIAEoCBIYChBzbGVlcF93aGVuX2VtcHR5GAggASgIEhoKEnN0YXJ0X2FmdGVyX2NyZWF0ZRgJIAEoCBItCgdtb2RwYWNrGAogASgLMhwubmV0aGVybm9kZS52MS5Nb2RwYWNrU291cmNlEg8KB25vZGVfaWQYCyABKAkiPQoUQ3JlYXRlU2VydmVyUmVzcG9uc2USJQoGc2VydmVyGAEgASgLMhUubmV0aGVybm9kZS52MS5TZXJ2ZXIiUgoTVXBkYXRlU2VydmVyUmVxdWVzdBIKCgJpZBgBIAEoCRIvCghzZXR0aW5ncxgCIAEoCzIdLm5ldGhlcm5vZGUudjEuU2VydmVyU2V0dGluZ3MiPQoUVXBkYXRlU2VydmVyUmVzcG9uc2USJQoGc2VydmVyGAEgASgLMhUubmV0aGVybm9kZS52MS5TZXJ2ZXIiNgoTRGVsZXRlU2VydmVyUmVxdWVzdBIKCgJpZBgBIAEoCRITCgtkZWxldGVfZGF0YRgCIAEoCCIWChREZWxldGVTZXJ2ZXJSZXNwb25zZSIwChFNb3ZlU2VydmVyUmVxdWVzdBIKCgJpZBgBIAEoCRIPCgdub2RlX2lkGAIgASgJIiQKEk1vdmVTZXJ2ZXJSZXNwb25zZRIOCgZqb2JfaWQYASABKAkiIAoSU3RhcnRTZXJ2ZXJSZXF1ZXN0EgoKAmlkGAEgASgJIhUKE1N0YXJ0U2VydmVyUmVzcG9uc2UiNQoRU3RvcFNlcnZlclJlcXVlc3QSCgoCaWQYASABKAkSFAoMd2Fybl9taW51dGVzGAIgASgNIhQKElN0b3BTZXJ2ZXJSZXNwb25zZSI4ChRSZXN0YXJ0U2VydmVyUmVxdWVzdBIKCgJpZBgBIAEoCRIUCgx3YXJuX21pbnV0ZXMYAiABKA0iFwoVUmVzdGFydFNlcnZlclJlc3BvbnNlIiQKFkNhbmNlbENvdW50ZG93blJlcXVlc3QSCgoCaWQYASABKAkiGQoXQ2FuY2VsQ291bnRkb3duUmVzcG9uc2UiHwoRS2lsbFNlcnZlclJlcXVlc3QSCgoCaWQYASABKAkiFAoSS2lsbFNlcnZlclJlc3BvbnNlIssCCgpTdGF0U2FtcGxlEg0KBWF0X21zGAEgASgDEhMKC2NwdV9wZXJjZW50GAIgASgBEhQKDG1lbW9yeV9ieXRlcxgDIAEoBBIaChJtZW1vcnlfbGltaXRfYnl0ZXMYBCABKAQSFAoMbmV0X3J4X2J5dGVzGAUgASgEEhQKDG5ldF90eF9ieXRlcxgGIAEoBBIXCg9kaXNrX3JlYWRfYnl0ZXMYByABKAQSGAoQZGlza193cml0ZV9ieXRlcxgIIAEoBBIbCg5wbGF5ZXJzX29ubGluZRgJIAEoDUgAiAEBEhEKBG1zcHQYCiABKAFIAYgBARIVCghtc3B0X3A5NRgLIAEoAUgCiAEBEhAKA3RwcxgMIAEoAUgDiAEBQhEKD19wbGF5ZXJzX29ubGluZUIHCgVfbXNwdEILCglfbXNwdF9wOTVCBgoEX3RwcyK6AwoKU3RhdFBlcmlvZBINCgVhdF9tcxgBIAEoAxIPCgdzZWNvbmRzGAIgASgNEhcKD3J1bm5pbmdfc2Vjb25kcxgDIAEoDRIPCgdjcHVfYXZnGAQgASgBEg8KB2NwdV9tYXgYBSABKAESEgoKbWVtb3J5X2F2ZxgGIAEoBBISCgptZW1vcnlfbWF4GAcgASgEEhQKDG1lbW9yeV9saW1pdBgIIAEoBBIOCgZuZXRfcngYCSABKAQSDgoGbmV0X3R4GAogASgEEhEKCWRpc2tfcmVhZBgLIAEoBBISCgpkaXNrX3dyaXRlGAwgASgEEhgKC3BsYXllcnNfbWF4GA0gASgNSACIAQESFQoIbXNwdF9hdmcYDiABKAFIAYgBARIVCghtc3B0X21heBgPIAEoAUgCiAEBEhQKB3Rwc19hdmcYECABKAFIA4gBARIUCgd0cHNfbWluGBEgASgBSASIAQESFgoOcGF1c2VkX3NlY29uZHMYEiABKA1CDgoMX3BsYXllcnNfbWF4QgsKCV9tc3B0X2F2Z0ILCglfbXNwdF9tYXhCCgoIX3Rwc19hdmdCCgoIX3Rwc19taW4iTQoVR2V0U2VydmVyU3RhdHNSZXF1ZXN0EgoKAmlkGAEgASgJEigKBXJhbmdlGAIgASgOMhkubmV0aGVybm9kZS52MS5TdGF0c1JhbmdlIvIBChZHZXRTZXJ2ZXJTdGF0c1Jlc3BvbnNlEioKB3NhbXBsZXMYASADKAsyGS5uZXRoZXJub2RlLnYxLlN0YXRTYW1wbGUSGQoMZm9sZGVyX2J5dGVzGAIgASgESACIAQESGAoLd29ybGRfYnl0ZXMYAyABKARIAYgBARIYChBwbGF5ZXJzX3BlYWtfZGF5GAQgASgNEioKB3BlcmlvZHMYBSADKAsyGS5uZXRoZXJub2RlLnYxLlN0YXRQZXJpb2QSEAoIc2luY2VfbXMYBiABKANCDwoNX2ZvbGRlcl9ieXRlc0IOCgxfd29ybGRfYnl0ZXMiRwoXU2VhcmNoU2VydmVyTG9nc1JlcXVlc3QSCgoCaWQYASABKAkSDQoFcXVlcnkYAiABKAkSEQoJY2hhdF9vbmx5GAMgASgIIk4KCExvZ01hdGNoEgwKBGZpbGUYASABKAkSGAoQZmlsZV9tb2RpZmllZF9tcxgCIAEoAxIMCgRsaW5lGAMgASgNEgwKBHRleHQYBCABKAkihAEKGFNlYXJjaFNlcnZlckxvZ3NSZXNwb25zZRIoCgdtYXRjaGVzGAEgAygLMhcubmV0aGVybm9kZS52MS5Mb2dNYXRjaBIWCg5maWxlc19zZWFyY2hlZBgCIAEoDRITCgtmaWxlc190b3RhbBgDIAEoDRIRCgl0cnVuY2F0ZWQYBCABKAgiVQoRQ29weVNlcnZlclJlcXVlc3QSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRIPCgdub2RlX2lkGAMgASgJEhUKDWluY2x1ZGVfd29ybGQYBCABKAgiJAoSQ29weVNlcnZlclJlc3BvbnNlEg4KBmpvYl9pZBgBIAEoCSI1ChlTYXZlU2VydmVyVGVtcGxhdGVSZXF1ZXN0EgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkiLAoaU2F2ZVNlcnZlclRlbXBsYXRlUmVzcG9uc2USDgoGam9iX2lkGAEgASgJIqEBCg5TZXJ2ZXJUZW1wbGF0ZRIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEhMKC3NvdXJjZV9uYW1lGAMgASgJEg4KBmxvYWRlchgEIAEoCRISCgptY192ZXJzaW9uGAUgASgJEhEKCW1lbW9yeV9tYhgGIAEoDRISCgpzaXplX2J5dGVzGAcgASgEEhUKDWNyZWF0ZWRfYXRfbXMYCCABKAMiHAoaTGlzdFNlcnZlclRlbXBsYXRlc1JlcXVlc3QiTwobTGlzdFNlcnZlclRlbXBsYXRlc1Jlc3BvbnNlEjAKCXRlbXBsYXRlcxgBIAMoCzIdLm5ldGhlcm5vZGUudjEuU2VydmVyVGVtcGxhdGUiKQobRGVsZXRlU2VydmVyVGVtcGxhdGVSZXF1ZXN0EgoKAmlkGAEgASgJIh4KHERlbGV0ZVNlcnZlclRlbXBsYXRlUmVzcG9uc2UiVQofQ3JlYXRlU2VydmVyRnJvbVRlbXBsYXRlUmVxdWVzdBITCgt0ZW1wbGF0ZV9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEg8KB25vZGVfaWQYAyABKAkiMgogQ3JlYXRlU2VydmVyRnJvbVRlbXBsYXRlUmVzcG9uc2USDgoGam9iX2lkGAEgASgJIhQKEkdldEhvc3RJbmZvUmVxdWVzdCKMAgoTR2V0SG9zdEluZm9SZXNwb25zZRIYChBkb2NrZXJfYXZhaWxhYmxlGAEgASgIEg0KBWVycm9yGAIgASgJEhAKCGhvc3RuYW1lGAMgASgJEhgKEG9wZXJhdGluZ19zeXN0ZW0YBCABKAkSFgoOZG9ja2VyX3ZlcnNpb24YBSABKAkSDAoEY3B1cxgGIAEoDRIUCgxtZW1vcnlfYnl0ZXMYByABKAQSHQoQZGlza190b3RhbF9ieXRlcxgIIAEoBEgAiAEBEhwKD2Rpc2tfZnJlZV9ieXRlcxgJIAEoBEgBiAEBQhMKEV9kaXNrX3RvdGFsX2J5dGVzQhIKEF9kaXNrX2ZyZWVfYnl0ZXMiKAoaR2V0U2VydmVyUHJvcGVydGllc1JlcXVlc3QSCgoCaWQYASABKAkicQobR2V0U2VydmVyUHJvcGVydGllc1Jlc3BvbnNlEg4KBmV4aXN0cxgBIAEoCBIxCgpwcm9wZXJ0aWVzGAIgAygLMh0ubmV0aGVybm9kZS52MS5TZXJ2ZXJQcm9wZXJ0eRIPCgd2ZXJzaW9uGAMgASgJIvABCg5TZXJ2ZXJQcm9wZXJ0eRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAkSDQoFbGFiZWwYAyABKAkSDAoEaGVscBgEIAEoCRINCgVncm91cBgFIAEoCRIpCgR0eXBlGAYgASgOMhsubmV0aGVybm9kZS52MS5Qcm9wZXJ0eVR5cGUSDwoHb3B0aW9ucxgHIAMoCRIQCgNtaW4YCCABKANIAIgBARIQCgNtYXgYCSABKANIAYgBARIWCg5tYW5hZ2VkX3JlYXNvbhgKIAEoCRIOCgZzZWNyZXQYCyABKAhCBgoEX21pbkIGCgRfbWF4IrUBCh1VcGRhdGVTZXJ2ZXJQcm9wZXJ0aWVzUmVxdWVzdBIKCgJpZBgBIAEoCRJICgZ2YWx1ZXMYAiADKAsyOC5uZXRoZXJub2RlLnYxLlVwZGF0ZVNlcnZlclByb3BlcnRpZXNSZXF1ZXN0LlZhbHVlc0VudHJ5Eg8KB3ZlcnNpb24YAyABKAkaLQoLVmFsdWVzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASJgCh5VcGRhdGVTZXJ2ZXJQcm9wZXJ0aWVzUmVzcG9uc2USPgoKcHJvcGVydGllcxgBIAEoCzIqLm5ldGhlcm5vZGUudjEuR2V0U2VydmVyUHJvcGVydGllc1Jlc3BvbnNlKvABCgxTZXJ2ZXJTdGF0dXMSHQoZU0VSVkVSX1NUQVRVU19VTlNQRUNJRklFRBAAEhwKGFNFUlZFUl9TVEFUVVNfSU5TVEFMTElORxABEhkKFVNFUlZFUl9TVEFUVVNfU1RPUFBFRBACEhoKFlNFUlZFUl9TVEFUVVNfU1RBUlRJTkcQAxIZChVTRVJWRVJfU1RBVFVTX1JVTk5JTkcQBBIaChZTRVJWRVJfU1RBVFVTX1NUT1BQSU5HEAUSGgoWU0VSVkVSX1NUQVRVU19TTEVFUElORxAGEhkKFVNFUlZFUl9TVEFUVVNfQ1JBU0hFRBAHKoABCglDYXJkVGhlbWUSGgoWQ0FSRF9USEVNRV9VTlNQRUNJRklFRBAAEhUKEUNBUkRfVEhFTUVfTkVUSEVSEAESGAoUQ0FSRF9USEVNRV9PVkVSV09STEQQAhISCg5DQVJEX1RIRU1FX0VORBADEhIKDkNBUkRfVEhFTUVfU0tZEAQqawoKU3RhdHNSYW5nZRIbChdTVEFUU19SQU5HRV9VTlNQRUNJRklFRBAAEhMKD1NUQVRTX1JBTkdFX0RBWRABEhQKEFNUQVRTX1JBTkdFX1dFRUsQAhIVChFTVEFUU19SQU5HRV9NT05USBADKo4BCgxQcm9wZXJ0eVR5cGUSHQoZUFJPUEVSVFlfVFlQRV9VTlNQRUNJRklFRBAAEhYKElBST1BFUlRZX1RZUEVfQk9PTBABEhUKEVBST1BFUlRZX1RZUEVfSU5UEAISGAoUUFJPUEVSVFlfVFlQRV9DSE9JQ0UQAxIWChJQUk9QRVJUWV9UWVBFX1RFWFQQBDKJEAoNU2VydmVyU2VydmljZRJZCgtMaXN0U2VydmVycxIhLm5ldGhlcm5vZGUudjEuTGlzdFNlcnZlcnNSZXF1ZXN0GiIubmV0aGVybm9kZS52MS5MaXN0U2VydmVyc1Jlc3BvbnNlIgOQAgESUwoJR2V0U2VydmVyEh8ubmV0aGVybm9kZS52MS5HZXRTZXJ2ZXJSZXF1ZXN0GiAubmV0aGVybm9kZS52MS5HZXRTZXJ2ZXJSZXNwb25zZSIDkAIBElcKDENyZWF0ZVNlcnZlchIiLm5ldGhlcm5vZGUudjEuQ3JlYXRlU2VydmVyUmVxdWVzdBojLm5ldGhlcm5vZGUudjEuQ3JlYXRlU2VydmVyUmVzcG9uc2USVwoMVXBkYXRlU2VydmVyEiIubmV0aGVybm9kZS52MS5VcGRhdGVTZXJ2ZXJSZXF1ZXN0GiMubmV0aGVybm9kZS52MS5VcGRhdGVTZXJ2ZXJSZXNwb25zZRJXCgxEZWxldGVTZXJ2ZXISIi5uZXRoZXJub2RlLnYxLkRlbGV0ZVNlcnZlclJlcXVlc3QaIy5uZXRoZXJub2RlLnYxLkRlbGV0ZVNlcnZlclJlc3BvbnNlElEKCk1vdmVTZXJ2ZXISIC5uZXRoZXJub2RlLnYxLk1vdmVTZXJ2ZXJSZXF1ZXN0GiEubmV0aGVybm9kZS52MS5Nb3ZlU2VydmVyUmVzcG9uc2USUQoKQ29weVNlcnZlchIgLm5ldGhlcm5vZGUudjEuQ29weVNlcnZlclJlcXVlc3QaIS5uZXRoZXJub2RlLnYxLkNvcHlTZXJ2ZXJSZXNwb25zZRJpChJTYXZlU2VydmVyVGVtcGxhdGUSKC5uZXRoZXJub2RlLnYxLlNhdmVTZXJ2ZXJUZW1wbGF0ZVJlcXVlc3QaKS5uZXRoZXJub2RlLnYxLlNhdmVTZXJ2ZXJUZW1wbGF0ZVJlc3BvbnNlEnEKE0xpc3RTZXJ2ZXJUZW1wbGF0ZXMSKS5uZXRoZXJub2RlLnYxLkxpc3RTZXJ2ZXJUZW1wbGF0ZXNSZXF1ZXN0GioubmV0aGVybm9kZS52MS5MaXN0U2VydmVyVGVtcGxhdGVzUmVzcG9uc2UiA5ACARJvChREZWxldGVTZXJ2ZXJUZW1wbGF0ZRIqLm5ldGhlcm5vZGUudjEuRGVsZXRlU2VydmVyVGVtcGxhdGVSZXF1ZXN0GisubmV0aGVybm9kZS52MS5EZWxldGVTZXJ2ZXJUZW1wbGF0ZVJlc3BvbnNlEnsKGENyZWF0ZVNlcnZlckZyb21UZW1wbGF0ZRIuLm5ldGhlcm5vZGUudjEuQ3JlYXRlU2VydmVyRnJvbVRlbXBsYXRlUmVxdWVzdBovLm5ldGhlcm5vZGUudjEuQ3JlYXRlU2VydmVyRnJvbVRlbXBsYXRlUmVzcG9uc2USVAoLU3RhcnRTZXJ2ZXISIS5uZXRoZXJub2RlLnYxLlN0YXJ0U2VydmVyUmVxdWVzdBoiLm5ldGhlcm5vZGUudjEuU3RhcnRTZXJ2ZXJSZXNwb25zZRJRCgpTdG9wU2VydmVyEiAubmV0aGVybm9kZS52MS5TdG9wU2VydmVyUmVxdWVzdBohLm5ldGhlcm5vZGUudjEuU3RvcFNlcnZlclJlc3BvbnNlEloKDVJlc3RhcnRTZXJ2ZXISIy5uZXRoZXJub2RlLnYxLlJlc3RhcnRTZXJ2ZXJSZXF1ZXN0GiQubmV0aGVybm9kZS52MS5SZXN0YXJ0U2VydmVyUmVzcG9uc2USUQoKS2lsbFNlcnZlchIgLm5ldGhlcm5vZGUudjEuS2lsbFNlcnZlclJlcXVlc3QaIS5uZXRoZXJub2RlLnYxLktpbGxTZXJ2ZXJSZXNwb25zZRJgCg9DYW5jZWxDb3VudGRvd24SJS5uZXRoZXJub2RlLnYxLkNhbmNlbENvdW50ZG93blJlcXVlc3QaJi5uZXRoZXJub2RlLnYxLkNhbmNlbENvdW50ZG93blJlc3BvbnNlEmIKDkdldFNlcnZlclN0YXRzEiQubmV0aGVybm9kZS52MS5HZXRTZXJ2ZXJTdGF0c1JlcXVlc3QaJS5uZXRoZXJub2RlLnYxLkdldFNlcnZlclN0YXRzUmVzcG9uc2UiA5ACARJoChBTZWFyY2hTZXJ2ZXJMb2dzEiYubmV0aGVybm9kZS52MS5TZWFyY2hTZXJ2ZXJMb2dzUmVxdWVzdBonLm5ldGhlcm5vZGUudjEuU2VhcmNoU2VydmVyTG9nc1Jlc3BvbnNlIgOQAgESWQoLR2V0SG9zdEluZm8SIS5uZXRoZXJub2RlLnYxLkdldEhvc3RJbmZvUmVxdWVzdBoiLm5ldGhlcm5vZGUudjEuR2V0SG9zdEluZm9SZXNwb25zZSIDkAIBEnEKE0dldFNlcnZlclByb3BlcnRpZXMSKS5uZXRoZXJub2RlLnYxLkdldFNlcnZlclByb3BlcnRpZXNSZXF1ZXN0GioubmV0aGVybm9kZS52MS5HZXRTZXJ2ZXJQcm9wZXJ0aWVzUmVzcG9uc2UiA5ACARJ1ChZVcGRhdGVTZXJ2ZXJQcm9wZXJ0aWVzEiwubmV0aGVybm9kZS52MS5VcGRhdGVTZXJ2ZXJQcm9wZXJ0aWVzUmVxdWVzdBotLm5ldGhlcm5vZGUudjEuVXBkYXRlU2VydmVyUHJvcGVydGllc1Jlc3BvbnNlYgZwcm90bzM", [file_nethernode_v1_catalog]);
+  fileDesc("ChtuZXRoZXJub2RlL3YxL3NlcnZlcnMucHJvdG8SDW5ldGhlcm5vZGUudjEihQUKBlNlcnZlchIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBHNsdWcYAyABKAkSKwoGc3RhdHVzGAQgASgOMhsubmV0aGVybm9kZS52MS5TZXJ2ZXJTdGF0dXMSEgoKbWNfdmVyc2lvbhgFIAEoCRIOCgZsb2FkZXIYBiABKAkSFQoNaW50ZXJuYWxfcG9ydBgHIAEoDRIYChBzbGVlcF93aGVuX2VtcHR5GAggASgIEi8KCHNldHRpbmdzGAkgASgLMh0ubmV0aGVybm9kZS52MS5TZXJ2ZXJTZXR0aW5ncxIVCg1jcmVhdGVkX2F0X21zGAogASgDEh8KEmxhc3Rfc3RhcnRlZF9hdF9tcxgLIAEoA0gAiAEBEhsKDnBsYXllcnNfb25saW5lGAwgASgNSAGIAQESGAoLcGxheWVyc19tYXgYDSABKA1IAogBARIRCglob3N0bmFtZXMYDiADKAkSGAoQcmVzdGFydF9yZXF1aXJlZBgPIAEoCBIsCgdtb2RwYWNrGBAgASgLMhYubmV0aGVybm9kZS52MS5Nb2RwYWNrSAOIAQESDwoHbm9kZV9pZBgRIAEoCRIRCglub2RlX25hbWUYEiABKAkSFAoMbm9kZV9vZmZsaW5lGBMgASgIEhoKEm5vZGVfdXBkYXRlX25lZWRlZBgUIAEoCBIOCgZwYXVzZWQYFSABKAgSEQoJY291bnRkb3duGBYgASgJEhcKD2NvdW50ZG93bl9hdF9tcxgXIAEoA0IVChNfbGFzdF9zdGFydGVkX2F0X21zQhEKD19wbGF5ZXJzX29ubGluZUIOCgxfcGxheWVyc19tYXhCCgoIX21vZHBhY2siuwMKDlNlcnZlclNldHRpbmdzEgwKBG5hbWUYASABKAkSEgoKbWNfdmVyc2lvbhgCIAEoCRIOCgZsb2FkZXIYAyABKAkSFgoObG9hZGVyX3ZlcnNpb24YBCABKAkSEgoFaW1hZ2UYBSABKAlIAIgBARIZCgxqYXZhX3ZlcnNpb24YBiABKA1IAYgBARIRCgltZW1vcnlfbWIYByABKA0SFgoJY3B1X2xpbWl0GAggASgBSAKIAQESEgoKYXV0b19zdGFydBgJIAEoCBIYChBzbGVlcF93aGVuX2VtcHR5GAogASgIEhkKDGlkbGVfbWludXRlcxgLIAEoDUgDiAEBEhgKEHJlc3RhcnRfb25fY3Jhc2gYDCABKAgSFwoPdXNlX2Fpa2FyX2ZsYWdzGA0gASgIEgwKBG1vdGQYDiABKAkSEwoLbWF4X3BsYXllcnMYDyABKA0SLAoKY2FyZF90aGVtZRgQIAEoDjIYLm5ldGhlcm5vZGUudjEuQ2FyZFRoZW1lQggKBl9pbWFnZUIPCg1famF2YV92ZXJzaW9uQgwKCl9jcHVfbGltaXRCDwoNX2lkbGVfbWludXRlcyIUChJMaXN0U2VydmVyc1JlcXVlc3QiPQoTTGlzdFNlcnZlcnNSZXNwb25zZRImCgdzZXJ2ZXJzGAEgAygLMhUubmV0aGVybm9kZS52MS5TZXJ2ZXIiHgoQR2V0U2VydmVyUmVxdWVzdBIKCgJpZBgBIAEoCSI6ChFHZXRTZXJ2ZXJSZXNwb25zZRIlCgZzZXJ2ZXIYASABKAsyFS5uZXRoZXJub2RlLnYxLlNlcnZlciKtAgoTQ3JlYXRlU2VydmVyUmVxdWVzdBIMCgRuYW1lGAEgASgJEg4KBmxvYWRlchgCIAEoCRISCgptY192ZXJzaW9uGAMgASgJEhYKDmxvYWRlcl92ZXJzaW9uGAQgASgJEhEKCW1lbW9yeV9tYhgFIAEoDRIsCgpjYXJkX3RoZW1lGAYgASgOMhgubmV0aGVybm9kZS52MS5DYXJkVGhlbWUSFQoNZXVsYV9hY2NlcHRlZBgHIAEoCBIYChBzbGVlcF93aGVuX2VtcHR5GAggASgIEhoKEnN0YXJ0X2FmdGVyX2NyZWF0ZRgJIAEoCBItCgdtb2RwYWNrGAogASgLMhwubmV0aGVybm9kZS52MS5Nb2RwYWNrU291cmNlEg8KB25vZGVfaWQYCyABKAkiPQoUQ3JlYXRlU2VydmVyUmVzcG9uc2USJQoGc2VydmVyGAEgASgLMhUubmV0aGVybm9kZS52MS5TZXJ2ZXIiUgoTVXBkYXRlU2VydmVyUmVxdWVzdBIKCgJpZBgBIAEoCRIvCghzZXR0aW5ncxgCIAEoCzIdLm5ldGhlcm5vZGUudjEuU2VydmVyU2V0dGluZ3MiPQoUVXBkYXRlU2VydmVyUmVzcG9uc2USJQoGc2VydmVyGAEgASgLMhUubmV0aGVybm9kZS52MS5TZXJ2ZXIiNgoTRGVsZXRlU2VydmVyUmVxdWVzdBIKCgJpZBgBIAEoCRITCgtkZWxldGVfZGF0YRgCIAEoCCIWChREZWxldGVTZXJ2ZXJSZXNwb25zZSIwChFNb3ZlU2VydmVyUmVxdWVzdBIKCgJpZBgBIAEoCRIPCgdub2RlX2lkGAIgASgJIiQKEk1vdmVTZXJ2ZXJSZXNwb25zZRIOCgZqb2JfaWQYASABKAkiIAoSU3RhcnRTZXJ2ZXJSZXF1ZXN0EgoKAmlkGAEgASgJIhUKE1N0YXJ0U2VydmVyUmVzcG9uc2UiNQoRU3RvcFNlcnZlclJlcXVlc3QSCgoCaWQYASABKAkSFAoMd2Fybl9taW51dGVzGAIgASgNIhQKElN0b3BTZXJ2ZXJSZXNwb25zZSI4ChRSZXN0YXJ0U2VydmVyUmVxdWVzdBIKCgJpZBgBIAEoCRIUCgx3YXJuX21pbnV0ZXMYAiABKA0iFwoVUmVzdGFydFNlcnZlclJlc3BvbnNlIiYKGEdldENyYXNoRGlhZ25vc2lzUmVxdWVzdBIKCgJpZBgBIAEoCSJGCghDcmFzaE1vZBIOCgZtb2RfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIMCgRmaWxlGAMgASgJEg4KBmRldGFpbBgEIAEoCSJtCgpDcmFzaENhdXNlEgwKBGtpbmQYASABKAkSDwoHc3VtbWFyeRgCIAEoCRIlCgRtb2RzGAMgAygLMhcubmV0aGVybm9kZS52MS5DcmFzaE1vZBIMCgRqYXZhGAQgASgNEgsKA2ZpeBgFIAEoCSJWChlHZXRDcmFzaERpYWdub3Npc1Jlc3BvbnNlEikKBmNhdXNlcxgBIAMoCzIZLm5ldGhlcm5vZGUudjEuQ3Jhc2hDYXVzZRIOCgZzb3VyY2UYAiABKAkiKwoPRml4Q3Jhc2hSZXF1ZXN0EgoKAmlkGAEgASgJEgwKBGtpbmQYAiABKAkiIwoQRml4Q3Jhc2hSZXNwb25zZRIPCgdtZXNzYWdlGAEgASgJIiQKFkNhbmNlbENvdW50ZG93blJlcXVlc3QSCgoCaWQYASABKAkiGQoXQ2FuY2VsQ291bnRkb3duUmVzcG9uc2UiHwoRS2lsbFNlcnZlclJlcXVlc3QSCgoCaWQYASABKAkiFAoSS2lsbFNlcnZlclJlc3BvbnNlIssCCgpTdGF0U2FtcGxlEg0KBWF0X21zGAEgASgDEhMKC2NwdV9wZXJjZW50GAIgASgBEhQKDG1lbW9yeV9ieXRlcxgDIAEoBBIaChJtZW1vcnlfbGltaXRfYnl0ZXMYBCABKAQSFAoMbmV0X3J4X2J5dGVzGAUgASgEEhQKDG5ldF90eF9ieXRlcxgGIAEoBBIXCg9kaXNrX3JlYWRfYnl0ZXMYByABKAQSGAoQZGlza193cml0ZV9ieXRlcxgIIAEoBBIbCg5wbGF5ZXJzX29ubGluZRgJIAEoDUgAiAEBEhEKBG1zcHQYCiABKAFIAYgBARIVCghtc3B0X3A5NRgLIAEoAUgCiAEBEhAKA3RwcxgMIAEoAUgDiAEBQhEKD19wbGF5ZXJzX29ubGluZUIHCgVfbXNwdEILCglfbXNwdF9wOTVCBgoEX3RwcyK6AwoKU3RhdFBlcmlvZBINCgVhdF9tcxgBIAEoAxIPCgdzZWNvbmRzGAIgASgNEhcKD3J1bm5pbmdfc2Vjb25kcxgDIAEoDRIPCgdjcHVfYXZnGAQgASgBEg8KB2NwdV9tYXgYBSABKAESEgoKbWVtb3J5X2F2ZxgGIAEoBBISCgptZW1vcnlfbWF4GAcgASgEEhQKDG1lbW9yeV9saW1pdBgIIAEoBBIOCgZuZXRfcngYCSABKAQSDgoGbmV0X3R4GAogASgEEhEKCWRpc2tfcmVhZBgLIAEoBBISCgpkaXNrX3dyaXRlGAwgASgEEhgKC3BsYXllcnNfbWF4GA0gASgNSACIAQESFQoIbXNwdF9hdmcYDiABKAFIAYgBARIVCghtc3B0X21heBgPIAEoAUgCiAEBEhQKB3Rwc19hdmcYECABKAFIA4gBARIUCgd0cHNfbWluGBEgASgBSASIAQESFgoOcGF1c2VkX3NlY29uZHMYEiABKA1CDgoMX3BsYXllcnNfbWF4QgsKCV9tc3B0X2F2Z0ILCglfbXNwdF9tYXhCCgoIX3Rwc19hdmdCCgoIX3Rwc19taW4iTQoVR2V0U2VydmVyU3RhdHNSZXF1ZXN0EgoKAmlkGAEgASgJEigKBXJhbmdlGAIgASgOMhkubmV0aGVybm9kZS52MS5TdGF0c1JhbmdlIvIBChZHZXRTZXJ2ZXJTdGF0c1Jlc3BvbnNlEioKB3NhbXBsZXMYASADKAsyGS5uZXRoZXJub2RlLnYxLlN0YXRTYW1wbGUSGQoMZm9sZGVyX2J5dGVzGAIgASgESACIAQESGAoLd29ybGRfYnl0ZXMYAyABKARIAYgBARIYChBwbGF5ZXJzX3BlYWtfZGF5GAQgASgNEioKB3BlcmlvZHMYBSADKAsyGS5uZXRoZXJub2RlLnYxLlN0YXRQZXJpb2QSEAoIc2luY2VfbXMYBiABKANCDwoNX2ZvbGRlcl9ieXRlc0IOCgxfd29ybGRfYnl0ZXMiRwoXU2VhcmNoU2VydmVyTG9nc1JlcXVlc3QSCgoCaWQYASABKAkSDQoFcXVlcnkYAiABKAkSEQoJY2hhdF9vbmx5GAMgASgIIk4KCExvZ01hdGNoEgwKBGZpbGUYASABKAkSGAoQZmlsZV9tb2RpZmllZF9tcxgCIAEoAxIMCgRsaW5lGAMgASgNEgwKBHRleHQYBCABKAkihAEKGFNlYXJjaFNlcnZlckxvZ3NSZXNwb25zZRIoCgdtYXRjaGVzGAEgAygLMhcubmV0aGVybm9kZS52MS5Mb2dNYXRjaBIWCg5maWxlc19zZWFyY2hlZBgCIAEoDRITCgtmaWxlc190b3RhbBgDIAEoDRIRCgl0cnVuY2F0ZWQYBCABKAgiVQoRQ29weVNlcnZlclJlcXVlc3QSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRIPCgdub2RlX2lkGAMgASgJEhUKDWluY2x1ZGVfd29ybGQYBCABKAgiJAoSQ29weVNlcnZlclJlc3BvbnNlEg4KBmpvYl9pZBgBIAEoCSI1ChlTYXZlU2VydmVyVGVtcGxhdGVSZXF1ZXN0EgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkiLAoaU2F2ZVNlcnZlclRlbXBsYXRlUmVzcG9uc2USDgoGam9iX2lkGAEgASgJIqEBCg5TZXJ2ZXJUZW1wbGF0ZRIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEhMKC3NvdXJjZV9uYW1lGAMgASgJEg4KBmxvYWRlchgEIAEoCRISCgptY192ZXJzaW9uGAUgASgJEhEKCW1lbW9yeV9tYhgGIAEoDRISCgpzaXplX2J5dGVzGAcgASgEEhUKDWNyZWF0ZWRfYXRfbXMYCCABKAMiHAoaTGlzdFNlcnZlclRlbXBsYXRlc1JlcXVlc3QiTwobTGlzdFNlcnZlclRlbXBsYXRlc1Jlc3BvbnNlEjAKCXRlbXBsYXRlcxgBIAMoCzIdLm5ldGhlcm5vZGUudjEuU2VydmVyVGVtcGxhdGUiKQobRGVsZXRlU2VydmVyVGVtcGxhdGVSZXF1ZXN0EgoKAmlkGAEgASgJIh4KHERlbGV0ZVNlcnZlclRlbXBsYXRlUmVzcG9uc2UiVQofQ3JlYXRlU2VydmVyRnJvbVRlbXBsYXRlUmVxdWVzdBITCgt0ZW1wbGF0ZV9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEg8KB25vZGVfaWQYAyABKAkiMgogQ3JlYXRlU2VydmVyRnJvbVRlbXBsYXRlUmVzcG9uc2USDgoGam9iX2lkGAEgASgJIhQKEkdldEhvc3RJbmZvUmVxdWVzdCKMAgoTR2V0SG9zdEluZm9SZXNwb25zZRIYChBkb2NrZXJfYXZhaWxhYmxlGAEgASgIEg0KBWVycm9yGAIgASgJEhAKCGhvc3RuYW1lGAMgASgJEhgKEG9wZXJhdGluZ19zeXN0ZW0YBCABKAkSFgoOZG9ja2VyX3ZlcnNpb24YBSABKAkSDAoEY3B1cxgGIAEoDRIUCgxtZW1vcnlfYnl0ZXMYByABKAQSHQoQZGlza190b3RhbF9ieXRlcxgIIAEoBEgAiAEBEhwKD2Rpc2tfZnJlZV9ieXRlcxgJIAEoBEgBiAEBQhMKEV9kaXNrX3RvdGFsX2J5dGVzQhIKEF9kaXNrX2ZyZWVfYnl0ZXMiKAoaR2V0U2VydmVyUHJvcGVydGllc1JlcXVlc3QSCgoCaWQYASABKAkicQobR2V0U2VydmVyUHJvcGVydGllc1Jlc3BvbnNlEg4KBmV4aXN0cxgBIAEoCBIxCgpwcm9wZXJ0aWVzGAIgAygLMh0ubmV0aGVybm9kZS52MS5TZXJ2ZXJQcm9wZXJ0eRIPCgd2ZXJzaW9uGAMgASgJIvABCg5TZXJ2ZXJQcm9wZXJ0eRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAkSDQoFbGFiZWwYAyABKAkSDAoEaGVscBgEIAEoCRINCgVncm91cBgFIAEoCRIpCgR0eXBlGAYgASgOMhsubmV0aGVybm9kZS52MS5Qcm9wZXJ0eVR5cGUSDwoHb3B0aW9ucxgHIAMoCRIQCgNtaW4YCCABKANIAIgBARIQCgNtYXgYCSABKANIAYgBARIWCg5tYW5hZ2VkX3JlYXNvbhgKIAEoCRIOCgZzZWNyZXQYCyABKAhCBgoEX21pbkIGCgRfbWF4IrUBCh1VcGRhdGVTZXJ2ZXJQcm9wZXJ0aWVzUmVxdWVzdBIKCgJpZBgBIAEoCRJICgZ2YWx1ZXMYAiADKAsyOC5uZXRoZXJub2RlLnYxLlVwZGF0ZVNlcnZlclByb3BlcnRpZXNSZXF1ZXN0LlZhbHVlc0VudHJ5Eg8KB3ZlcnNpb24YAyABKAkaLQoLVmFsdWVzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASJgCh5VcGRhdGVTZXJ2ZXJQcm9wZXJ0aWVzUmVzcG9uc2USPgoKcHJvcGVydGllcxgBIAEoCzIqLm5ldGhlcm5vZGUudjEuR2V0U2VydmVyUHJvcGVydGllc1Jlc3BvbnNlKvABCgxTZXJ2ZXJTdGF0dXMSHQoZU0VSVkVSX1NUQVRVU19VTlNQRUNJRklFRBAAEhwKGFNFUlZFUl9TVEFUVVNfSU5TVEFMTElORxABEhkKFVNFUlZFUl9TVEFUVVNfU1RPUFBFRBACEhoKFlNFUlZFUl9TVEFUVVNfU1RBUlRJTkcQAxIZChVTRVJWRVJfU1RBVFVTX1JVTk5JTkcQBBIaChZTRVJWRVJfU1RBVFVTX1NUT1BQSU5HEAUSGgoWU0VSVkVSX1NUQVRVU19TTEVFUElORxAGEhkKFVNFUlZFUl9TVEFUVVNfQ1JBU0hFRBAHKoABCglDYXJkVGhlbWUSGgoWQ0FSRF9USEVNRV9VTlNQRUNJRklFRBAAEhUKEUNBUkRfVEhFTUVfTkVUSEVSEAESGAoUQ0FSRF9USEVNRV9PVkVSV09STEQQAhISCg5DQVJEX1RIRU1FX0VORBADEhIKDkNBUkRfVEhFTUVfU0tZEAQqawoKU3RhdHNSYW5nZRIbChdTVEFUU19SQU5HRV9VTlNQRUNJRklFRBAAEhMKD1NUQVRTX1JBTkdFX0RBWRABEhQKEFNUQVRTX1JBTkdFX1dFRUsQAhIVChFTVEFUU19SQU5HRV9NT05USBADKo4BCgxQcm9wZXJ0eVR5cGUSHQoZUFJPUEVSVFlfVFlQRV9VTlNQRUNJRklFRBAAEhYKElBST1BFUlRZX1RZUEVfQk9PTBABEhUKEVBST1BFUlRZX1RZUEVfSU5UEAISGAoUUFJPUEVSVFlfVFlQRV9DSE9JQ0UQAxIWChJQUk9QRVJUWV9UWVBFX1RFWFQQBDLDEQoNU2VydmVyU2VydmljZRJZCgtMaXN0U2VydmVycxIhLm5ldGhlcm5vZGUudjEuTGlzdFNlcnZlcnNSZXF1ZXN0GiIubmV0aGVybm9kZS52MS5MaXN0U2VydmVyc1Jlc3BvbnNlIgOQAgESUwoJR2V0U2VydmVyEh8ubmV0aGVybm9kZS52MS5HZXRTZXJ2ZXJSZXF1ZXN0GiAubmV0aGVybm9kZS52MS5HZXRTZXJ2ZXJSZXNwb25zZSIDkAIBElcKDENyZWF0ZVNlcnZlchIiLm5ldGhlcm5vZGUudjEuQ3JlYXRlU2VydmVyUmVxdWVzdBojLm5ldGhlcm5vZGUudjEuQ3JlYXRlU2VydmVyUmVzcG9uc2USVwoMVXBkYXRlU2VydmVyEiIubmV0aGVybm9kZS52MS5VcGRhdGVTZXJ2ZXJSZXF1ZXN0GiMubmV0aGVybm9kZS52MS5VcGRhdGVTZXJ2ZXJSZXNwb25zZRJXCgxEZWxldGVTZXJ2ZXISIi5uZXRoZXJub2RlLnYxLkRlbGV0ZVNlcnZlclJlcXVlc3QaIy5uZXRoZXJub2RlLnYxLkRlbGV0ZVNlcnZlclJlc3BvbnNlElEKCk1vdmVTZXJ2ZXISIC5uZXRoZXJub2RlLnYxLk1vdmVTZXJ2ZXJSZXF1ZXN0GiEubmV0aGVybm9kZS52MS5Nb3ZlU2VydmVyUmVzcG9uc2USUQoKQ29weVNlcnZlchIgLm5ldGhlcm5vZGUudjEuQ29weVNlcnZlclJlcXVlc3QaIS5uZXRoZXJub2RlLnYxLkNvcHlTZXJ2ZXJSZXNwb25zZRJpChJTYXZlU2VydmVyVGVtcGxhdGUSKC5uZXRoZXJub2RlLnYxLlNhdmVTZXJ2ZXJUZW1wbGF0ZVJlcXVlc3QaKS5uZXRoZXJub2RlLnYxLlNhdmVTZXJ2ZXJUZW1wbGF0ZVJlc3BvbnNlEnEKE0xpc3RTZXJ2ZXJUZW1wbGF0ZXMSKS5uZXRoZXJub2RlLnYxLkxpc3RTZXJ2ZXJUZW1wbGF0ZXNSZXF1ZXN0GioubmV0aGVybm9kZS52MS5MaXN0U2VydmVyVGVtcGxhdGVzUmVzcG9uc2UiA5ACARJvChREZWxldGVTZXJ2ZXJUZW1wbGF0ZRIqLm5ldGhlcm5vZGUudjEuRGVsZXRlU2VydmVyVGVtcGxhdGVSZXF1ZXN0GisubmV0aGVybm9kZS52MS5EZWxldGVTZXJ2ZXJUZW1wbGF0ZVJlc3BvbnNlEnsKGENyZWF0ZVNlcnZlckZyb21UZW1wbGF0ZRIuLm5ldGhlcm5vZGUudjEuQ3JlYXRlU2VydmVyRnJvbVRlbXBsYXRlUmVxdWVzdBovLm5ldGhlcm5vZGUudjEuQ3JlYXRlU2VydmVyRnJvbVRlbXBsYXRlUmVzcG9uc2USVAoLU3RhcnRTZXJ2ZXISIS5uZXRoZXJub2RlLnYxLlN0YXJ0U2VydmVyUmVxdWVzdBoiLm5ldGhlcm5vZGUudjEuU3RhcnRTZXJ2ZXJSZXNwb25zZRJRCgpTdG9wU2VydmVyEiAubmV0aGVybm9kZS52MS5TdG9wU2VydmVyUmVxdWVzdBohLm5ldGhlcm5vZGUudjEuU3RvcFNlcnZlclJlc3BvbnNlEloKDVJlc3RhcnRTZXJ2ZXISIy5uZXRoZXJub2RlLnYxLlJlc3RhcnRTZXJ2ZXJSZXF1ZXN0GiQubmV0aGVybm9kZS52MS5SZXN0YXJ0U2VydmVyUmVzcG9uc2USUQoKS2lsbFNlcnZlchIgLm5ldGhlcm5vZGUudjEuS2lsbFNlcnZlclJlcXVlc3QaIS5uZXRoZXJub2RlLnYxLktpbGxTZXJ2ZXJSZXNwb25zZRJgCg9DYW5jZWxDb3VudGRvd24SJS5uZXRoZXJub2RlLnYxLkNhbmNlbENvdW50ZG93blJlcXVlc3QaJi5uZXRoZXJub2RlLnYxLkNhbmNlbENvdW50ZG93blJlc3BvbnNlEmsKEUdldENyYXNoRGlhZ25vc2lzEicubmV0aGVybm9kZS52MS5HZXRDcmFzaERpYWdub3Npc1JlcXVlc3QaKC5uZXRoZXJub2RlLnYxLkdldENyYXNoRGlhZ25vc2lzUmVzcG9uc2UiA5ACARJLCghGaXhDcmFzaBIeLm5ldGhlcm5vZGUudjEuRml4Q3Jhc2hSZXF1ZXN0Gh8ubmV0aGVybm9kZS52MS5GaXhDcmFzaFJlc3BvbnNlEmIKDkdldFNlcnZlclN0YXRzEiQubmV0aGVybm9kZS52MS5HZXRTZXJ2ZXJTdGF0c1JlcXVlc3QaJS5uZXRoZXJub2RlLnYxLkdldFNlcnZlclN0YXRzUmVzcG9uc2UiA5ACARJoChBTZWFyY2hTZXJ2ZXJMb2dzEiYubmV0aGVybm9kZS52MS5TZWFyY2hTZXJ2ZXJMb2dzUmVxdWVzdBonLm5ldGhlcm5vZGUudjEuU2VhcmNoU2VydmVyTG9nc1Jlc3BvbnNlIgOQAgESWQoLR2V0SG9zdEluZm8SIS5uZXRoZXJub2RlLnYxLkdldEhvc3RJbmZvUmVxdWVzdBoiLm5ldGhlcm5vZGUudjEuR2V0SG9zdEluZm9SZXNwb25zZSIDkAIBEnEKE0dldFNlcnZlclByb3BlcnRpZXMSKS5uZXRoZXJub2RlLnYxLkdldFNlcnZlclByb3BlcnRpZXNSZXF1ZXN0GioubmV0aGVybm9kZS52MS5HZXRTZXJ2ZXJQcm9wZXJ0aWVzUmVzcG9uc2UiA5ACARJ1ChZVcGRhdGVTZXJ2ZXJQcm9wZXJ0aWVzEiwubmV0aGVybm9kZS52MS5VcGRhdGVTZXJ2ZXJQcm9wZXJ0aWVzUmVxdWVzdBotLm5ldGhlcm5vZGUudjEuVXBkYXRlU2VydmVyUHJvcGVydGllc1Jlc3BvbnNlYgZwcm90bzM", [file_nethernode_v1_catalog]);
 
 /**
  * A managed Minecraft server.
@@ -671,6 +671,177 @@ export const RestartServerResponseSchema: GenMessage<RestartServerResponse> = /*
   messageDesc(file_nethernode_v1_servers, 19);
 
 /**
+ * @generated from message nethernode.v1.GetCrashDiagnosisRequest
+ */
+export type GetCrashDiagnosisRequest = Message<"nethernode.v1.GetCrashDiagnosisRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+};
+
+/**
+ * Describes the message nethernode.v1.GetCrashDiagnosisRequest.
+ * Use `create(GetCrashDiagnosisRequestSchema)` to create a new message.
+ */
+export const GetCrashDiagnosisRequestSchema: GenMessage<GetCrashDiagnosisRequest> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 20);
+
+/**
+ * A mod a crash points at.
+ *
+ * @generated from message nethernode.v1.CrashMod
+ */
+export type CrashMod = Message<"nethernode.v1.CrashMod"> & {
+  /**
+   * @generated from field: string mod_id = 1;
+   */
+  modId: string;
+
+  /**
+   * From the jar, when it's found.
+   *
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * Its file in mods/, when it's found.
+   *
+   * @generated from field: string file = 3;
+   */
+  file: string;
+
+  /**
+   * What it needs, for mods that don't fit (a dependency or version).
+   *
+   * @generated from field: string detail = 4;
+   */
+  detail: string;
+};
+
+/**
+ * Describes the message nethernode.v1.CrashMod.
+ * Use `create(CrashModSchema)` to create a new message.
+ */
+export const CrashModSchema: GenMessage<CrashMod> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 21);
+
+/**
+ * @generated from message nethernode.v1.CrashCause
+ */
+export type CrashCause = Message<"nethernode.v1.CrashCause"> & {
+  /**
+   * client_only, missing_dependencies, incompatible, mixin_failed,
+   * needs_java, or out_of_memory.
+   *
+   * @generated from field: string kind = 1;
+   */
+  kind: string;
+
+  /**
+   * What happened, in a sentence or two.
+   *
+   * @generated from field: string summary = 2;
+   */
+  summary: string;
+
+  /**
+   * @generated from field: repeated nethernode.v1.CrashMod mods = 3;
+   */
+  mods: CrashMod[];
+
+  /**
+   * needs_java: the Java version.
+   *
+   * @generated from field: uint32 java = 4;
+   */
+  java: number;
+
+  /**
+   * What FixCrash would do for it; empty when there's nothing to click.
+   *
+   * @generated from field: string fix = 5;
+   */
+  fix: string;
+};
+
+/**
+ * Describes the message nethernode.v1.CrashCause.
+ * Use `create(CrashCauseSchema)` to create a new message.
+ */
+export const CrashCauseSchema: GenMessage<CrashCause> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 22);
+
+/**
+ * @generated from message nethernode.v1.GetCrashDiagnosisResponse
+ */
+export type GetCrashDiagnosisResponse = Message<"nethernode.v1.GetCrashDiagnosisResponse"> & {
+  /**
+   * @generated from field: repeated nethernode.v1.CrashCause causes = 1;
+   */
+  causes: CrashCause[];
+
+  /**
+   * The file it was read from (crash-reports/… or logs/latest.log), or
+   * empty when there was nothing to read.
+   *
+   * @generated from field: string source = 2;
+   */
+  source: string;
+};
+
+/**
+ * Describes the message nethernode.v1.GetCrashDiagnosisResponse.
+ * Use `create(GetCrashDiagnosisResponseSchema)` to create a new message.
+ */
+export const GetCrashDiagnosisResponseSchema: GenMessage<GetCrashDiagnosisResponse> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 23);
+
+/**
+ * @generated from message nethernode.v1.FixCrashRequest
+ */
+export type FixCrashRequest = Message<"nethernode.v1.FixCrashRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * The cause's kind.
+   *
+   * @generated from field: string kind = 2;
+   */
+  kind: string;
+};
+
+/**
+ * Describes the message nethernode.v1.FixCrashRequest.
+ * Use `create(FixCrashRequestSchema)` to create a new message.
+ */
+export const FixCrashRequestSchema: GenMessage<FixCrashRequest> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 24);
+
+/**
+ * @generated from message nethernode.v1.FixCrashResponse
+ */
+export type FixCrashResponse = Message<"nethernode.v1.FixCrashResponse"> & {
+  /**
+   * What was done.
+   *
+   * @generated from field: string message = 1;
+   */
+  message: string;
+};
+
+/**
+ * Describes the message nethernode.v1.FixCrashResponse.
+ * Use `create(FixCrashResponseSchema)` to create a new message.
+ */
+export const FixCrashResponseSchema: GenMessage<FixCrashResponse> = /*@__PURE__*/
+  messageDesc(file_nethernode_v1_servers, 25);
+
+/**
  * @generated from message nethernode.v1.CancelCountdownRequest
  */
 export type CancelCountdownRequest = Message<"nethernode.v1.CancelCountdownRequest"> & {
@@ -685,7 +856,7 @@ export type CancelCountdownRequest = Message<"nethernode.v1.CancelCountdownReque
  * Use `create(CancelCountdownRequestSchema)` to create a new message.
  */
 export const CancelCountdownRequestSchema: GenMessage<CancelCountdownRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 20);
+  messageDesc(file_nethernode_v1_servers, 26);
 
 /**
  * @generated from message nethernode.v1.CancelCountdownResponse
@@ -698,7 +869,7 @@ export type CancelCountdownResponse = Message<"nethernode.v1.CancelCountdownResp
  * Use `create(CancelCountdownResponseSchema)` to create a new message.
  */
 export const CancelCountdownResponseSchema: GenMessage<CancelCountdownResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 21);
+  messageDesc(file_nethernode_v1_servers, 27);
 
 /**
  * @generated from message nethernode.v1.KillServerRequest
@@ -715,7 +886,7 @@ export type KillServerRequest = Message<"nethernode.v1.KillServerRequest"> & {
  * Use `create(KillServerRequestSchema)` to create a new message.
  */
 export const KillServerRequestSchema: GenMessage<KillServerRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 22);
+  messageDesc(file_nethernode_v1_servers, 28);
 
 /**
  * @generated from message nethernode.v1.KillServerResponse
@@ -728,7 +899,7 @@ export type KillServerResponse = Message<"nethernode.v1.KillServerResponse"> & {
  * Use `create(KillServerResponseSchema)` to create a new message.
  */
 export const KillServerResponseSchema: GenMessage<KillServerResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 23);
+  messageDesc(file_nethernode_v1_servers, 29);
 
 /**
  * One resource sample.
@@ -813,7 +984,7 @@ export type StatSample = Message<"nethernode.v1.StatSample"> & {
  * Use `create(StatSampleSchema)` to create a new message.
  */
 export const StatSampleSchema: GenMessage<StatSample> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 24);
+  messageDesc(file_nethernode_v1_servers, 30);
 
 /**
  * A summary of a server's samples over one period. Periods with no samples
@@ -930,7 +1101,7 @@ export type StatPeriod = Message<"nethernode.v1.StatPeriod"> & {
  * Use `create(StatPeriodSchema)` to create a new message.
  */
 export const StatPeriodSchema: GenMessage<StatPeriod> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 25);
+  messageDesc(file_nethernode_v1_servers, 31);
 
 /**
  * @generated from message nethernode.v1.GetServerStatsRequest
@@ -952,7 +1123,7 @@ export type GetServerStatsRequest = Message<"nethernode.v1.GetServerStatsRequest
  * Use `create(GetServerStatsRequestSchema)` to create a new message.
  */
 export const GetServerStatsRequestSchema: GenMessage<GetServerStatsRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 26);
+  messageDesc(file_nethernode_v1_servers, 32);
 
 /**
  * @generated from message nethernode.v1.GetServerStatsResponse
@@ -1005,7 +1176,7 @@ export type GetServerStatsResponse = Message<"nethernode.v1.GetServerStatsRespon
  * Use `create(GetServerStatsResponseSchema)` to create a new message.
  */
 export const GetServerStatsResponseSchema: GenMessage<GetServerStatsResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 27);
+  messageDesc(file_nethernode_v1_servers, 33);
 
 /**
  * @generated from message nethernode.v1.SearchServerLogsRequest
@@ -1036,7 +1207,7 @@ export type SearchServerLogsRequest = Message<"nethernode.v1.SearchServerLogsReq
  * Use `create(SearchServerLogsRequestSchema)` to create a new message.
  */
 export const SearchServerLogsRequestSchema: GenMessage<SearchServerLogsRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 28);
+  messageDesc(file_nethernode_v1_servers, 34);
 
 /**
  * A matching log line.
@@ -1077,7 +1248,7 @@ export type LogMatch = Message<"nethernode.v1.LogMatch"> & {
  * Use `create(LogMatchSchema)` to create a new message.
  */
 export const LogMatchSchema: GenMessage<LogMatch> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 29);
+  messageDesc(file_nethernode_v1_servers, 35);
 
 /**
  * @generated from message nethernode.v1.SearchServerLogsResponse
@@ -1115,7 +1286,7 @@ export type SearchServerLogsResponse = Message<"nethernode.v1.SearchServerLogsRe
  * Use `create(SearchServerLogsResponseSchema)` to create a new message.
  */
 export const SearchServerLogsResponseSchema: GenMessage<SearchServerLogsResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 30);
+  messageDesc(file_nethernode_v1_servers, 36);
 
 /**
  * @generated from message nethernode.v1.CopyServerRequest
@@ -1153,7 +1324,7 @@ export type CopyServerRequest = Message<"nethernode.v1.CopyServerRequest"> & {
  * Use `create(CopyServerRequestSchema)` to create a new message.
  */
 export const CopyServerRequestSchema: GenMessage<CopyServerRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 31);
+  messageDesc(file_nethernode_v1_servers, 37);
 
 /**
  * @generated from message nethernode.v1.CopyServerResponse
@@ -1170,7 +1341,7 @@ export type CopyServerResponse = Message<"nethernode.v1.CopyServerResponse"> & {
  * Use `create(CopyServerResponseSchema)` to create a new message.
  */
 export const CopyServerResponseSchema: GenMessage<CopyServerResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 32);
+  messageDesc(file_nethernode_v1_servers, 38);
 
 /**
  * @generated from message nethernode.v1.SaveServerTemplateRequest
@@ -1194,7 +1365,7 @@ export type SaveServerTemplateRequest = Message<"nethernode.v1.SaveServerTemplat
  * Use `create(SaveServerTemplateRequestSchema)` to create a new message.
  */
 export const SaveServerTemplateRequestSchema: GenMessage<SaveServerTemplateRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 33);
+  messageDesc(file_nethernode_v1_servers, 39);
 
 /**
  * @generated from message nethernode.v1.SaveServerTemplateResponse
@@ -1211,7 +1382,7 @@ export type SaveServerTemplateResponse = Message<"nethernode.v1.SaveServerTempla
  * Use `create(SaveServerTemplateResponseSchema)` to create a new message.
  */
 export const SaveServerTemplateResponseSchema: GenMessage<SaveServerTemplateResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 34);
+  messageDesc(file_nethernode_v1_servers, 40);
 
 /**
  * A server's files (without its world) and settings, to start new servers
@@ -1268,7 +1439,7 @@ export type ServerTemplate = Message<"nethernode.v1.ServerTemplate"> & {
  * Use `create(ServerTemplateSchema)` to create a new message.
  */
 export const ServerTemplateSchema: GenMessage<ServerTemplate> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 35);
+  messageDesc(file_nethernode_v1_servers, 41);
 
 /**
  * @generated from message nethernode.v1.ListServerTemplatesRequest
@@ -1281,7 +1452,7 @@ export type ListServerTemplatesRequest = Message<"nethernode.v1.ListServerTempla
  * Use `create(ListServerTemplatesRequestSchema)` to create a new message.
  */
 export const ListServerTemplatesRequestSchema: GenMessage<ListServerTemplatesRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 36);
+  messageDesc(file_nethernode_v1_servers, 42);
 
 /**
  * @generated from message nethernode.v1.ListServerTemplatesResponse
@@ -1300,7 +1471,7 @@ export type ListServerTemplatesResponse = Message<"nethernode.v1.ListServerTempl
  * Use `create(ListServerTemplatesResponseSchema)` to create a new message.
  */
 export const ListServerTemplatesResponseSchema: GenMessage<ListServerTemplatesResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 37);
+  messageDesc(file_nethernode_v1_servers, 43);
 
 /**
  * @generated from message nethernode.v1.DeleteServerTemplateRequest
@@ -1317,7 +1488,7 @@ export type DeleteServerTemplateRequest = Message<"nethernode.v1.DeleteServerTem
  * Use `create(DeleteServerTemplateRequestSchema)` to create a new message.
  */
 export const DeleteServerTemplateRequestSchema: GenMessage<DeleteServerTemplateRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 38);
+  messageDesc(file_nethernode_v1_servers, 44);
 
 /**
  * @generated from message nethernode.v1.DeleteServerTemplateResponse
@@ -1330,7 +1501,7 @@ export type DeleteServerTemplateResponse = Message<"nethernode.v1.DeleteServerTe
  * Use `create(DeleteServerTemplateResponseSchema)` to create a new message.
  */
 export const DeleteServerTemplateResponseSchema: GenMessage<DeleteServerTemplateResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 39);
+  messageDesc(file_nethernode_v1_servers, 45);
 
 /**
  * @generated from message nethernode.v1.CreateServerFromTemplateRequest
@@ -1361,7 +1532,7 @@ export type CreateServerFromTemplateRequest = Message<"nethernode.v1.CreateServe
  * Use `create(CreateServerFromTemplateRequestSchema)` to create a new message.
  */
 export const CreateServerFromTemplateRequestSchema: GenMessage<CreateServerFromTemplateRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 40);
+  messageDesc(file_nethernode_v1_servers, 46);
 
 /**
  * @generated from message nethernode.v1.CreateServerFromTemplateResponse
@@ -1378,7 +1549,7 @@ export type CreateServerFromTemplateResponse = Message<"nethernode.v1.CreateServ
  * Use `create(CreateServerFromTemplateResponseSchema)` to create a new message.
  */
 export const CreateServerFromTemplateResponseSchema: GenMessage<CreateServerFromTemplateResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 41);
+  messageDesc(file_nethernode_v1_servers, 47);
 
 /**
  * @generated from message nethernode.v1.GetHostInfoRequest
@@ -1391,7 +1562,7 @@ export type GetHostInfoRequest = Message<"nethernode.v1.GetHostInfoRequest"> & {
  * Use `create(GetHostInfoRequestSchema)` to create a new message.
  */
 export const GetHostInfoRequestSchema: GenMessage<GetHostInfoRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 42);
+  messageDesc(file_nethernode_v1_servers, 48);
 
 /**
  * @generated from message nethernode.v1.GetHostInfoResponse
@@ -1453,7 +1624,7 @@ export type GetHostInfoResponse = Message<"nethernode.v1.GetHostInfoResponse"> &
  * Use `create(GetHostInfoResponseSchema)` to create a new message.
  */
 export const GetHostInfoResponseSchema: GenMessage<GetHostInfoResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 43);
+  messageDesc(file_nethernode_v1_servers, 49);
 
 /**
  * @generated from message nethernode.v1.GetServerPropertiesRequest
@@ -1470,7 +1641,7 @@ export type GetServerPropertiesRequest = Message<"nethernode.v1.GetServerPropert
  * Use `create(GetServerPropertiesRequestSchema)` to create a new message.
  */
 export const GetServerPropertiesRequestSchema: GenMessage<GetServerPropertiesRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 44);
+  messageDesc(file_nethernode_v1_servers, 50);
 
 /**
  * @generated from message nethernode.v1.GetServerPropertiesResponse
@@ -1504,7 +1675,7 @@ export type GetServerPropertiesResponse = Message<"nethernode.v1.GetServerProper
  * Use `create(GetServerPropertiesResponseSchema)` to create a new message.
  */
 export const GetServerPropertiesResponseSchema: GenMessage<GetServerPropertiesResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 45);
+  messageDesc(file_nethernode_v1_servers, 51);
 
 /**
  * @generated from message nethernode.v1.ServerProperty
@@ -1584,7 +1755,7 @@ export type ServerProperty = Message<"nethernode.v1.ServerProperty"> & {
  * Use `create(ServerPropertySchema)` to create a new message.
  */
 export const ServerPropertySchema: GenMessage<ServerProperty> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 46);
+  messageDesc(file_nethernode_v1_servers, 52);
 
 /**
  * @generated from message nethernode.v1.UpdateServerPropertiesRequest
@@ -1615,7 +1786,7 @@ export type UpdateServerPropertiesRequest = Message<"nethernode.v1.UpdateServerP
  * Use `create(UpdateServerPropertiesRequestSchema)` to create a new message.
  */
 export const UpdateServerPropertiesRequestSchema: GenMessage<UpdateServerPropertiesRequest> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 47);
+  messageDesc(file_nethernode_v1_servers, 53);
 
 /**
  * @generated from message nethernode.v1.UpdateServerPropertiesResponse
@@ -1632,7 +1803,7 @@ export type UpdateServerPropertiesResponse = Message<"nethernode.v1.UpdateServer
  * Use `create(UpdateServerPropertiesResponseSchema)` to create a new message.
  */
 export const UpdateServerPropertiesResponseSchema: GenMessage<UpdateServerPropertiesResponse> = /*@__PURE__*/
-  messageDesc(file_nethernode_v1_servers, 48);
+  messageDesc(file_nethernode_v1_servers, 54);
 
 /**
  * A server's lifecycle state.
@@ -1970,6 +2141,28 @@ export const ServerService: GenService<{
     methodKind: "unary";
     input: typeof CancelCountdownRequestSchema;
     output: typeof CancelCountdownResponseSchema;
+  },
+  /**
+   * Why the server crashed or wouldn't start, from its newest crash report
+   * (or its log): the causes NetherNode recognizes, and which it can fix.
+   *
+   * @generated from rpc nethernode.v1.ServerService.GetCrashDiagnosis
+   */
+  getCrashDiagnosis: {
+    methodKind: "unary";
+    input: typeof GetCrashDiagnosisRequestSchema;
+    output: typeof GetCrashDiagnosisResponseSchema;
+  },
+  /**
+   * Applies the fix for one cause from GetCrashDiagnosis (leaving out the
+   * mods at fault, or another Java), then starts the server.
+   *
+   * @generated from rpc nethernode.v1.ServerService.FixCrash
+   */
+  fixCrash: {
+    methodKind: "unary";
+    input: typeof FixCrashRequestSchema;
+    output: typeof FixCrashResponseSchema;
   },
   /**
    * Up to an hour of per-second resource samples.

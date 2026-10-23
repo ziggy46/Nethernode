@@ -52,6 +52,14 @@ service ServerService {
   rpc KillServer(KillServerRequest) returns (KillServerResponse);
   // Calls off a restart, stop or update that's still warning players.
   rpc CancelCountdown(CancelCountdownRequest) returns (CancelCountdownResponse);
+  // Why the server crashed or wouldn't start, from its newest crash report
+  // (or its log): the causes NetherNode recognizes, and which it can fix.
+  rpc GetCrashDiagnosis(GetCrashDiagnosisRequest) returns (GetCrashDiagnosisResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Applies the fix for one cause from GetCrashDiagnosis (leaving out the
+  // mods at fault, or another Java), then starts the server.
+  rpc FixCrash(FixCrashRequest) returns (FixCrashResponse);
 
   // Up to an hour of per-second resource samples.
   rpc GetServerStats(GetServerStatsRequest) returns (GetServerStatsResponse) {
@@ -262,6 +270,52 @@ message RestartServerRequest {
 }
 
 message RestartServerResponse {}
+
+message GetCrashDiagnosisRequest {
+  string id = 1;
+}
+
+// A mod a crash points at.
+message CrashMod {
+  string mod_id = 1;
+  // From the jar, when it's found.
+  string name = 2;
+  // Its file in mods/, when it's found.
+  string file = 3;
+  // What it needs, for mods that don't fit (a dependency or version).
+  string detail = 4;
+}
+
+message CrashCause {
+  // client_only, missing_dependencies, incompatible, mixin_failed,
+  // needs_java, or out_of_memory.
+  string kind = 1;
+  // What happened, in a sentence or two.
+  string summary = 2;
+  repeated CrashMod mods = 3;
+  // needs_java: the Java version.
+  uint32 java = 4;
+  // What FixCrash would do for it; empty when there's nothing to click.
+  string fix = 5;
+}
+
+message GetCrashDiagnosisResponse {
+  repeated CrashCause causes = 1;
+  // The file it was read from (crash-reports/… or logs/latest.log), or
+  // empty when there was nothing to read.
+  string source = 2;
+}
+
+message FixCrashRequest {
+  string id = 1;
+  // The cause's kind.
+  string kind = 2;
+}
+
+message FixCrashResponse {
+  // What was done.
+  string message = 1;
+}
 
 message CancelCountdownRequest {
   string id = 1;

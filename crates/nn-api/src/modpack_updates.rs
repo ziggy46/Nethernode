@@ -532,7 +532,7 @@ async fn clear_mods(state: &AppState, server: &Server) -> Result<(), String> {
 
 /// Saves a server's settings on its machine (and the panel's copy for
 /// servers on other machines).
-async fn apply(
+pub(crate) async fn apply(
     state: &AppState,
     server: &Server,
     settings: ServerSettings,

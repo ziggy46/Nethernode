@@ -46,6 +46,7 @@ pub mod content;
 mod cookies;
 mod copies;
 mod countdown;
+mod crash;
 mod events;
 mod files;
 mod files_http;

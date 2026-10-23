@@ -13,6 +13,7 @@ use serde_json::json;
 
 use crate::AppState;
 use crate::countdown;
+use crate::crash;
 use crate::files::{file_error, open};
 use crate::proto::nethernode::v1 as pb;
 use crate::rpc::{audit, require, store_error};
@@ -903,6 +904,102 @@ impl pb::ServerService for ServerRpc {
         )
         .await;
         Response::ok(pb::KillServerResponse::default())
+    }
+
+    async fn get_crash_diagnosis(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::GetCrashDiagnosisRequest>,
+    ) -> ServiceResult<pb::GetCrashDiagnosisResponse> {
+        require(&ctx, Permission::ManageServers)?;
+        let server = self.load(request.id).await?;
+        let folder = self
+            .node(&server)?
+            .folder(&server)
+            .await
+            .map_err(node_error)?;
+        let Some((source, text)) = crash::read_crash(&folder, &server).await else {
+            return Response::ok(pb::GetCrashDiagnosisResponse::default());
+        };
+        let causes = crash::diagnose(&text);
+        let found = if causes.iter().any(|c| !c.culprits().is_empty()) {
+            crash::jars_by_id(&folder).await
+        } else {
+            HashMap::new()
+        };
+        let causes = causes
+            .iter()
+            .map(|cause| {
+                let detail: HashMap<String, String> = match cause {
+                    crash::Cause::MissingDependencies(pairs) => pairs
+                        .iter()
+                        .map(|(missing, by)| (by.clone(), format!("needs {missing}")))
+                        .collect(),
+                    crash::Cause::Incompatible(pairs) => pairs.iter().cloned().collect(),
+                    _ => HashMap::new(),
+                };
+                let ids: Vec<String> = match cause {
+                    crash::Cause::MissingDependencies(pairs) => {
+                        pairs.iter().map(|(_, by)| by.clone()).collect()
+                    }
+                    other => other.culprits(),
+                };
+                pb::CrashCause {
+                    kind: crash::kind_of(cause).to_owned(),
+                    summary: crash::summary(cause),
+                    mods: ids
+                        .iter()
+                        .map(|id| {
+                            let jar = found.get(id);
+                            pb::CrashMod {
+                                mod_id: id.clone(),
+                                name: jar.and_then(|j| j.name.clone()).unwrap_or_default(),
+                                file: jar.map(|j| j.file.clone()).unwrap_or_default(),
+                                detail: detail.get(id).cloned().unwrap_or_default(),
+                                ..Default::default()
+                            }
+                        })
+                        .collect(),
+                    java: match cause {
+                        crash::Cause::NeedsJava(j) => *j,
+                        _ => 0,
+                    },
+                    fix: crash::fix_label(cause, &found).unwrap_or_default(),
+                    ..Default::default()
+                }
+            })
+            .collect();
+        Response::ok(pb::GetCrashDiagnosisResponse {
+            causes,
+            source,
+            ..Default::default()
+        })
+    }
+
+    async fn fix_crash(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::FixCrashRequest>,
+    ) -> ServiceResult<pb::FixCrashResponse> {
+        let user = require(&ctx, Permission::ManageServers)?.clone();
+        let server = self.load(request.id).await?;
+        crate::moves::not_moving(&self.state, &server.id)?;
+        let kind = request.kind.to_owned();
+        let message = crash::fix(&self.state, &server, &kind)
+            .await
+            .map_err(ConnectError::failed_precondition)?;
+        audit(
+            &self.state,
+            &user,
+            "server.crash_fix",
+            ("server", &server.id),
+            json!({ "kind": kind, "result": message }),
+        )
+        .await;
+        Response::ok(pb::FixCrashResponse {
+            message,
+            ..Default::default()
+        })
     }
 
     async fn cancel_countdown(

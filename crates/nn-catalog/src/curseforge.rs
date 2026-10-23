@@ -230,6 +230,61 @@ fn version(f: File) -> ProjectVersion {
     }
 }
 
+/// CurseForge's fingerprint of a file: MurmurHash2 (seed 1) of its bytes
+/// with whitespace (tab, newline, carriage return, space) left out.
+pub fn curseforge_fingerprint(data: &[u8]) -> u32 {
+    let bytes: Vec<u8> = data
+        .iter()
+        .copied()
+        .filter(|b| !matches!(b, 9 | 10 | 13 | 32))
+        .collect();
+    murmur2(&bytes, 1)
+}
+
+fn murmur2(data: &[u8], seed: u32) -> u32 {
+    const M: u32 = 0x5bd1_e995;
+    #[allow(clippy::cast_possible_truncation)]
+    let mut h = seed ^ (data.len() as u32);
+    let mut chunks = data.chunks_exact(4);
+    for c in &mut chunks {
+        let mut k = u32::from_le_bytes([c[0], c[1], c[2], c[3]]);
+        k = k.wrapping_mul(M);
+        k ^= k >> 24;
+        k = k.wrapping_mul(M);
+        h = h.wrapping_mul(M) ^ k;
+    }
+    let rest = chunks.remainder();
+    if !rest.is_empty() {
+        for (i, b) in rest.iter().enumerate() {
+            h ^= u32::from(*b) << (8 * i);
+        }
+        h = h.wrapping_mul(M);
+    }
+    h ^= h >> 13;
+    h = h.wrapping_mul(M);
+    h ^ (h >> 15)
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FingerprintMatches {
+    #[serde(default)]
+    exact_matches: Vec<FingerprintMatch>,
+}
+
+#[derive(Deserialize)]
+struct FingerprintMatch {
+    /// The project.
+    id: u64,
+    file: FingerprintFile,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FingerprintFile {
+    file_fingerprint: u32,
+}
+
 /// What a CurseForge modpack's `manifest.json` says it runs on.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PackManifest {
@@ -429,6 +484,31 @@ impl Catalog {
         parse_files(&raw)
     }
 
+    /// The CurseForge projects files belong to, by their
+    /// [`curseforge_fingerprint`]s (files CurseForge doesn't know are left
+    /// out).
+    pub async fn curseforge_identify(
+        &self,
+        key: &str,
+        fingerprints: &[u32],
+    ) -> Result<std::collections::HashMap<u32, String>, Error> {
+        if fingerprints.is_empty() {
+            return Ok(std::collections::HashMap::new());
+        }
+        let request = self
+            .http
+            .post(format!("{}/v1/fingerprints", self.endpoints.curseforge))
+            .header("x-api-key", key)
+            .json(&serde_json::json!({ "fingerprints": fingerprints }));
+        let found: Data<FingerprintMatches> = parse_json(&self.fetch_text(request).await?)?;
+        Ok(found
+            .data
+            .exact_matches
+            .into_iter()
+            .map(|m| (m.file.file_fingerprint, m.id.to_string()))
+            .collect())
+    }
+
     /// One file of a project.
     pub async fn curseforge_version(
         &self,
@@ -490,6 +570,23 @@ mod tests {
             "not allowed for third-party download"
         );
         assert_eq!(files[0].server_pack_id.as_deref(), Some("5000002"));
+    }
+
+    #[test]
+    fn fingerprints_ignore_whitespace() {
+        assert_eq!(
+            curseforge_fingerprint(b"a b\tc\r\nd"),
+            curseforge_fingerprint(b"abcd")
+        );
+        assert_ne!(
+            curseforge_fingerprint(b"abcd"),
+            curseforge_fingerprint(b"abce")
+        );
+        // Every remainder length (1–3 bytes past a whole 4) hashes.
+        let all: std::collections::HashSet<u32> = (0..8)
+            .map(|n| curseforge_fingerprint(&b"abcdefgh"[..n]))
+            .collect();
+        assert_eq!(all.len(), 8);
     }
 
     fn pack(manifest: &str) -> Vec<u8> {

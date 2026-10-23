@@ -53,6 +53,8 @@ pub const RESERVED_ENV: &[&str] = &[
     "CF_PAGE_URL",
     "CF_FILE_ID",
     "CF_DOWNLOADS_REPO",
+    "CF_EXCLUDE_MODS",
+    "MODRINTH_EXCLUDE_FILES",
     "GENERIC_PACK",
     "GENERIC_PACKS",
     "FORGE_VERSION",
@@ -210,6 +212,10 @@ pub struct Modpack {
     /// server pack, for display.
     #[serde(default)]
     pub no_server_pack: Option<String>,
+    /// Mods the pack's installer leaves out (ones that stopped the server
+    /// starting): CurseForge project IDs, or Modrinth file names.
+    #[serde(default)]
+    pub excluded: Vec<String>,
 }
 
 impl Modpack {
@@ -350,6 +356,9 @@ pub fn build(input: &SpecInput<'_>) -> ContainerSpec {
                     &pack.project_id
                 };
                 env.insert("MODRINTH_MODPACK".into(), project.clone());
+                if !pack.excluded.is_empty() {
+                    env.insert("MODRINTH_EXCLUDE_FILES".into(), pack.excluded.join(","));
+                }
                 if let Some(version) = pack.version_id.as_ref().filter(|v| !v.is_empty()) {
                     env.insert("MODRINTH_VERSION".into(), version.clone());
                 }
@@ -359,6 +368,9 @@ pub fn build(input: &SpecInput<'_>) -> ContainerSpec {
             }
             "curseforge" => {
                 env.insert("CF_SLUG".into(), pack.slug.clone());
+                if !pack.excluded.is_empty() {
+                    env.insert("CF_EXCLUDE_MODS".into(), pack.excluded.join(","));
+                }
                 if let Some(file) = pack.version_id.as_ref().filter(|v| !v.is_empty()) {
                     env.insert("CF_FILE_ID".into(), file.clone());
                 }
@@ -754,6 +766,10 @@ mod tests {
             ..input(&extra, &dir)
         });
         let vars = env(&spec);
+        assert!(
+            !vars.iter().any(|e| e.starts_with("CF_EXCLUDE_MODS")),
+            "nothing left out yet"
+        );
         for want in [
             "TYPE=AUTO_CURSEFORGE",
             "CF_SLUG=some-pack",
@@ -777,6 +793,27 @@ mod tests {
                 .iter()
                 .any(|e| e.starts_with("CF_API_KEY"))
         );
+    }
+
+    #[test]
+    fn packs_leave_out_the_mods_they_were_told_to() {
+        let extra = BTreeMap::new();
+        let dir = PathBuf::from("/srv/nn/servers");
+        for (platform, want) in [
+            ("curseforge", "CF_EXCLUDE_MODS=601932,1023333"),
+            ("modrinth", "MODRINTH_EXCLUDE_FILES=601932,1023333"),
+        ] {
+            let pack = Modpack {
+                excluded: vec!["601932".into(), "1023333".into()],
+                ..pack(platform)
+            };
+            let spec = build(&SpecInput {
+                loader: platform,
+                modpack: Some(&pack),
+                ..input(&extra, &dir)
+            });
+            assert!(env(&spec).contains(&want.to_owned()), "{platform}");
+        }
     }
 
     #[test]

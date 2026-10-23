@@ -19,7 +19,7 @@ use std::time::Duration;
 pub use content::{
     Platform, Project, ProjectKind, ProjectVersion, SearchPage, SearchQuery, VersionFile,
 };
-pub use curseforge::{PackManifest, pack_manifest};
+pub use curseforge::{PackManifest, curseforge_fingerprint, pack_manifest};
 pub use versions::{LoaderVersion, McVersion, compare_versions};
 
 /// Identifies NetherNode to upstream APIs (Modrinth asks for this). No
