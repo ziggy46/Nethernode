@@ -25,7 +25,16 @@ web panel:
 - **Servers that sleep.** Idle servers stop on their own. Players still see
   them in their server list ("Sleeping, join to wake"), and joining starts them.
 - **Any server, any pack.** Vanilla, Paper, Fabric, Forge, NeoForge and Quilt,
-  or install a Modrinth or CurseForge modpack in a few clicks.
+  or install a Modrinth or CurseForge modpack in a few clicks (from the
+  author's server pack when there is one), and update it with a backup first.
+- **Modules.** Add BlueMap's 3D web map or a public status page to a server,
+  each on an address of its own (`map-mc1.example.com`). With a Cloudflare
+  API token, NetherNode runs the tunnel and keeps the DNS records in step.
+- **Knows why it crashed.** It reads the crash report, names the mods at
+  fault (ones that only run in the game, missing or wrong-version ones), and
+  fixes the common causes in a click.
+- **World tools.** Each dimension's size, trimming the chunks nobody spent
+  time in, and pre-generating the land around the spawn.
 - **Everything in the browser.** A live console that completes commands and
   player names and searches the logs of earlier runs, a file manager and
   editor, uploads of any size that resume, mod management, and
@@ -38,7 +47,8 @@ web panel:
   for want of players say so.
 - **Backups you don't think about.** Live backups while people play, safe
   restores that keep a copy of what was there, and schedules for backups,
-  restarts with in-game warnings, commands and announcements.
+  restarts with in-game warnings, commands and announcements. Restarts and
+  stops from the panel can warn players with a countdown too.
 - **More machines.** Add other computers as nodes and run servers on them
   from the same panel. They connect out to the panel, so they need no open
   ports, and players still join through the one address. Stopped servers move
@@ -122,7 +132,7 @@ page.
 ## Documentation
 
 The full guides (installing, running servers, DNS and ports, the proxy,
-Cloudflare Tunnel, backups, more machines, users, notifications and updates,
+modules, Cloudflare Tunnel, backups, more machines, users, notifications and updates,
 configuration, the API and the security model) live in the
 **NetherNode-docs** repository, with a hosted site coming.
 
