@@ -5,8 +5,9 @@ import { useState } from "react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/field";
 import { Platform, type ProjectVersion } from "@/gen/nethernode/v1/catalog_pb";
-import type { Server } from "@/gen/nethernode/v1/servers_pb";
+import { type Server, ServerStatus } from "@/gen/nethernode/v1/servers_pb";
 import { errorMessage } from "@/lib/api";
 import { trackJob } from "@/lib/jobs";
 import { dateTime } from "@/lib/time";
@@ -30,9 +31,12 @@ export function ModpackCard({ server }: { server: Server }) {
     retry: false,
   });
   const [chosen, setChosen] = useState<ProjectVersion | null>(null);
+  // With players online, they're warned in chat first by default.
+  const online = server.status === ServerStatus.RUNNING ? (server.playersOnline ?? 0) : 0;
+  const [warnMinutes, setWarnMinutes] = useState(0);
   const update = useMutation({
     mutationFn: (version: ProjectVersion) =>
-      modClient.updateModpack({ serverId: server.id, versionId: version.id }),
+      modClient.updateModpack({ serverId: server.id, versionId: version.id, warnMinutes }),
     onSuccess: ({ jobId }, version) => {
       setChosen(null);
       trackJob(jobId, `Updating ${pack?.title ?? "the pack"} to ${version.versionNumber}…`);
@@ -137,6 +141,7 @@ export function ModpackCard({ server }: { server: Server }) {
                   disabled={update.isPending}
                   onClick={() => {
                     update.reset();
+                    setWarnMinutes(online > 0 ? 1 : 0);
                     setChosen(v);
                   }}
                 >
@@ -170,7 +175,25 @@ export function ModpackCard({ server }: { server: Server }) {
         pending={update.isPending}
         error={update.error ? errorMessage(update.error) : undefined}
         onConfirm={() => chosen && update.mutate(chosen)}
-      />
+      >
+        {online > 0 && (
+          <div className="mb-4 flex flex-wrap items-center gap-2 text-label text-text-secondary">
+            <label htmlFor={`${server.id}-update-warn`}>
+              {online} player{online === 1 ? " is" : "s are"} online. Warn them first:
+            </label>
+            <Select
+              id={`${server.id}-update-warn`}
+              className="h-8 w-auto"
+              value={warnMinutes}
+              onChange={(e) => setWarnMinutes(Number(e.target.value))}
+            >
+              <option value={0}>No, update now</option>
+              <option value={1}>1 minute</option>
+              <option value={5}>5 minutes</option>
+            </Select>
+          </div>
+        )}
+      </ConfirmDialog>
     </section>
   );
 }

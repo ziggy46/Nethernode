@@ -161,6 +161,9 @@ message UpdateModpackRequest {
   string server_id = 1;
   // A newer version of the same pack.
   string version_id = 2;
+  // When the server is running: warn the players in chat for this many
+  // minutes (1–30) first; 0 updates now.
+  uint32 warn_minutes = 3;
 }
 
 message UpdateModpackResponse {

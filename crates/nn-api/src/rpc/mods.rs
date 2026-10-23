@@ -604,7 +604,23 @@ impl pb::ModService for ModRpc {
             "to": plan.to.version_id,
             "mc_version": plan.mc_version,
         });
-        let job_id = modpack_updates::start(&self.state, server.clone(), plan, &user.id);
+        // Players are warned first when they could be online.
+        let warning = if request.warn_minutes > 0
+            && matches!(server.status.as_str(), "running" | "starting")
+        {
+            Some(
+                crate::countdown::begin(
+                    &self.state,
+                    &server.id,
+                    crate::countdown::Action::Update,
+                    request.warn_minutes,
+                )
+                .map_err(ConnectError::failed_precondition)?,
+            )
+        } else {
+            None
+        };
+        let job_id = modpack_updates::start(&self.state, server.clone(), plan, &user.id, warning);
         self.record(&user, "modpack.update", &server.id, details)
             .await;
         Response::ok(pb::UpdateModpackResponse {

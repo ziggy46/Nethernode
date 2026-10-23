@@ -12,6 +12,7 @@ use nn_store::{Server, ServerSettings};
 use serde_json::json;
 
 use crate::AppState;
+use crate::countdown;
 use crate::files::{file_error, open};
 use crate::proto::nethernode::v1 as pb;
 use crate::rpc::{audit, require, store_error};
@@ -149,6 +150,7 @@ impl ServerRpc {
             .unwrap_or_else(|| server.node_id.clone());
         let players = node.players(&server.id);
         let restart_required = node.restart_required(&server).await;
+        let countdown = countdown::pending(&server.id);
         pb::Server {
             status: proto_status(&server.status).into(),
             settings: proto_settings(&server.settings()).into(),
@@ -157,6 +159,10 @@ impl ServerRpc {
             players_max: players.map(|p| p.max),
             restart_required,
             paused: server.status == "running" && node.paused(&server.id),
+            countdown: countdown
+                .map(|(a, _)| a.as_str().to_owned())
+                .unwrap_or_default(),
+            countdown_at_ms: countdown.map_or(0, |(_, at)| at),
             modpack: proto_modpack(server.modpack_json.as_deref()).into(),
             internal_port: u32::try_from(server.internal_port).unwrap_or_default(),
             sleep_when_empty: server.sleep_when_empty,
@@ -210,6 +216,36 @@ impl ServerRpc {
 
     /// Runs a lifecycle operation in the background, reporting failures as
     /// `server_operation_failed` events.
+    /// Restarts or stops a server now, or after warning its players for
+    /// `warn_minutes`. Doing it now replaces a countdown that's running.
+    fn after_warning<F, Fut>(
+        &self,
+        node: Node,
+        id: String,
+        action: countdown::Action,
+        warn_minutes: u32,
+        run: F,
+    ) -> Result<(), ConnectError>
+    where
+        F: FnOnce(Node, String) -> Fut + Send + 'static,
+        Fut: std::future::Future<Output = Result<(), NodeError>> + Send + 'static,
+    {
+        if warn_minutes == 0 {
+            countdown::supersede(&self.state, &id);
+            self.spawn_operation(node, id, action.as_str(), run);
+            return Ok(());
+        }
+        let ticket = countdown::begin(&self.state, &id, action, warn_minutes)
+            .map_err(ConnectError::failed_precondition)?;
+        let (state, this) = (self.state.clone(), Self::new(self.state.clone()));
+        tokio::spawn(async move {
+            if ticket.wait(&state).await {
+                this.spawn_operation(node, id, action.as_str(), run);
+            }
+        });
+        Ok(())
+    }
+
     fn spawn_operation<F, Fut>(&self, node: Node, id: String, operation: &'static str, run: F)
     where
         F: FnOnce(Node, String) -> Fut + Send + 'static,
@@ -802,15 +838,19 @@ impl pb::ServerService for ServerRpc {
         let user = require(&ctx, Permission::ManageServers)?.clone();
         let server = self.load(request.id).await?;
         let node = self.node(&server)?;
-        self.spawn_operation(node, server.id.clone(), "stop", |n, id| async move {
-            n.stop(&id, false).await
-        });
+        self.after_warning(
+            node,
+            server.id.clone(),
+            countdown::Action::Stop,
+            request.warn_minutes,
+            |n, id| async move { n.stop(&id, false).await },
+        )?;
         audit(
             &self.state,
             &user,
             "server.stop",
             ("server", &server.id),
-            json!({}),
+            json!({ "warn_minutes": request.warn_minutes }),
         )
         .await;
         Response::ok(pb::StopServerResponse::default())
@@ -824,15 +864,19 @@ impl pb::ServerService for ServerRpc {
         let user = require(&ctx, Permission::ManageServers)?.clone();
         let server = self.load(request.id).await?;
         let node = self.node(&server)?;
-        self.spawn_operation(node, server.id.clone(), "restart", |n, id| async move {
-            n.restart(&id).await
-        });
+        self.after_warning(
+            node,
+            server.id.clone(),
+            countdown::Action::Restart,
+            request.warn_minutes,
+            |n, id| async move { n.restart(&id).await },
+        )?;
         audit(
             &self.state,
             &user,
             "server.restart",
             ("server", &server.id),
-            json!({}),
+            json!({ "warn_minutes": request.warn_minutes }),
         )
         .await;
         Response::ok(pb::RestartServerResponse::default())
@@ -846,6 +890,7 @@ impl pb::ServerService for ServerRpc {
         let user = require(&ctx, Permission::ManageServers)?.clone();
         let server = self.load(request.id).await?;
         let node = self.node(&server)?;
+        countdown::supersede(&self.state, &server.id);
         self.spawn_operation(node, server.id.clone(), "kill", |n, id| async move {
             n.kill(&id).await
         });
@@ -858,6 +903,30 @@ impl pb::ServerService for ServerRpc {
         )
         .await;
         Response::ok(pb::KillServerResponse::default())
+    }
+
+    async fn cancel_countdown(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::CancelCountdownRequest>,
+    ) -> ServiceResult<pb::CancelCountdownResponse> {
+        let user = require(&ctx, Permission::ManageServers)?.clone();
+        let server = self.load(request.id).await?;
+        let Some((action, _)) = countdown::pending(&server.id) else {
+            return Err(ConnectError::failed_precondition(
+                "Nothing is counting down for this server.",
+            ));
+        };
+        countdown::cancel(&self.state, &server.id);
+        audit(
+            &self.state,
+            &user,
+            "server.countdown_cancel",
+            ("server", &server.id),
+            json!({ "action": action.as_str() }),
+        )
+        .await;
+        Response::ok(pb::CancelCountdownResponse::default())
     }
 
     async fn get_server_stats(

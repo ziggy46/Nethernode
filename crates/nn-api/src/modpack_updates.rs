@@ -358,10 +358,39 @@ fn version_label(pack: &Modpack) -> String {
 }
 
 /// Starts updating a server's pack in the background. Returns the job ID.
-pub(crate) fn start(state: &AppState, server: Server, plan: Plan, user_id: &str) -> String {
+pub(crate) fn start(
+    state: &AppState,
+    server: Server,
+    plan: Plan,
+    user_id: &str,
+    warning: Option<crate::countdown::Ticket>,
+) -> String {
     let job_id = nn_store::new_id();
     let (state, job, user) = (state.clone(), job_id.clone(), user_id.to_owned());
     tokio::spawn(async move {
+        // Players are warned first; the server is looked at again afterwards,
+        // since it may have stopped meanwhile.
+        let mut server = server;
+        if let Some(ticket) = warning {
+            if !ticket.wait(&state).await {
+                let message = Ok(format!(
+                    "The update of {} was called off; nothing changed.",
+                    server.name
+                ));
+                // Its own kind, so it isn't reported as an update.
+                backups::finished(
+                    &state,
+                    &server.id,
+                    &job,
+                    "modpack-update-called-off",
+                    &message,
+                );
+                return;
+            }
+            if let Ok(Some(now)) = state.auth.store().find_server(&server.id).await {
+                server = now;
+            }
+        }
         let result = run(&state, &server, plan, &user).await;
         match &result {
             Ok(_) => {

@@ -157,6 +157,11 @@ pub enum Event {
         /// Server ID.
         server_id: Option<String>,
     },
+    /// A restart, stop or update countdown started or ended for a server.
+    ServerCountdownChanged {
+        /// The server.
+        server_id: String,
+    },
     /// A server being deleted moved on: `container` (stopping it and
     /// removing its container), `modules`, `record` (removing it from
     /// NetherNode), then `files` with how many of its files are gone.

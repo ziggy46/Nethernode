@@ -50,6 +50,8 @@ service ServerService {
   rpc RestartServer(RestartServerRequest) returns (RestartServerResponse);
   // Stops immediately without saving.
   rpc KillServer(KillServerRequest) returns (KillServerResponse);
+  // Calls off a restart, stop or update that's still warning players.
+  rpc CancelCountdown(CancelCountdownRequest) returns (CancelCountdownResponse);
 
   // Up to an hour of per-second resource samples.
   rpc GetServerStats(GetServerStatsRequest) returns (GetServerStatsResponse) {
@@ -137,6 +139,11 @@ message Server {
   // (`pause-when-empty-seconds`, 1.21.2 and later). It resumes when a
   // player joins.
   bool paused = 21;
+  // A countdown warning players before a restart, stop or update
+  // ("restart", "stop", "update"), or empty.
+  string countdown = 22;
+  // When that countdown ends (unix ms).
+  int64 countdown_at_ms = 23;
 }
 
 // Settings an admin can change after creation.
@@ -240,15 +247,27 @@ message StartServerResponse {}
 
 message StopServerRequest {
   string id = 1;
+  // Warn the players in chat for this many minutes (1–30) before stopping;
+  // 0 stops now.
+  uint32 warn_minutes = 2;
 }
 
 message StopServerResponse {}
 
 message RestartServerRequest {
   string id = 1;
+  // Warn the players in chat for this many minutes (1–30) before
+  // restarting; 0 restarts now.
+  uint32 warn_minutes = 2;
 }
 
 message RestartServerResponse {}
+
+message CancelCountdownRequest {
+  string id = 1;
+}
+
+message CancelCountdownResponse {}
 
 message KillServerRequest {
   string id = 1;

@@ -36,6 +36,7 @@ const INVALIDATES: Record<string, string[][]> = {
   server_players: [["servers"]],
   templates_changed: [["templates"]],
   server_operation_failed: [["servers"]],
+  server_countdown_changed: [["servers"]],
 };
 
 /** Events whose payload updates the cache directly instead of refetching. */

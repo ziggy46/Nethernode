@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -22,9 +22,10 @@ import { Button } from "@/components/ui/button";
 import { CopyChip } from "@/components/ui/copy-chip";
 import { BackupStatus } from "@/gen/nethernode/v1/backups_pb";
 import { type Server, ServerStatus } from "@/gen/nethernode/v1/servers_pb";
-import { errorMessage } from "@/lib/api";
+import { errorMessage, serverClient } from "@/lib/api";
 import { useCanManage } from "@/lib/session";
 import { ago } from "@/lib/time";
+import { withToast } from "@/lib/toast";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { useNow } from "@/lib/use-now";
 import { cn } from "@/lib/utils";
@@ -265,8 +266,9 @@ function Controls({ server }: { server: Server }) {
   const action = useServerAction(server.id, server.name);
   const live = useLiveStats(server.id);
   const now = useNow();
-  const [stopOpen, setStopOpen] = useState(false);
+  const [stopOpen, setStopOpen] = useState<"stop" | "restart" | null>(null);
   const [killOpen, setKillOpen] = useState(false);
+  const online = server.status === ServerStatus.RUNNING ? (server.playersOnline ?? 0) : 0;
   const up = server.status === ServerStatus.RUNNING || server.status === ServerStatus.STARTING;
   const busy = action.isPending || [ServerStatus.INSTALLING, ServerStatus.STOPPING].includes(server.status);
   // A server on another machine is reachable while that machine's agent is.
@@ -280,7 +282,12 @@ function Controls({ server }: { server: Server }) {
       {canManage && (
         <div className="mb-[18px] flex flex-wrap gap-2">
           {up ? (
-            <Button variant="danger" className="flex-1" disabled={disabled} onClick={() => setStopOpen(true)}>
+            <Button
+              variant="danger"
+              className="flex-1"
+              disabled={disabled}
+              onClick={() => setStopOpen("stop")}
+            >
               <Square />
               Stop
             </Button>
@@ -295,12 +302,18 @@ function Controls({ server }: { server: Server }) {
               {server.status === ServerStatus.SLEEPING ? "Wake" : "Start"}
             </Button>
           )}
-          <Button className="flex-1" disabled={disabled || !up} onClick={() => action.mutate("restart")}>
+          <Button
+            className="flex-1"
+            disabled={disabled || !up}
+            // With people playing, ask first (and offer to warn them).
+            onClick={() => (online > 0 ? setStopOpen("restart") : action.mutate("restart"))}
+          >
             <RotateCcw />
             Restart
           </Button>
         </div>
       )}
+      {server.countdown && <Countdown server={server} canManage={canManage} />}
       <dl className="text-meta">
         <Fact label="Players">
           {server.status === ServerStatus.RUNNING && server.playersOnline !== undefined
@@ -335,11 +348,14 @@ function Controls({ server }: { server: Server }) {
         </button>
       )}
       <StopDialog
-        open={stopOpen}
-        onOpenChange={setStopOpen}
+        open={stopOpen !== null}
+        onOpenChange={(open) => !open && setStopOpen(null)}
         name={server.name}
-        players={server.playersOnline}
-        onConfirm={() => action.mutate("stop")}
+        players={online}
+        restart={stopOpen === "restart"}
+        onConfirm={(warnMinutes) =>
+          action.mutate({ action: stopOpen === "restart" ? "restart" : "stop", warnMinutes })
+        }
       />
       <ConfirmDialog
         open={killOpen}
@@ -353,6 +369,39 @@ function Controls({ server }: { server: Server }) {
         }}
       />
     </Panel>
+  );
+}
+
+/** A restart, stop or update counting down, with a way to call it off. */
+function Countdown({ server, canManage }: { server: Server; canManage: boolean }) {
+  const now = useNow(1000);
+  const queryClient = useQueryClient();
+  const cancel = useMutation({
+    mutationFn: () => serverClient.cancelCountdown({ id: server.id }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["servers"] }),
+    onError: (e) => withToast((toast) => toast.error(errorMessage(e))),
+  });
+  const left = Math.max(0, Math.ceil((Number(server.countdownAtMs) - now) / 1000));
+  const clock = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+  const what =
+    server.countdown === "stop" ? "Stopping" : server.countdown === "update" ? "Updating" : "Restarting";
+  return (
+    <div
+      className="mb-[18px] flex items-center justify-between gap-3 rounded-md border border-warning/30 bg-warning-subtle px-3 py-2.5"
+      role="status"
+    >
+      <p className="text-label">
+        <span className="font-[550]">
+          {what} in <span className="font-mono tabular-nums">{clock}</span>
+        </span>
+        <span className="block text-meta text-text-muted">Players are being warned in chat.</span>
+      </p>
+      {canManage && (
+        <Button size="mini" disabled={cancel.isPending} onClick={() => cancel.mutate()}>
+          Call it off
+        </Button>
+      )}
+    </div>
   );
 }
 
