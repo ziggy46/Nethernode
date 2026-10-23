@@ -2526,6 +2526,7 @@ name = "nn-files"
 version = "0.2.11"
 dependencies = [
  "cap-std",
+ "flate2",
  "hex",
  "proptest",
  "rustix",
