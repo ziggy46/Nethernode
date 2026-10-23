@@ -12,6 +12,7 @@ workspace = true
 
 [dependencies]
 cap-std.workspace = true
+flate2.workspace = true
 hex.workspace = true
 serde.workspace = true
 serde_json.workspace = true

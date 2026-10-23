@@ -15,6 +15,7 @@ mod path;
 pub mod properties;
 mod sandbox;
 mod trash;
+mod world;
 
 pub use adopt::{Adopted, OnConflict};
 pub use archive::{CompressReport, ExtractReport, Limits, Progress};
@@ -24,3 +25,4 @@ pub use path::{RelPath, TRASH_DIR, validate_name};
 pub use properties::Properties;
 pub use sandbox::{CopyReport, EDITOR_LIMIT, Entry, EntryKind, Expect, FileContent, ServerFiles};
 pub use trash::{TRASH_RETENTION, TrashItem};
+pub use world::{Dimension, TrimOptions, TrimReport};
