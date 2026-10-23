@@ -1010,6 +1010,176 @@ impl pb::ServerService for ServerRpc {
         })
     }
 
+    async fn get_world(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::GetWorldRequest>,
+    ) -> ServiceResult<pb::GetWorldResponse> {
+        require(&ctx, Permission::ManageServers)?;
+        let server = self.load(request.id).await?;
+        let folder = self
+            .node(&server)?
+            .folder(&server)
+            .await
+            .map_err(node_error)?;
+        let (level, dims) = crate::world::dimensions(&folder).await?;
+        Response::ok(pb::GetWorldResponse {
+            level,
+            dimensions: dims
+                .into_iter()
+                .map(|d| pb::WorldDimension {
+                    id: d.id,
+                    path: d.path,
+                    bytes: d.bytes,
+                    chunks: d.chunks,
+                    ..Default::default()
+                })
+                .collect(),
+            ..Default::default()
+        })
+    }
+
+    async fn trim_world(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::TrimWorldRequest>,
+    ) -> ServiceResult<pb::TrimWorldResponse> {
+        let user = require(&ctx, Permission::ManageServers)?.clone();
+        let server = self.load(request.id).await?;
+        self.node(&server)?;
+        let (minutes, keep, apply) = (request.minutes, request.keep_radius, request.apply);
+        let id = server.id.clone();
+        let job_id = crate::world::start_trim(&self.state, server, minutes, keep, apply, &user.id)?;
+        if apply {
+            audit(
+                &self.state,
+                &user,
+                "server.world_trim",
+                ("server", &id),
+                json!({ "minutes": minutes, "keep_radius": keep }),
+            )
+            .await;
+        }
+        Response::ok(pb::TrimWorldResponse {
+            job_id,
+            ..Default::default()
+        })
+    }
+
+    async fn get_pregen(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::GetPregenRequest>,
+    ) -> ServiceResult<pb::GetPregenResponse> {
+        require(&ctx, Permission::ManageServers)?;
+        let server = self.load(request.id).await?;
+        if let crate::pregen::Support::No(why) = crate::pregen::support(&server) {
+            return Response::ok(pb::GetPregenResponse {
+                unavailable: why.to_owned(),
+                ..Default::default()
+            });
+        }
+        let node = self.node(&server)?;
+        let folder = node.folder(&server).await.map_err(node_error)?;
+        let installed = crate::pregen::installed(&folder, &server).await;
+        let progress = if installed {
+            crate::pregen::progress(&node, &server).await
+        } else {
+            None
+        };
+        let p = progress.clone().unwrap_or_default();
+        Response::ok(pb::GetPregenResponse {
+            installed,
+            server_running: server.status == "running",
+            loaded: progress.is_some(),
+            running: p.running,
+            percent: p.percent,
+            chunks: p.chunks,
+            eta: p.eta,
+            message: p.message,
+            ..Default::default()
+        })
+    }
+
+    async fn install_chunky(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::InstallChunkyRequest>,
+    ) -> ServiceResult<pb::InstallChunkyResponse> {
+        let user = require(&ctx, Permission::ManageServers)?.clone();
+        let server = self.load(request.id).await?;
+        let folder = self
+            .node(&server)?
+            .folder(&server)
+            .await
+            .map_err(node_error)?;
+        let message = crate::pregen::install(&self.state, &server, &folder)
+            .await
+            .map_err(ConnectError::failed_precondition)?;
+        audit(
+            &self.state,
+            &user,
+            "server.chunky_install",
+            ("server", &server.id),
+            json!({}),
+        )
+        .await;
+        Response::ok(pb::InstallChunkyResponse {
+            message,
+            ..Default::default()
+        })
+    }
+
+    async fn start_pregen(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::StartPregenRequest>,
+    ) -> ServiceResult<pb::StartPregenResponse> {
+        let user = require(&ctx, Permission::ManageServers)?.clone();
+        let server = self.load(request.id).await?;
+        let node = self.node(&server)?;
+        let message = crate::pregen::start(&node, &server, request.radius, request.confirm)
+            .await
+            .map_err(ConnectError::failed_precondition)?;
+        audit(
+            &self.state,
+            &user,
+            "server.pregen_start",
+            ("server", &server.id),
+            json!({ "radius": request.radius }),
+        )
+        .await;
+        Response::ok(pb::StartPregenResponse {
+            message,
+            ..Default::default()
+        })
+    }
+
+    async fn cancel_pregen(
+        &self,
+        ctx: RequestContext,
+        request: ServiceRequest<'_, pb::CancelPregenRequest>,
+    ) -> ServiceResult<pb::CancelPregenResponse> {
+        let user = require(&ctx, Permission::ManageServers)?.clone();
+        let server = self.load(request.id).await?;
+        let node = self.node(&server)?;
+        let message = crate::pregen::cancel(&node, &server)
+            .await
+            .map_err(ConnectError::failed_precondition)?;
+        audit(
+            &self.state,
+            &user,
+            "server.pregen_cancel",
+            ("server", &server.id),
+            json!({}),
+        )
+        .await;
+        Response::ok(pb::CancelPregenResponse {
+            message,
+            ..Default::default()
+        })
+    }
+
     async fn cancel_countdown(
         &self,
         ctx: RequestContext,

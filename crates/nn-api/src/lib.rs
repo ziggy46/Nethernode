@@ -60,6 +60,7 @@ pub mod notices;
 pub mod notify;
 mod observability;
 pub mod players;
+mod pregen;
 pub mod proxy_runtime;
 mod request_meta;
 mod rpc;
@@ -68,6 +69,7 @@ mod spa;
 pub mod stats_history;
 mod status_page;
 pub mod uploads;
+mod world;
 
 pub use files::spawn_trash_cleanup;
 pub use middleware::{CurrentUser, PUBLIC_PROCEDURES, SETUP_REQUIRED_HEADER};

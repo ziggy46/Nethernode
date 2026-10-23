@@ -73,3 +73,7 @@ export function jobFinished(jobId: string, result: Result) {
     if (oldest !== undefined) finished.delete(oldest);
   }
 }
+
+/** Where a finished job's result is kept in the query cache, for views that
+ * wait on it (`{ message, failed }`). */
+export const jobResultKey = (jobId: string) => ["job-result", jobId] as const;

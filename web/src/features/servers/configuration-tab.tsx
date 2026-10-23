@@ -28,6 +28,7 @@ import { LOADERS, loaderName } from "./format";
 import { MoveServer } from "./move-server";
 import { deleteProgressKey } from "./queries";
 import { THEME_NAMES } from "./world-banner";
+import { WorldPanel } from "./world-panel";
 
 const GameSettings = lazy(() => import("./game-settings"));
 
@@ -338,6 +339,7 @@ export function ConfigurationTab({ server }: { server: Server }) {
         </form>
         {canManage && (
           <div className="flex flex-col gap-[18px] below-xl:order-3">
+            <WorldPanel server={server} />
             <MoveServer server={server} />
             <CopyServer server={server} />
             <DangerZone server={server} />

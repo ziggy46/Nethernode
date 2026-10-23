@@ -271,6 +271,39 @@ impl Folder {
         .await
     }
 
+    /// The world's dimensions, with their sizes and chunk counts.
+    pub async fn world_dimensions(
+        &self,
+        level: String,
+    ) -> Result<Vec<nn_files::Dimension>, FileError> {
+        if let Kind::Remote(node) = &self.kind {
+            return self.call(node, FolderOp::WorldDimensions { level }).await;
+        }
+        self.run(move |f| f.world_dimensions(&level)).await
+    }
+
+    /// Trims chunks nobody spent time in, or with `apply` false counts
+    /// them (see [`nn_files::ServerFiles::trim_world`]).
+    pub async fn trim_world(
+        &self,
+        level: String,
+        spawn: (i32, i32),
+        options: nn_files::TrimOptions,
+        apply: bool,
+    ) -> Result<nn_files::TrimReport, FileError> {
+        if let Kind::Remote(node) = &self.kind {
+            let op = FolderOp::TrimWorld {
+                level,
+                spawn,
+                options,
+                apply,
+            };
+            return self.call(node, op).await;
+        }
+        self.run(move |f| f.trim_world(&level, spawn, options, apply, &mut |_, _| {}))
+            .await
+    }
+
     /// What a mod jar says about itself, if it says anything.
     pub async fn mod_info(&self, path: &RelPath) -> Result<Option<ModInfo>, FileError> {
         let path = path.clone();

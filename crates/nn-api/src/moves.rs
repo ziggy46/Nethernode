@@ -94,7 +94,7 @@ pub(crate) async fn start_move(
 pub(crate) fn not_moving(state: &AppState, server_id: &str) -> Result<(), ConnectError> {
     if state.nodes.is_moving(server_id) {
         return Err(ConnectError::failed_precondition(
-            "The server is moving to another machine. Try again once that's done.",
+            "The server is busy moving to another machine or having its world trimmed. Try again once that's done.",
         ));
     }
     Ok(())

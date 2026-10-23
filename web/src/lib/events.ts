@@ -10,7 +10,7 @@ import {
   pullKey,
 } from "@/features/servers/queries";
 import { uploadFinished } from "@/features/uploads/store";
-import { jobFinished, jobProgress } from "@/lib/jobs";
+import { jobFinished, jobProgress, jobResultKey } from "@/lib/jobs";
 import { withToast } from "@/lib/toast";
 
 /**
@@ -132,6 +132,10 @@ function applyData(client: QueryClient, event: DataEvent) {
     }
     case "file_job_finished":
       jobFinished(event.job_id, { message: event.message, failed: event.failed });
+      // For views waiting on a particular job's result.
+      client.setQueryData(jobResultKey(event.job_id), { message: event.message, failed: event.failed });
+      if (event.kind === "world-trim")
+        void client.invalidateQueries({ queryKey: ["world", event.server_id] });
       void client.invalidateQueries({ queryKey: ["files", event.server_id] });
       void client.invalidateQueries({ queryKey: ["mods", event.server_id] });
       if (event.kind === "move") {

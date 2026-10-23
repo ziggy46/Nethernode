@@ -372,6 +372,23 @@ pub enum FolderOp {
         /// The file.
         path: RelPath,
     },
+    /// The world's dimensions, with their sizes and chunk counts.
+    WorldDimensions {
+        /// The world folder (`level-name`).
+        level: String,
+    },
+    /// Trims chunks nobody spent time in (or, without `apply`, counts
+    /// them). The server must be stopped.
+    TrimWorld {
+        /// The world folder (`level-name`).
+        level: String,
+        /// The world spawn's chunk.
+        spawn: (i32, i32),
+        /// What to trim.
+        options: nn_files::TrimOptions,
+        /// Trim, rather than only count.
+        apply: bool,
+    },
     /// What a mod jar says about itself.
     ModInfo {
         /// The jar.

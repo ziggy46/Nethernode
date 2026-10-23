@@ -779,6 +779,13 @@ async fn folder(mut stream: LinkStream, node: &Node, id: &str, call: FolderOp) {
         FolderOp::Purge { id } => ok(folder.purge(id.as_deref()).await),
         FolderOp::Sha1 { path } => ok(folder.sha1(&path).await),
         FolderOp::ModInfo { path } => ok(folder.mod_info(&path).await),
+        FolderOp::WorldDimensions { level } => ok(folder.world_dimensions(level).await),
+        FolderOp::TrimWorld {
+            level,
+            spawn,
+            options,
+            apply,
+        } => ok(folder.trim_world(level, spawn, options, apply).await),
         FolderOp::ModIcon { path } => match folder.mod_icon(&path).await {
             Ok(Some(icon)) => {
                 if messages::send(&mut stream, &ok(Ok(Some(icon.len() as u64))))

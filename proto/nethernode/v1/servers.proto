@@ -60,6 +60,28 @@ service ServerService {
   // Applies the fix for one cause from GetCrashDiagnosis (leaving out the
   // mods at fault, or another Java), then starts the server.
   rpc FixCrash(FixCrashRequest) returns (FixCrashResponse);
+  // The world's dimensions, with their sizes and chunk counts.
+  rpc GetWorld(GetWorldRequest) returns (GetWorldResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Counts, or trims, the chunks players spent less than a few minutes in,
+  // so they generate again when someone gets there. Trimming needs the
+  // server stopped, makes a backup first and keeps it from starting until
+  // it's done. A background job: the outcome comes as file_job_finished
+  // (kind world-trim).
+  rpc TrimWorld(TrimWorldRequest) returns (TrimWorldResponse);
+  // Pre-generating the world with Chunky: whether it can, whether Chunky is
+  // installed, and how a running task is doing.
+  rpc GetPregen(GetPregenRequest) returns (GetPregenResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Downloads Chunky for the server's loader from Modrinth (into mods/, or
+  // plugins/ on Paper and Purpur). It loads when the server next starts.
+  rpc InstallChunky(InstallChunkyRequest) returns (InstallChunkyResponse);
+  // Starts pre-generating around the world spawn (the server must run).
+  rpc StartPregen(StartPregenRequest) returns (StartPregenResponse);
+  // Stops the running pre-generation task.
+  rpc CancelPregen(CancelPregenRequest) returns (CancelPregenResponse);
 
   // Up to an hour of per-second resource samples.
   rpc GetServerStats(GetServerStatsRequest) returns (GetServerStatsResponse) {
@@ -270,6 +292,96 @@ message RestartServerRequest {
 }
 
 message RestartServerResponse {}
+
+message GetWorldRequest {
+  string id = 1;
+}
+
+message WorldDimension {
+  // minecraft:overworld, minecraft:the_nether, minecraft:the_end, or a
+  // mod's (namespace:name).
+  string id = 1;
+  // Its folder.
+  string path = 2;
+  // Bytes in its region, entity and POI files.
+  uint64 bytes = 3;
+  // Chunks saved.
+  uint64 chunks = 4;
+}
+
+message GetWorldResponse {
+  // The world folder (level-name).
+  string level = 1;
+  repeated WorldDimension dimensions = 2;
+}
+
+message TrimWorldRequest {
+  string id = 1;
+  // Chunks players spent less than this many minutes in go (1–600).
+  uint32 minutes = 2;
+  // Chunks within this many chunks of the spawn (and the End's centre)
+  // stay.
+  uint32 keep_radius = 3;
+  // Trim; otherwise only count.
+  bool apply = 4;
+}
+
+message TrimWorldResponse {
+  string job_id = 1;
+}
+
+message GetPregenRequest {
+  string id = 1;
+}
+
+message GetPregenResponse {
+  // Why the server can't pre-generate (vanilla), or empty.
+  string unavailable = 1;
+  // Chunky is in mods/ or plugins/.
+  bool installed = 2;
+  // The server is running (Chunky only works then).
+  bool server_running = 3;
+  // Chunky has loaded (it answered).
+  bool loaded = 4;
+  // A task is running.
+  bool running = 5;
+  double percent = 6;
+  uint64 chunks = 7;
+  // Time left, "h:mm:ss".
+  string eta = 8;
+  // Chunky's own words.
+  string message = 9;
+}
+
+message InstallChunkyRequest {
+  string id = 1;
+}
+
+message InstallChunkyResponse {
+  string message = 1;
+}
+
+message StartPregenRequest {
+  string id = 1;
+  // Blocks from the spawn.
+  uint32 radius = 2;
+  // Answer yes to what Chunky asked (it asks before redoing a task, or
+  // when disk space looks short).
+  bool confirm = 3;
+}
+
+message StartPregenResponse {
+  // Chunky's reply.
+  string message = 1;
+}
+
+message CancelPregenRequest {
+  string id = 1;
+}
+
+message CancelPregenResponse {
+  string message = 1;
+}
 
 message GetCrashDiagnosisRequest {
   string id = 1;
