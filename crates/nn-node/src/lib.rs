@@ -485,8 +485,15 @@ impl Node {
 
     /// A server's modules and what each is doing.
     pub async fn modules(&self, server_id: &str) -> Result<Vec<(Module, ModuleState)>> {
-        let local = self.as_local(MODULES_NOT_YET)?;
-        Ok(local.orchestrator()?.modules(server_id).await?)
+        match self {
+            Self::Local(node) => Ok(node.orchestrator()?.modules(server_id).await?),
+            Self::Remote(node) => {
+                node.call(Request::Modules {
+                    server_id: server_id.into(),
+                })
+                .await
+            }
+        }
     }
 
     /// Adds a module to a server (see [`Orchestrator::add_module`]).
@@ -499,11 +506,23 @@ impl Node {
         lifecycle: Option<Lifecycle>,
         memory_mb: Option<i64>,
     ) -> Result<Module> {
-        let local = self.as_local(MODULES_NOT_YET)?;
-        Ok(local
-            .orchestrator()?
-            .add_module(server_id, template, name, settings, lifecycle, memory_mb)
-            .await?)
+        match self {
+            Self::Local(node) => Ok(node
+                .orchestrator()?
+                .add_module(server_id, template, name, settings, lifecycle, memory_mb)
+                .await?),
+            Self::Remote(node) => {
+                node.call(Request::AddModule {
+                    server_id: server_id.into(),
+                    template: template.into(),
+                    name: name.map(str::to_owned),
+                    settings: settings.clone(),
+                    lifecycle,
+                    memory_mb,
+                })
+                .await
+            }
+        }
     }
 
     /// Changes a module's settings; a running one restarts with them.
@@ -514,38 +533,77 @@ impl Node {
         lifecycle: Lifecycle,
         memory_mb: i64,
     ) -> Result<Module> {
-        let local = self.as_local(MODULES_NOT_YET)?;
-        Ok(local
-            .orchestrator()?
-            .update_module(id, settings, lifecycle, memory_mb)
-            .await?)
+        match self {
+            Self::Local(node) => Ok(node
+                .orchestrator()?
+                .update_module(id, settings, lifecycle, memory_mb)
+                .await?),
+            Self::Remote(node) => {
+                node.call(Request::UpdateModule {
+                    id: id.into(),
+                    settings: settings.clone(),
+                    lifecycle,
+                    memory_mb,
+                })
+                .await
+            }
+        }
     }
 
     /// Starts a module.
     pub async fn start_module(&self, id: &str) -> Result<()> {
-        let local = self.as_local(MODULES_NOT_YET)?;
-        Ok(local.orchestrator()?.start_module(id).await?)
+        match self {
+            Self::Local(node) => Ok(node.orchestrator()?.start_module(id).await?),
+            Self::Remote(node) => node.call(Request::StartModule { id: id.into() }).await,
+        }
     }
 
     /// Stops a module.
     pub async fn stop_module(&self, id: &str) -> Result<()> {
-        let local = self.as_local(MODULES_NOT_YET)?;
-        Ok(local.orchestrator()?.stop_module(id).await?)
+        match self {
+            Self::Local(node) => Ok(node.orchestrator()?.stop_module(id).await?),
+            Self::Remote(node) => node.call(Request::StopModule { id: id.into() }).await,
+        }
     }
 
     /// Removes a module, and with `delete_files` its folder.
     pub async fn remove_module(&self, id: &str, delete_files: bool) -> Result<()> {
-        let local = self.as_local(MODULES_NOT_YET)?;
-        Ok(local
-            .orchestrator()?
-            .remove_module(id, delete_files)
-            .await?)
+        match self {
+            Self::Local(node) => Ok(node.orchestrator()?.remove_module(id, delete_files).await?),
+            Self::Remote(node) => {
+                node.call(Request::RemoveModule {
+                    id: id.into(),
+                    delete_files,
+                })
+                .await
+            }
+        }
     }
 
     /// The last lines a module printed.
     pub async fn module_logs(&self, id: &str, lines: usize) -> Result<Vec<String>> {
-        let local = self.as_local(MODULES_NOT_YET)?;
-        Ok(local.orchestrator()?.module_logs(id, lines).await?)
+        match self {
+            Self::Local(node) => Ok(node.orchestrator()?.module_logs(id, lines).await?),
+            Self::Remote(node) => {
+                node.call(Request::ModuleLogs {
+                    id: id.into(),
+                    lines,
+                })
+                .await
+            }
+        }
+    }
+
+    /// A connection to a module's web page on another machine, through its
+    /// agent (modules on this machine are reached at
+    /// [`Self::module_address`]).
+    pub async fn module_connect(&self, id: &str) -> Result<Box<dyn nn_proxy::Tunnel>> {
+        match self {
+            Self::Local(_) => Err(NodeError::NotYet(
+                "modules on this machine are reached directly",
+            )),
+            Self::Remote(node) => node.module_connect(id).await,
+        }
     }
 
     /// Runs the Cloudflare Tunnel connector (this machine only).

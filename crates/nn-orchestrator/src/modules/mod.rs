@@ -586,6 +586,12 @@ impl Orchestrator {
         }
     }
 
+    /// The host port a module's web page is published on, if it has one.
+    pub async fn module_web_port(&self, id: &str) -> Option<u16> {
+        let module = self.store.find_module(id).await.ok()??;
+        u16::try_from(module.web_port?).ok()
+    }
+
     /// A server's modules and what each is doing.
     pub async fn modules(&self, server_id: &str) -> Result<Vec<(Module, ModuleState)>> {
         let server = self.load(server_id).await?;

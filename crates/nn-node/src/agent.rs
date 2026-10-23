@@ -422,6 +422,9 @@ async fn handle(mut stream: LinkStream, node: Node, ctx: Arc<Ctx>, session: Sess
     if let Request::Connect { id } = &request {
         return relay(stream, &node, id).await;
     }
+    if let Request::ModuleConnect { id } = &request {
+        return relay_module(stream, &node, id).await;
+    }
     if let Request::Management { id } = &request {
         return relay_management(stream, &node, id).await;
     }
@@ -520,8 +523,43 @@ async fn answer(node: &Node, request: Request) -> Reply {
             }
             said(adopted)
         }
+        Request::Modules { server_id } => reply(node.modules(&server_id).await),
+        Request::AddModule {
+            server_id,
+            template,
+            name,
+            settings,
+            lifecycle,
+            memory_mb,
+        } => reply(
+            node.add_module(
+                &server_id,
+                &template,
+                name.as_deref(),
+                &settings,
+                lifecycle,
+                memory_mb,
+            )
+            .await,
+        ),
+        Request::UpdateModule {
+            id,
+            settings,
+            lifecycle,
+            memory_mb,
+        } => reply(
+            node.update_module(&id, &settings, lifecycle, memory_mb)
+                .await,
+        ),
+        Request::StartModule { id } => reply(node.start_module(&id).await),
+        Request::StopModule { id } => reply(node.stop_module(&id).await),
+        Request::RemoveModule { id, delete_files } => {
+            reply(node.remove_module(&id, delete_files).await)
+        }
+        Request::ModuleLogs { id, lines } => reply(node.module_logs(&id, lines).await),
         Request::Logs { .. }
         | Request::Connect { .. }
+        | Request::ModuleConnect { .. }
         | Request::Folder { .. }
         | Request::OpenBackup { .. }
         | Request::ReceiveBackup { .. }
@@ -571,6 +609,26 @@ async fn relay_management(mut stream: LinkStream, node: &Node, id: &str) {
             let _ = messages::send(&mut stream, &reply(Ok(None::<String>))).await;
         }
     }
+}
+
+/// Bridges the stream to a module's web page on this machine.
+async fn relay_module(mut stream: LinkStream, node: &Node, id: &str) {
+    let target = match node {
+        Node::Local(local) => match local.orchestrator() {
+            Ok(o) => o
+                .module_web_port(id)
+                .await
+                .map(|port| std::net::SocketAddr::new(o.backend_ip(), port)),
+            Err(_) => None,
+        },
+        Node::Remote(_) => None,
+    };
+    let Some(addr) = target else {
+        let missing = crate::NodeError::Orchestrator(nn_orchestrator::OrchestratorError::NotFound);
+        let _ = messages::send(&mut stream, &reply::<()>(Err(missing))).await;
+        return;
+    };
+    splice(stream, addr, ()).await;
 }
 
 /// Dials `addr`, answers with `answer`, then passes bytes both ways until

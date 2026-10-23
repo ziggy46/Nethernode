@@ -153,6 +153,39 @@ impl Store {
         Ok(result.rows_affected() == 1)
     }
 
+    /// Keeps the panel's copy of a module on another machine (its agent
+    /// has the record): adds it with the same ID, or brings it up to date,
+    /// keeping the panel's own address settings (`web_host`, `web_public`).
+    pub async fn upsert_module_mirror(&self, m: &Module) -> Result<()> {
+        // Runtime-checked rather than query!, so adding it needed no
+        // offline query data.
+        sqlx::query(
+            "INSERT INTO server_modules (id, server_id, template, name, settings_json, lifecycle,
+                                         memory_mb, web_port, web_host, web_public, created_at,
+                                         updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 0, ?10, ?11)
+             ON CONFLICT (id) DO UPDATE SET
+                 template = excluded.template, name = excluded.name,
+                 settings_json = excluded.settings_json, lifecycle = excluded.lifecycle,
+                 memory_mb = excluded.memory_mb, web_port = excluded.web_port,
+                 updated_at = excluded.updated_at",
+        )
+        .bind(&m.id)
+        .bind(&m.server_id)
+        .bind(&m.template)
+        .bind(&m.name)
+        .bind(&m.settings_json)
+        .bind(&m.lifecycle)
+        .bind(m.memory_mb)
+        .bind(m.web_port)
+        .bind(&m.web_host)
+        .bind(m.created_at)
+        .bind(m.updated_at)
+        .execute(self.pool())
+        .await?;
+        Ok(())
+    }
+
     /// Removes a module's record. Returns whether it existed.
     pub async fn delete_module(&self, id: &str) -> Result<bool> {
         let result = sqlx::query!("DELETE FROM server_modules WHERE id = ?1", id)
@@ -169,5 +202,56 @@ impl Store {
         .fetch_all(self.pool())
         .await?;
         Ok(rows)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{NewServer, test_store};
+
+    #[tokio::test]
+    async fn mirrors_keep_the_panels_address_settings() {
+        let store = test_store().await;
+        let server = store
+            .insert_server(NewServer {
+                name: "mc2",
+                slug: "mc2",
+                status: "stopped",
+                mc_version: "1.21.4",
+                loader: "fabric",
+                image: "itzg/minecraft-server",
+                memory_mb: 2048,
+                internal_port: 30_002,
+                sleep_when_empty: false,
+            })
+            .await
+            .unwrap();
+        // As the agent reports it.
+        let mut module = crate::Module {
+            id: "01MODULEONANOTHERMACHINE".into(),
+            server_id: server.id.clone(),
+            template: "bluemap".into(),
+            name: "bluemap".into(),
+            settings_json: "{}".into(),
+            lifecycle: "always".into(),
+            memory_mb: 2048,
+            web_port: Some(8100),
+            web_host: Some("map".into()),
+            web_public: false,
+            created_at: 1,
+            updated_at: 1,
+        };
+        store.upsert_module_mirror(&module).await.unwrap();
+        store
+            .set_module_site(&module.id, Some("map"), true)
+            .await
+            .unwrap();
+        module.memory_mb = 4096;
+        module.updated_at = 2;
+        store.upsert_module_mirror(&module).await.unwrap();
+        let now = store.find_module(&module.id).await.unwrap().unwrap();
+        assert_eq!(now.memory_mb, 4096);
+        assert!(now.web_public, "the panel's own setting stays");
+        assert_eq!(store.list_modules(Some(&server.id)).await.unwrap().len(), 1);
     }
 }

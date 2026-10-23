@@ -50,8 +50,8 @@ pub(crate) async fn start_move(
             "Stop the server before moving it.",
         ));
     }
-    // Modules run on the panel's own machine only, for now (ones NetherNode
-    // serves itself, like the status page, go anywhere).
+    // Modules don't move between machines yet (ones NetherNode serves
+    // itself, like the status page, need nothing moved).
     if store
         .list_modules(Some(&server.id))
         .await
@@ -60,7 +60,7 @@ pub(crate) async fn start_move(
         .any(|m| !nn_orchestrator::modules::template::is_panel(&m.template))
     {
         return Err(ConnectError::failed_precondition(
-            "Remove the server's modules before moving it: modules run on the panel's own machine only for now.",
+            "Remove the server's modules before moving it: modules can't move between machines yet.",
         ));
     }
     let moving = state

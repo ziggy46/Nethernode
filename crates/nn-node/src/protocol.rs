@@ -94,6 +94,68 @@ pub enum Request {
         /// Server ID.
         id: String,
     },
+    /// A server's modules and what each is doing.
+    Modules {
+        /// Server ID.
+        server_id: String,
+    },
+    /// Adds a module; the reply is the module.
+    AddModule {
+        /// Server ID.
+        server_id: String,
+        /// The template.
+        template: String,
+        /// Its name (the template's when absent).
+        name: Option<String>,
+        /// Its settings.
+        settings: serde_json::Map<String, serde_json::Value>,
+        /// When it runs (the template's when absent).
+        lifecycle: Option<nn_orchestrator::modules::Lifecycle>,
+        /// Memory limit, MiB (the template's when absent).
+        memory_mb: Option<i64>,
+    },
+    /// Changes a module's settings; the reply is the module.
+    UpdateModule {
+        /// Module ID.
+        id: String,
+        /// Its settings.
+        settings: serde_json::Map<String, serde_json::Value>,
+        /// When it runs.
+        lifecycle: nn_orchestrator::modules::Lifecycle,
+        /// Memory limit, MiB.
+        memory_mb: i64,
+    },
+    /// Starts a module.
+    StartModule {
+        /// Module ID.
+        id: String,
+    },
+    /// Stops a module.
+    StopModule {
+        /// Module ID.
+        id: String,
+    },
+    /// Removes a module.
+    RemoveModule {
+        /// Module ID.
+        id: String,
+        /// Its folder too.
+        delete_files: bool,
+    },
+    /// The last lines a module printed.
+    ModuleLogs {
+        /// Module ID.
+        id: String,
+        /// How many.
+        lines: usize,
+    },
+    /// Open a module's web page: a [`Reply`], then the stream carries one
+    /// HTTP connection, bytes as they are. Only the module's own web port
+    /// is dialled.
+    ModuleConnect {
+        /// Module ID.
+        id: String,
+    },
     /// Open the server's game port: a [`Reply`], then the stream carries a
     /// player's connection, bytes as they are.
     Connect {

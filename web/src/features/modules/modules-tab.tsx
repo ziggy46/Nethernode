@@ -174,7 +174,7 @@ export default function ModulesTab({ server }: { server: Server }) {
                       machine NetherNode runs on
                     </p>
                   )}
-                  {(m.webAddress || panel) && (
+                  {(m.webAddress || template?.hasWeb || panel) && (
                     <p className="flex flex-wrap items-center gap-x-1.5 text-meta text-text-muted">
                       <Globe className="size-3.5" aria-hidden />
                       {m.webPublic && m.siteAddresses.length > 0 ? (

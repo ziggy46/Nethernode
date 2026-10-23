@@ -32,6 +32,9 @@ const REFRESH_EVERY: Duration = Duration::from_secs(30);
 enum Target {
     /// Its container's web page (`http://127.0.0.1:8100`).
     Forward(String),
+    /// A module on another machine, reached through its agent: (server ID,
+    /// module ID).
+    Remote(String, String),
     /// A page NetherNode serves itself: the status page of this module.
     StatusPage(String),
 }
@@ -155,10 +158,10 @@ pub async fn refresh(state: &AppState) {
             Target::StatusPage(module.id.clone())
         } else if let Some(port) = module.web_port {
             let node = state.nodes.for_server(server);
-            Target::Forward(
-                node.module_address(port)
-                    .unwrap_or_else(|| format!("http://127.0.0.1:{port}")),
-            )
+            match node.module_address(port) {
+                Some(address) => Target::Forward(address),
+                None => Target::Remote(server.id.clone(), module.id.clone()),
+            }
         } else {
             continue;
         };
@@ -216,6 +219,7 @@ pub(crate) async fn dispatch(State(state): State<AppState>, req: Request, next: 
         .and_then(|host| sites().get(&host).cloned());
     match target {
         Some(Target::Forward(target)) => forward(&target, req).await,
+        Some(Target::Remote(server, module)) => forward_remote(&state, &server, &module, req).await,
         Some(Target::StatusPage(module)) => {
             let (method, path) = (req.method().clone(), req.uri().path().to_owned());
             crate::status_page::serve(&state, &module, &method, &path).await
@@ -238,6 +242,64 @@ fn hop_by_hop(name: &header::HeaderName) -> bool {
             | "upgrade"
             | "host"
     )
+}
+
+/// Passes a request to a module on another machine, as HTTP over a tunnel
+/// through its agent.
+async fn forward_remote(
+    state: &AppState,
+    server_id: &str,
+    module_id: &str,
+    req: Request,
+) -> Response {
+    let unavailable = || {
+        (
+            StatusCode::BAD_GATEWAY,
+            "This page isn't running right now, or its machine can't be reached.",
+        )
+            .into_response()
+    };
+    let node = state.nodes.for_server_id(server_id).await;
+    let Ok(tunnel) = node.module_connect(module_id).await else {
+        return unavailable();
+    };
+    let Ok((mut sender, connection)) =
+        hyper::client::conn::http1::handshake(hyper_util::rt::TokioIo::new(tunnel)).await
+    else {
+        return unavailable();
+    };
+    tokio::spawn(async move {
+        let _ = connection.await;
+    });
+    let (parts, body) = req.into_parts();
+    let Ok(body) = axum::body::to_bytes(body, MAX_BODY).await else {
+        return (StatusCode::PAYLOAD_TOO_LARGE, "Too large.").into_response();
+    };
+    let path = parts.uri.path_and_query().map_or("/", |p| p.as_str());
+    let mut request = http::Request::builder()
+        .method(parts.method)
+        .uri(path)
+        .header(header::HOST, "localhost");
+    for (name, value) in &parts.headers {
+        if !hop_by_hop(name) {
+            request = request.header(name, value);
+        }
+    }
+    let Ok(request) = request.body(http_body_util::Full::new(body)) else {
+        return unavailable();
+    };
+    let Ok(response) = sender.send_request(request).await else {
+        return unavailable();
+    };
+    let (head, incoming) = response.into_parts();
+    let mut out = Response::builder().status(head.status);
+    for (name, value) in &head.headers {
+        if !hop_by_hop(name) {
+            out = out.header(name, value);
+        }
+    }
+    out.body(Body::new(incoming))
+        .unwrap_or_else(|_| unavailable())
 }
 
 async fn forward(target: &str, req: Request) -> Response {

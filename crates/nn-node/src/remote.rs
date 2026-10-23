@@ -286,6 +286,14 @@ impl RemoteNode {
         Ok(Box::new(stream))
     }
 
+    /// A connection to a module's web page on the agent's machine.
+    pub(crate) async fn module_connect(&self, id: &str) -> Result<Box<dyn nn_proxy::Tunnel>> {
+        let mut stream = self.open().await?;
+        self.exchange(&mut stream, &Request::ModuleConnect { id: id.to_owned() })
+            .await?;
+        Ok(Box::new(stream))
+    }
+
     /// Runs a folder operation, sending `body` after the request. Returns
     /// the reply and the stream, for operations that send bytes back.
     pub(crate) async fn folder(

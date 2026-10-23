@@ -632,10 +632,11 @@ export const SetModuleSiteResponseSchema: GenMessage<SetModuleSiteResponse> = /*
  * Modules: helper containers that run next to a server, made from
  * templates that come with NetherNode (BlueMap, a 3D web map, for one).
  * Each has its own folder in the server's (modules/<name>/), and joins a
- * private network with the server. Administrators and owners. Modules run
- * on the panel's own machine only for now. A few are part of NetherNode
- * itself (`ModuleTemplate.panel`, like the status page): those have no
- * container and work for any server.
+ * private network with the server. Administrators and owners. Modules
+ * run on the server's machine (through its agent for other machines, whose
+ * pages the panel reaches over the agent's link). A few are part of
+ * NetherNode itself (`ModuleTemplate.panel`, like the status page): those
+ * have no container.
  *
  * @generated from service nethernode.v1.ModuleService
  */

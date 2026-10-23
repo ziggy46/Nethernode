@@ -2435,6 +2435,8 @@ dependencies = [
  "hex",
  "http",
  "http-body-util",
+ "hyper",
+ "hyper-util",
  "jiff",
  "metrics",
  "metrics-exporter-prometheus",

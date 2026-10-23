@@ -65,6 +65,27 @@ impl ModuleRpc {
         )
     }
 
+    /// Brings the panel's copies of a remote server's modules in line with
+    /// what its agent reported.
+    async fn mirror(
+        &self,
+        server_id: &str,
+        recorded: &[nn_store::Module],
+        found: &[(nn_store::Module, ModuleState)],
+    ) {
+        let store = self.state.auth.store();
+        for (module, _) in found {
+            if let Err(e) = store.upsert_module_mirror(module).await {
+                tracing::warn!(server = %server_id, module = %module.id, error = %e, "couldn't keep a copy of a module");
+            }
+        }
+        for gone in recorded.iter().filter(|m| {
+            !template::is_panel(&m.template) && !found.iter().any(|(f, _)| f.id == m.id)
+        }) {
+            let _ = store.delete_module(&gone.id).await;
+        }
+    }
+
     /// Adds a module NetherNode serves itself (the status page): just its
     /// record, since there's no container or folder. Works for servers on
     /// any machine.
@@ -239,14 +260,31 @@ impl pb::ModuleService for ModuleRpc {
         // What the containers are doing; without it, still list what's
         // recorded.
         let (mut states, unavailable) = match node.modules(&server.id).await {
-            Ok(found) => (
-                found
-                    .into_iter()
-                    .map(|(m, s)| (m.id, s))
-                    .collect::<HashMap<_, _>>(),
-                String::new(),
-            ),
+            Ok(found) => {
+                // The agent has the records of modules on another machine;
+                // the panel keeps copies for their addresses.
+                if !node.is_local() {
+                    self.mirror(&server.id, &recorded, &found).await;
+                }
+                (
+                    found
+                        .into_iter()
+                        .map(|(m, s)| (m.id, s))
+                        .collect::<HashMap<_, _>>(),
+                    String::new(),
+                )
+            }
             Err(e) => (HashMap::new(), e.to_string()),
+        };
+        let recorded = if node.is_local() {
+            recorded
+        } else {
+            self.state
+                .auth
+                .store()
+                .list_modules(Some(&server.id))
+                .await
+                .map_err(store_error)?
         };
         let mut modules = Vec::new();
         for m in recorded {
@@ -276,17 +314,28 @@ impl pb::ModuleService for ModuleRpc {
                 self.add_panel_module(&server, t, name, &settings(request.settings_json)?)
                     .await?
             }
-            None => node
-                .add_module(
-                    &server.id,
-                    request.template,
-                    name,
-                    &settings(request.settings_json)?,
-                    lifecycle(request.lifecycle)?,
-                    memory,
-                )
-                .await
-                .map_err(node_error)?,
+            None => {
+                let module = node
+                    .add_module(
+                        &server.id,
+                        request.template,
+                        name,
+                        &settings(request.settings_json)?,
+                        lifecycle(request.lifecycle)?,
+                        memory,
+                    )
+                    .await
+                    .map_err(node_error)?;
+                if !node.is_local() {
+                    self.state
+                        .auth
+                        .store()
+                        .upsert_module_mirror(&module)
+                        .await
+                        .map_err(store_error)?;
+                }
+                module
+            }
         };
         audit(
             &self.state,
@@ -354,14 +403,29 @@ impl pb::ModuleService for ModuleRpc {
         } else {
             let lifecycle = lifecycle(request.lifecycle)?
                 .ok_or_else(|| ConnectError::invalid_argument("choose when it runs"))?;
-            node.update_module(
-                &module.id,
-                &settings(request.settings_json)?,
-                lifecycle,
-                i64::from(request.memory_mb),
-            )
-            .await
-            .map_err(node_error)?
+            let updated = node
+                .update_module(
+                    &module.id,
+                    &settings(request.settings_json)?,
+                    lifecycle,
+                    i64::from(request.memory_mb),
+                )
+                .await
+                .map_err(node_error)?;
+            if node.is_local() {
+                updated
+            } else {
+                let store = self.state.auth.store();
+                store
+                    .upsert_module_mirror(&updated)
+                    .await
+                    .map_err(store_error)?;
+                store
+                    .find_module(&updated.id)
+                    .await
+                    .map_err(store_error)?
+                    .unwrap_or(updated)
+            }
         };
         audit(
             &self.state,
@@ -434,6 +498,14 @@ impl pb::ModuleService for ModuleRpc {
             node.remove_module(&module.id, request.delete_files)
                 .await
                 .map_err(node_error)?;
+            if !node.is_local() {
+                self.state
+                    .auth
+                    .store()
+                    .delete_module(&module.id)
+                    .await
+                    .map_err(store_error)?;
+            }
         }
         module_sites::refresh(&self.state).await;
         audit(
