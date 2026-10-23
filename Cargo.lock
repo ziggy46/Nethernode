@@ -2381,7 +2381,7 @@ dependencies = [
 
 [[package]]
 name = "nethernode"
-version = "0.2.11"
+version = "0.2.12"
 dependencies = [
  "anyhow",
  "axum",
@@ -2420,7 +2420,7 @@ dependencies = [
 
 [[package]]
 name = "nn-api"
-version = "0.2.11"
+version = "0.2.12"
 dependencies = [
  "axum",
  "base64 0.23.1",
@@ -2473,7 +2473,7 @@ dependencies = [
 
 [[package]]
 name = "nn-auth"
-version = "0.2.11"
+version = "0.2.12"
 dependencies = [
  "argon2",
  "base64 0.23.1",
@@ -2498,7 +2498,7 @@ dependencies = [
 
 [[package]]
 name = "nn-catalog"
-version = "0.2.11"
+version = "0.2.12"
 dependencies = [
  "hex",
  "jiff",
@@ -2517,7 +2517,7 @@ dependencies = [
 
 [[package]]
 name = "nn-events"
-version = "0.2.11"
+version = "0.2.12"
 dependencies = [
  "serde",
  "tokio",
@@ -2525,7 +2525,7 @@ dependencies = [
 
 [[package]]
 name = "nn-files"
-version = "0.2.11"
+version = "0.2.12"
 dependencies = [
  "cap-std",
  "flate2",
@@ -2546,7 +2546,7 @@ dependencies = [
 
 [[package]]
 name = "nn-link"
-version = "0.2.11"
+version = "0.2.12"
 dependencies = [
  "base64 0.23.1",
  "bytes",
@@ -2566,7 +2566,7 @@ dependencies = [
 
 [[package]]
 name = "nn-mcproto"
-version = "0.2.11"
+version = "0.2.12"
 dependencies = [
  "bytes",
  "proptest",
@@ -2579,7 +2579,7 @@ dependencies = [
 
 [[package]]
 name = "nn-node"
-version = "0.2.11"
+version = "0.2.12"
 dependencies = [
  "bytes",
  "flate2",
@@ -2614,7 +2614,7 @@ dependencies = [
 
 [[package]]
 name = "nn-orchestrator"
-version = "0.2.11"
+version = "0.2.12"
 dependencies = [
  "base64 0.23.1",
  "bollard",
@@ -2640,7 +2640,7 @@ dependencies = [
 
 [[package]]
 name = "nn-players"
-version = "0.2.11"
+version = "0.2.12"
 dependencies = [
  "base64 0.23.1",
  "flate2",
@@ -2660,7 +2660,7 @@ dependencies = [
 
 [[package]]
 name = "nn-proxy"
-version = "0.2.11"
+version = "0.2.12"
 dependencies = [
  "arc-swap",
  "bytes",
@@ -2677,7 +2677,7 @@ dependencies = [
 
 [[package]]
 name = "nn-store"
-version = "0.2.11"
+version = "0.2.12"
 dependencies = [
  "serde",
  "serde_json",
@@ -2691,7 +2691,7 @@ dependencies = [
 
 [[package]]
 name = "nn-uploads"
-version = "0.2.11"
+version = "0.2.12"
 dependencies = [
  "base64 0.23.1",
  "bytes",
