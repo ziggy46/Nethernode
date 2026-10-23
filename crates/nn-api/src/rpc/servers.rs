@@ -240,7 +240,20 @@ impl ServerRpc {
             .map_err(ConnectError::failed_precondition)?;
         let (state, this) = (self.state.clone(), Self::new(self.state.clone()));
         tokio::spawn(async move {
-            if ticket.wait(&state).await {
+            if !ticket.wait(&state).await {
+                return;
+            }
+            // It may have stopped on its own meanwhile: a restart then
+            // mustn't start it, and there's nothing left to stop.
+            let up = state
+                .auth
+                .store()
+                .find_server(&id)
+                .await
+                .ok()
+                .flatten()
+                .is_some_and(|s| matches!(s.status.as_str(), "running" | "starting"));
+            if up {
                 this.spawn_operation(node, id, action.as_str(), run);
             }
         });

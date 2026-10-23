@@ -170,6 +170,8 @@ function applyData(client: QueryClient, event: DataEvent) {
       void client.invalidateQueries({ queryKey: ["uploads"] });
       break;
     case "server_status_changed":
+      // A crash or a clean exit can change why it stopped.
+      void client.invalidateQueries({ queryKey: ["crash", event.server_id] });
       if (event.status !== "starting" && event.status !== "running") {
         client.removeQueries({ queryKey: liveStatsKey(event.server_id) });
       }

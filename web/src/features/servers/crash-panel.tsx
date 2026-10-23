@@ -8,7 +8,8 @@ import type { CrashCause, Server } from "@/gen/nethernode/v1/servers_pb";
 import { errorMessage, serverClient } from "@/lib/api";
 import { withToast } from "@/lib/toast";
 
-const crashKey = (id: string) => ["servers", "crash", id] as const;
+/** Not under ["servers"]: those refetch on every player-count ping. */
+export const crashKey = (id: string) => ["crash", id] as const;
 
 /** Why a crashed server stopped, from its crash report, with a fix to click
  * where NetherNode has one. Shows nothing when it can't tell. */
