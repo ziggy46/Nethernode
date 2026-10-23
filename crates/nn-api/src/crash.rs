@@ -214,6 +214,27 @@ fn between<'a>(line: &'a str, start: &str, end: &str) -> Option<&'a str> {
     rest.split(end).next().filter(|s| !s.is_empty())
 }
 
+/// Whether a log shows the server failing rather than stopping normally:
+/// a server whose mods fail to load can exit cleanly, so it's recorded as
+/// stopped rather than crashed.
+pub(crate) fn shows_failure(text: &str) -> bool {
+    [
+        "Failed to start the minecraft server",
+        "Mod loading has failed",
+        "Crash report saved to",
+        "Preparing crash report",
+        "Exception in thread \"main\"",
+        "Encountered an unexpected exception",
+        "Incompatible mods found!",
+        "Incompatible mod set!",
+    ]
+    .iter()
+    .any(|marker| text.contains(marker))
+}
+
+/// The most mods one fix leaves out.
+const MAX_LEFT_OUT: usize = 20;
+
 /// How much of the end of the log is read when there's no crash report.
 const LOG_TAIL: u64 = 1024 * 1024;
 /// A crash report this much older than the last start belongs to an
@@ -346,6 +367,14 @@ async fn leave_out(
     let jars: Vec<&Jar> = mod_ids.iter().filter_map(|id| found.get(id)).collect();
     if jars.is_empty() {
         return Err("None of those mods is in mods/ any more.".into());
+    }
+    // Each is read whole to identify it on CurseForge; a crash that blames
+    // more than this is better looked at by hand.
+    if jars.len() > MAX_LEFT_OUT {
+        return Err(format!(
+            "That's {} mods; leave them out from the Mods tab instead.",
+            jars.len()
+        ));
     }
     // A pack installed from its modpack would download them again.
     let mut note = String::new();
@@ -499,6 +528,16 @@ Details:
                 "thinkbeforedrop".into()
             ])]
         );
+    }
+
+    #[test]
+    fn failures_are_told_from_normal_stops() {
+        assert!(shows_failure(
+            "[17:48:58] [main/ERROR] [minecraft/Main]: Failed to start the minecraft server"
+        ));
+        assert!(!shows_failure(
+            "[Server thread/INFO]: Stopping server\n[Server thread/INFO]: Saving worlds"
+        ));
     }
 
     #[test]

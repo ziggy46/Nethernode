@@ -921,6 +921,14 @@ impl pb::ServerService for ServerRpc {
         let Some((source, text)) = crash::read_crash(&folder, &server).await else {
             return Response::ok(pb::GetCrashDiagnosisResponse::default());
         };
+        // A stopped server's log only counts when it shows a failed start
+        // (mods failing to load can end with a clean exit).
+        if server.status != "crashed"
+            && !source.starts_with("crash-reports/")
+            && !crash::shows_failure(&text)
+        {
+            return Response::ok(pb::GetCrashDiagnosisResponse::default());
+        }
         let causes = crash::diagnose(&text);
         let found = if causes.iter().any(|c| !c.culprits().is_empty()) {
             crash::jars_by_id(&folder).await

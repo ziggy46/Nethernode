@@ -181,7 +181,10 @@ function ConsoleTab({ server }: { server: Server }) {
           </section>
         ) : (
           <>
-            {server.status === ServerStatus.CRASHED && <CrashPanel server={server} canManage={canManage} />}
+            {/* Mods failing to load can end with a clean exit, so stopped servers are checked too. */}
+            {(server.status === ServerStatus.CRASHED || server.status === ServerStatus.STOPPED) && (
+              <CrashPanel server={server} canManage={canManage} />
+            )}
             <ConsolePanel server={server} />
           </>
         )}
