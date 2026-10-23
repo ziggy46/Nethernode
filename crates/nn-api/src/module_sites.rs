@@ -158,9 +158,13 @@ pub async fn refresh(state: &AppState) {
             Target::StatusPage(module.id.clone())
         } else if let Some(port) = module.web_port {
             let node = state.nodes.for_server(server);
-            match node.module_address(port) {
-                Some(address) => Target::Forward(address),
-                None => Target::Remote(server.id.clone(), module.id.clone()),
+            if node.is_local() {
+                Target::Forward(
+                    node.module_address(port)
+                        .unwrap_or_else(|| format!("http://127.0.0.1:{port}")),
+                )
+            } else {
+                Target::Remote(server.id.clone(), module.id.clone())
             }
         } else {
             continue;
