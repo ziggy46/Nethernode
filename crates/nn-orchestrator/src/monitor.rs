@@ -45,6 +45,7 @@ pub(crate) fn spawn(
     let mut state = rt.state();
     state.stop_tasks();
     state.launching = false;
+    state.started_logged = false;
     state.tick = None;
     state.paused = false;
     state.tasks.push(tokio::spawn(crate::ticks::poll(
@@ -105,9 +106,28 @@ async fn watch_health(orch: Arc<Orchestrator>, id: String, adopted: bool) {
     // Readiness: first install can take minutes (downloading the server jar,
     // running the Forge installer), so there's no deadline; the container
     // exiting ends this task.
+    let mut attempts = 0u32;
     let mut players = loop {
         if let Some(players) = ping(addr, bedrock).await {
             break players;
+        }
+        attempts += 1;
+        if bedrock && attempts == 10 {
+            // Say why, since the console shows a server that's up.
+            let why = match nn_mcproto::bedrock::ping(addr, PING_TIMEOUT).await {
+                Ok(pong) => format!(
+                    "it answered, but not with a status NetherNode reads: {}",
+                    pong.status
+                ),
+                Err(error) => error.to_string(),
+            };
+            tracing::warn!(server = %id, %addr, %why, "a Bedrock server isn't answering NetherNode's status ping");
+        }
+        // A Bedrock server that says it started is running, even when the
+        // ping can't reach it (players are then unknown).
+        if bedrock && attempts >= 5 && orch.runtime(&id).state().started_logged {
+            tracing::warn!(server = %id, "using the server's own \"Server started.\" instead of a status ping");
+            break Players { online: 0, max: 0 };
         }
         if adopted && server.status == "running" {
             // Adopted but not answering: show that it's (re)starting.
@@ -305,6 +325,9 @@ async fn stream_logs(orch: Arc<Orchestrator>, rt: Arc<Runtime>, container: Strin
             let line = visible(&line);
             if let Some(paused) = pause_change(line) {
                 rt.state().paused = paused;
+            }
+            if line.contains("INFO] Server started.") {
+                rt.state().started_logged = true;
             }
             rt.logs.push(line);
         }

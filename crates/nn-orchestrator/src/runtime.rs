@@ -110,6 +110,9 @@ pub(crate) struct State {
     /// NetherNode is starting the container itself, so Docker's `start`
     /// event shouldn't be treated as an outside start.
     pub launching: bool,
+    /// The server printed that it has started (Bedrock's "Server started."),
+    /// whatever its status ping says.
+    pub started_logged: bool,
 }
 
 impl State {
