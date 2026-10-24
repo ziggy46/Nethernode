@@ -32,6 +32,7 @@ const LOADER_NAMES: Record<string, string> = {
   quilt: "Quilt",
   modrinth: "Modrinth modpack",
   curseforge: "CurseForge modpack",
+  bedrock: "Bedrock",
 };
 
 /** Server software you can pick directly (not modpacks). */
@@ -45,6 +46,8 @@ export function loaderName(loader: string): string {
 export function versionLabel(version: string): string {
   if (version === "LATEST") return "Latest release";
   if (version === "SNAPSHOT") return "Latest snapshot";
+  if (version === "PREVIOUS") return "Previous release";
+  if (version === "PREVIEW") return "Preview";
   return version;
 }
 
@@ -56,6 +59,8 @@ const MODDED = ["fabric", "quilt", "forge", "neoforge", "modrinth", "curseforge"
  * defaults; Java needs room beyond the heap, and mods need more).
  */
 export function memoryLimitBytes(heapMb: number, loader = ""): number {
+  // Bedrock has no Java heap: the setting is the whole limit.
+  if (loader === "bedrock") return heapMb * 1024 * 1024;
   const [percent, min] = MODDED.includes(loader) ? [0.4, 2048] : [0.25, 1024];
   return (heapMb + Math.max(heapMb * percent, min)) * 1024 * 1024;
 }

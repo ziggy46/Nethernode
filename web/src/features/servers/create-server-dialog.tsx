@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
 
 import { PLATFORM_NAMES } from "../catalog/queries";
 import { domainsQuery } from "../domains/queries";
-import { routesQuery } from "../proxy/queries";
+import { listenersQuery, routesQuery } from "../proxy/queries";
 import { type Draft, domainAddress, MORE_SOFTWARE, newDraft, SOFTWARE, subdomainError } from "./create/draft";
 import {
   ModpackStep,
@@ -36,7 +36,7 @@ import {
   SoftwareStep,
   VersionStep,
 } from "./create/steps";
-import { loaderName } from "./format";
+import { loaderName, versionLabel } from "./format";
 import { FromTemplateDialog, TemplatePicker } from "./templates";
 
 export { EULA_URL } from "./create/steps";
@@ -91,6 +91,8 @@ export function CreateServerDialog({
   const address = domainAddress(draft, domains);
   const taken = address ? routes.find((r) => r.hostname === address) : undefined;
   const takenBy = taken ? taken.serverName || "another server" : undefined;
+  const listeners = useQuery({ ...listenersQuery, enabled: open && canManageProxy }).data ?? [];
+  const portTaken = draft.network === "port" && listeners.some((l) => l.port === port);
   const problems: (string | null)[] = [
     null,
     isPack
@@ -100,7 +102,9 @@ export function CreateServerDialog({
           ? "Choose the pack's Minecraft version."
           : null
       : !draft.mcVersion.trim()
-        ? "Choose a Minecraft version."
+        ? draft.software === "bedrock"
+          ? "Choose a Bedrock version."
+          : "Choose a Minecraft version."
         : null,
     null,
     draft.network === "domain" && !address
@@ -113,7 +117,9 @@ export function CreateServerDialog({
             ? "Enter a hostname like play.example.com."
             : draft.network === "port" && !(port >= 1024 && port <= 65535)
               ? "Choose a port between 1024 and 65535."
-              : null,
+              : portTaken
+                ? `Another listener already uses port ${port}.`
+                : null,
     !draft.name.trim()
       ? "Give your server a name."
       : draft.network === "domain" && takenBy
@@ -195,7 +201,9 @@ export function CreateServerDialog({
           // The server pins the version it installs, so "newest" is only
           // true on the day it's made.
           (draft.pack?.versionId ? "The version chosen" : "The newest when it's created, then kept")
-        : `${draft.mcVersion}${draft.loaderVersion ? ` · ${loaderName(draft.software)} ${draft.loaderVersion}` : ""}`,
+        : draft.software === "bedrock"
+          ? versionLabel(draft.mcVersion)
+          : `${draft.mcVersion}${draft.loaderVersion ? ` · ${loaderName(draft.software)} ${draft.loaderVersion}` : ""}`,
     ],
     ...(machines.length > 1 ? ([["Machine", machine?.name ?? "This machine"]] as [string, string][]) : []),
     ["Memory", `${(draft.memoryMb / 1024).toFixed(draft.memoryMb % 1024 ? 1 : 0)} GB`],
@@ -206,7 +214,9 @@ export function CreateServerDialog({
         : draft.network === "hostname"
           ? draft.hostname.trim().toLowerCase()
           : draft.network === "port"
-            ? `This machine's address, port ${draft.port}`
+            ? draft.software === "bedrock"
+              ? `This machine's address, UDP port ${draft.port}`
+              : `This machine's address, port ${draft.port}`
             : "None yet (add one on Proxy & routes)",
     ],
   ];

@@ -33,4 +33,18 @@ describe("memoryLimitBytes", () => {
     expect(memoryLimitBytes(4096, "fabric")).toBe(mb(6144));
     expect(memoryLimitBytes(6144, "curseforge")).toBe(mb(6144 + 6144 * 0.4));
   });
+
+  it("is the whole setting for Bedrock, which has no Java heap", () => {
+    expect(memoryLimitBytes(2048, "bedrock")).toBe(2048 * 1024 * 1024);
+  });
+});
+
+describe("Bedrock names", () => {
+  it("labels the versions the image takes", () => {
+    expect(loaderName("bedrock")).toBe("Bedrock");
+    expect(versionLabel("LATEST")).toBe("Latest release");
+    expect(versionLabel("PREVIOUS")).toBe("Previous release");
+    expect(versionLabel("PREVIEW")).toBe("Preview");
+    expect(versionLabel("1.21.50.07")).toBe("1.21.50.07");
+  });
 });

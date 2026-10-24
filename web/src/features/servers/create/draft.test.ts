@@ -50,4 +50,9 @@ describe("softwareInfo", () => {
     expect(softwareInfo("quilt")?.memoryMb).toBe(4096);
     expect(softwareInfo("paper")?.name).toBe("Paper");
   });
+
+  it("offers Bedrock with a small memory default", () => {
+    expect(softwareInfo("bedrock")?.name).toBe("Bedrock");
+    expect(softwareInfo("bedrock")?.memoryMb).toBe(2048);
+  });
 });
