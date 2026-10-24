@@ -739,6 +739,13 @@ pub const BEDROCK_FIELDS: &[Field] = &[
         int(1, 65_535),
         "The port for IPv6 players inside the container.",
     ),
+    f(
+        "transport",
+        "Network transport",
+        Network,
+        Choice(&["raknet", "nethernet"]),
+        "How players connect. NetherNode relays RakNet, the classic one.",
+    ),
 ];
 
 /// `server.properties` keys NetherNode controls on a Bedrock server.
@@ -758,6 +765,10 @@ pub const BEDROCK_MANAGED: &[(&str, &str)] = &[
     (
         "server-portv6",
         "NetherNode connects to the server on this port inside its container.",
+    ),
+    (
+        "transport",
+        "NetherNode relays Bedrock players over RakNet (one UDP port); NetherNet needs more than that.",
     ),
 ];
 

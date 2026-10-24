@@ -30,7 +30,8 @@ web panel:
 - **Bedrock servers too.** Run Mojang's Bedrock Dedicated Server for players on
   Windows, phones and tablets. Each gets a UDP port of its own that the proxy
   relays, sleeps when empty and wakes when someone tries to join, with live
-  backups and a settings editor. (Consoles can't add servers by address.)
+  backups and a settings editor. (Consoles can't add servers by address, and
+  Mojang is phasing out the classic protocol the proxy relays, RakNet.)
 - **Modules.** Add BlueMap's 3D web map or a public status page to a server,
   each on an address of its own (`map-mc1.example.com`). With a Cloudflare
   API token, NetherNode runs the tunnel and keeps the DNS records in step.

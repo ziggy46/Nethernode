@@ -661,6 +661,10 @@ function BedrockNetwork({
           retry in a moment.
         </li>
         <li>Xbox, PlayStation and Switch can't add servers by address.</li>
+        <li>
+          Mojang is replacing Bedrock's classic network protocol (RakNet) with a new one. Current servers
+          still accept RakNet, which is what NetherNode relays, but a future version may drop it.
+        </li>
       </ul>
     </div>
   );

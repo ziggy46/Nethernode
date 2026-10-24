@@ -65,6 +65,7 @@ pub const RESERVED_ENV: &[&str] = &[
     "MODRINTH_EXCLUDE_FILES",
     "GENERIC_PACK",
     "GENERIC_PACKS",
+    "TRANSPORT",
     "FORGE_VERSION",
     "NEOFORGE_VERSION",
     "FABRIC_LOADER_VERSION",
@@ -524,6 +525,10 @@ fn build_bedrock(input: &SpecInput<'_>) -> ContainerSpec {
     }
     env.insert("VERSION".into(), input.mc_version.trim().to_owned());
     env.insert("SERVER_PORT".into(), BEDROCK_PORT.to_string());
+    // Bedrock 1.26 defaults to NetherNet (TCP signalling, then UDP ports
+    // chosen per player), which a single relayed port can't carry. RakNet,
+    // the classic transport, is one UDP port.
+    env.insert("TRANSPORT".into(), "raknet".into());
     env.insert("MAX_PLAYERS".into(), input.max_players.to_string());
     if let Some((uid, gid)) = input.run_as {
         env.insert("UID".into(), uid.to_string());
@@ -812,6 +817,7 @@ mod tests {
             "EULA=TRUE",
             "VERSION=LATEST",
             "SERVER_PORT=19132",
+            "TRANSPORT=raknet",
             "MAX_PLAYERS=20",
             "SERVER_NAME=Hello",
         ] {
