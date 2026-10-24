@@ -21,6 +21,14 @@ pub const LABEL_SPEC_HASH: &str = "nethernode.spec_hash";
 
 /// Port the game listens on inside the container.
 pub const CONTAINER_GAME_PORT: &str = "25565/tcp";
+/// Port a Bedrock server listens on inside its container (UDP).
+pub const CONTAINER_BEDROCK_PORT: &str = "19132/udp";
+/// [`CONTAINER_BEDROCK_PORT`] as a number, for the `SERVER_PORT` variable.
+pub const BEDROCK_PORT: u16 = 19132;
+/// The loader id of Bedrock Dedicated Server.
+pub const BEDROCK: &str = "bedrock";
+/// The image Bedrock servers run in, without a tag.
+pub const BEDROCK_IMAGE: &str = "itzg/minecraft-bedrock-server";
 /// RCON port inside the container (the image default).
 pub const CONTAINER_RCON_PORT: &str = "25575/tcp";
 /// Server management protocol port inside the container.
@@ -122,6 +130,27 @@ pub fn memory_limit_mb(heap_mb: i64, percent: u32, min_mb: u32) -> i64 {
 /// runs at about 7.3 GB).
 pub const MODDED_OVERHEAD: (u32, u32) = (40, 2048);
 
+/// Whether a loader is Bedrock Dedicated Server, which has no Java, RCON,
+/// mods or heap, and is reached over UDP.
+pub fn is_bedrock(loader: &str) -> bool {
+    loader == BEDROCK
+}
+
+/// Whether `version` is one a Bedrock server can run: `LATEST`, `PREVIOUS`
+/// or `PREVIEW`, or a number like `1.21.50.07`.
+pub fn is_valid_bedrock_version(version: &str) -> bool {
+    let version = version.trim();
+    matches!(
+        version.to_ascii_uppercase().as_str(),
+        "LATEST" | "PREVIOUS" | "PREVIEW"
+    ) || (!version.is_empty()
+        && version.len() <= 24
+        && version.split('.').count() >= 2
+        && version
+            .split('.')
+            .all(|part| !part.is_empty() && part.bytes().all(|b| b.is_ascii_digit())))
+}
+
 /// Whether a loader runs mods (and so needs more room beyond the heap).
 pub fn is_modded(loader: &str) -> bool {
     matches!(
@@ -133,7 +162,10 @@ pub fn is_modded(loader: &str) -> bool {
 /// Container memory limit for `loader`: modded servers get at least
 /// [`MODDED_OVERHEAD`].
 pub fn memory_limit_mb_for(loader: &str, heap_mb: i64, percent: u32, min_mb: u32) -> i64 {
-    if is_modded(loader) {
+    if is_bedrock(loader) {
+        // No heap to add to: the setting is the whole limit.
+        heap_mb
+    } else if is_modded(loader) {
         memory_limit_mb(
             heap_mb,
             percent.max(MODDED_OVERHEAD.0),
@@ -155,6 +187,9 @@ pub const LOADERS: &[(&str, &str, Option<&str>)] = &[
     ("quilt", "QUILT", Some("QUILT_LOADER_VERSION")),
     ("modrinth", "MODRINTH", None),
     ("curseforge", "AUTO_CURSEFORGE", None),
+    // Not an itzg/minecraft-server TYPE: the Bedrock image is built by
+    // `build_bedrock`.
+    (BEDROCK, "BEDROCK", None),
 ];
 
 /// Loaders that install a modpack rather than plain server software.
@@ -314,6 +349,9 @@ pub fn container_name(slug: &str) -> String {
 
 /// Builds the container definition.
 pub fn build(input: &SpecInput<'_>) -> ContainerSpec {
+    if is_bedrock(input.loader) {
+        return build_bedrock(input);
+    }
     let (_, mut ty, mut pin_var) = LOADERS
         .iter()
         .find(|(id, ..)| *id == input.loader)
@@ -460,6 +498,78 @@ pub fn build(input: &SpecInput<'_>) -> ContainerSpec {
         ..Default::default()
     };
 
+    let hash = spec_hash(&body);
+    labels.insert(LABEL_SPEC_HASH.to_owned(), hash.clone());
+    body.labels = Some(labels);
+    ContainerSpec {
+        name: container_name(input.slug),
+        body,
+        hash,
+    }
+}
+
+/// The container for a Bedrock server. Its image is configured by env vars
+/// named like `server.properties` keys, see
+/// <https://github.com/itzg/docker-minecraft-bedrock-server>. There is no
+/// RCON: commands go in through the image's `send-command`.
+fn build_bedrock(input: &SpecInput<'_>) -> ContainerSpec {
+    let mut env: BTreeMap<String, String> = BTreeMap::new();
+    for (key, value) in input.extra_env {
+        if !RESERVED_ENV.contains(&key.as_str()) && is_env_name(key) {
+            env.insert(key.clone(), value.clone());
+        }
+    }
+    if input.eula_accepted {
+        env.insert("EULA".into(), "TRUE".into());
+    }
+    env.insert("VERSION".into(), input.mc_version.trim().to_owned());
+    env.insert("SERVER_PORT".into(), BEDROCK_PORT.to_string());
+    env.insert("MAX_PLAYERS".into(), input.max_players.to_string());
+    if let Some((uid, gid)) = input.run_as {
+        env.insert("UID".into(), uid.to_string());
+        env.insert("GID".into(), gid.to_string());
+    }
+    if let Some(motd) = input.motd.filter(|m| !m.is_empty()) {
+        env.insert("SERVER_NAME".into(), motd.into());
+    }
+
+    let port_bindings = HashMap::from([(
+        CONTAINER_BEDROCK_PORT.to_owned(),
+        Some(vec![PortBinding {
+            host_ip: Some(input.publish_ip.to_string()),
+            host_port: Some(input.game_port.to_string()),
+        }]),
+    )]);
+    let data_dir = input.servers_dir.join(input.slug);
+    let host_config = HostConfig {
+        binds: Some(vec![format!("{}:/data", data_dir.display())]),
+        port_bindings: Some(port_bindings),
+        memory: Some(input.memory_mb * 1024 * 1024),
+        nano_cpus: input
+            .cpu_limit
+            .filter(|c| *c > 0.0)
+            .map(|c| (c * 1e9) as i64),
+        restart_policy: Some(RestartPolicy {
+            name: Some(RestartPolicyNameEnum::NO),
+            maximum_retry_count: None,
+        }),
+        ..Default::default()
+    };
+    let mut labels = HashMap::from([
+        (LABEL_MANAGED.to_owned(), "true".to_owned()),
+        (LABEL_SERVER_ID.to_owned(), input.server_id.to_owned()),
+    ]);
+    let mut body = ContainerCreateBody {
+        image: Some(input.image.to_owned()),
+        env: Some(env.iter().map(|(k, v)| format!("{k}={v}")).collect()),
+        exposed_ports: Some(vec![CONTAINER_BEDROCK_PORT.to_owned()]),
+        host_config: Some(host_config),
+        // A TTY and open stdin: the image reads its console from them.
+        tty: Some(true),
+        open_stdin: Some(true),
+        labels: Some(labels.clone()),
+        ..Default::default()
+    };
     let hash = spec_hash(&body);
     labels.insert(LABEL_SPEC_HASH.to_owned(), hash.clone());
     body.labels = Some(labels);
@@ -684,6 +794,69 @@ mod tests {
             assert_eq!(loader_type(id), Some(*ty));
         }
         assert_eq!(loader_type("bukkit"), None);
+    }
+
+    #[test]
+    fn bedrock_servers_get_a_udp_port_and_no_java() {
+        let extra = BTreeMap::new();
+        let dir = PathBuf::from("/srv/servers");
+        let mut i = input(&extra, &dir);
+        i.image = "itzg/minecraft-bedrock-server:latest";
+        i.loader = "bedrock";
+        i.loader_version = None;
+        i.mc_version = "LATEST";
+        i.memory_mb = 2048;
+        let spec = build(&i);
+        let env = env(&spec);
+        for want in [
+            "EULA=TRUE",
+            "VERSION=LATEST",
+            "SERVER_PORT=19132",
+            "MAX_PLAYERS=20",
+            "SERVER_NAME=Hello",
+        ] {
+            assert!(env.iter().any(|e| e == want), "missing {want}: {env:?}");
+        }
+        for unwanted in ["TYPE=", "MEMORY=", "RCON", "USE_AIKAR"] {
+            assert!(
+                !env.iter().any(|e| e.contains(unwanted)),
+                "{unwanted} in {env:?}"
+            );
+        }
+        let host = spec.body.host_config.as_ref().unwrap();
+        let bindings = host.port_bindings.as_ref().unwrap();
+        assert_eq!(bindings.len(), 1);
+        let binding = bindings["19132/udp"].as_ref().unwrap();
+        assert_eq!(binding[0].host_port.as_deref(), Some("30000"));
+        assert_eq!(binding[0].host_ip.as_deref(), Some("127.0.0.1"));
+        assert_eq!(spec.body.exposed_ports, Some(vec!["19132/udp".to_owned()]));
+        // The setting is the whole memory limit.
+        assert_eq!(host.memory, Some(2048 * 1024 * 1024));
+    }
+
+    #[test]
+    fn bedrock_versions() {
+        for ok in [
+            "LATEST",
+            "latest",
+            "PREVIOUS",
+            "PREVIEW",
+            "1.21.50.07",
+            "1.21",
+        ] {
+            assert!(is_valid_bedrock_version(ok), "{ok}");
+        }
+        for bad in [
+            "",
+            "1",
+            "1..2",
+            "1.21.x",
+            "latest;rm",
+            "1.21.50.07.1234567890123456",
+        ] {
+            assert!(!is_valid_bedrock_version(bad), "{bad}");
+        }
+        assert!(is_bedrock("bedrock") && !is_bedrock("paper"));
     }
 
     fn pack(platform: &str) -> Modpack {

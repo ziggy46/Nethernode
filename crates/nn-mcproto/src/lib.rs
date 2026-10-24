@@ -3,10 +3,13 @@
 //! Covers only what a hostname-routing proxy needs before login completes:
 //! VarInts, bounded frames, the Handshake, Login Start, login Disconnect,
 //! the status (server list ping) exchange, and the legacy pre-1.7 ping.
-//! Nothing here parses traffic after login, which may be encrypted.
+//! Nothing here parses traffic after login, which may be encrypted. The
+//! [`bedrock`] module is the exception to "Java": Bedrock's server list ping
+//! over UDP, for the proxy's Bedrock listeners.
 //!
 //! Primary reference: <https://minecraft.wiki/w/Java_Edition_protocol>
 
+pub mod bedrock;
 #[cfg(feature = "tokio")]
 pub mod client;
 pub mod codec;

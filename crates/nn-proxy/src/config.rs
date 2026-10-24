@@ -15,6 +15,17 @@ pub struct ProxyConfig {
     pub backends: Vec<BackendSpec>,
 }
 
+/// What a listener carries.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum ListenerKind {
+    /// Java Edition players, over TCP; routed by hostname.
+    #[default]
+    Java,
+    /// Bedrock Edition players, over UDP; everything on the port goes to
+    /// the server its `*` route names.
+    Bedrock,
+}
+
 /// A listener to accept players on.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ListenerSpec {
@@ -24,6 +35,8 @@ pub struct ListenerSpec {
     pub bind: SocketAddr,
     /// Send a PROXY protocol v2 header to backends.
     pub proxy_protocol: bool,
+    /// Java (TCP) or Bedrock (UDP).
+    pub kind: ListenerKind,
 }
 
 /// A hostname route.

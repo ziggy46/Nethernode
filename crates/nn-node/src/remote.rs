@@ -286,6 +286,21 @@ impl RemoteNode {
         Ok(Box::new(stream))
     }
 
+    /// Opens a tunnel to a Bedrock server's game port (UDP).
+    pub(crate) async fn connect_udp(&self, id: &str) -> std::io::Result<Box<dyn nn_proxy::Tunnel>> {
+        let offline = |_| std::io::Error::new(std::io::ErrorKind::NotConnected, "offline");
+        let mut stream = self.open().await.map_err(offline)?;
+        self.exchange(&mut stream, &Request::ConnectUdp { id: id.to_owned() })
+            .await
+            .map_err(|e| match e {
+                NodeError::Offline(_) => {
+                    std::io::Error::new(std::io::ErrorKind::NotConnected, e.to_string())
+                }
+                other => std::io::Error::other(other.to_string()),
+            })?;
+        Ok(Box::new(stream))
+    }
+
     /// A connection to a module's web page on the agent's machine.
     pub(crate) async fn module_connect(&self, id: &str) -> Result<Box<dyn nn_proxy::Tunnel>> {
         let mut stream = self.open().await?;

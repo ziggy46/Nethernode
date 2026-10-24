@@ -27,6 +27,10 @@ web panel:
 - **Any server, any pack.** Vanilla, Paper, Fabric, Forge, NeoForge and Quilt,
   or install a Modrinth or CurseForge modpack in a few clicks (from the
   author's server pack when there is one), and update it with a backup first.
+- **Bedrock servers too.** Run Mojang's Bedrock Dedicated Server for players on
+  Windows, phones and tablets. Each gets a UDP port of its own that the proxy
+  relays, sleeps when empty and wakes when someone tries to join, with live
+  backups and a settings editor. (Consoles can't add servers by address.)
 - **Modules.** Add BlueMap's 3D web map or a public status page to a server,
   each on an address of its own (`map-mc1.example.com`). With a Cloudflare
   API token, NetherNode runs the tunnel and keeps the DNS records in step.
@@ -115,7 +119,8 @@ docker compose up -d
 Open `http://<machine>:8080`, create the owner account, and create your first
 server. To let friends join from outside your network, point a hostname at the
 machine (or forward port 25565 on your router) and add a route on the
-**Proxy & routes** page; it lists the DNS records each route needs.
+**Proxy & routes** page; it lists the DNS records each route needs. Bedrock
+servers use UDP instead: forward each one's port (19132 for the first) too.
 
 Images are tagged `latest` and by version (`0.2.6`, `0.2`). New features
 come out first as edge builds (`edge`, or `0.2.10-edge.41`) from the `edge`

@@ -280,9 +280,17 @@ impl pb::ProxyService for ProxyRpc {
                 "Port must be between 1 and 65535.",
             ));
         }
-        let (listener_id, route_id) = store
-            .add_server_port(&server.id, &bind_addr.to_string(), port)
-            .await
+        // A Bedrock server's port carries UDP.
+        let added = if nn_orchestrator::spec::is_bedrock(&server.loader) {
+            store
+                .add_bedrock_port(&server.id, &bind_addr.to_string(), port)
+                .await
+        } else {
+            store
+                .add_server_port(&server.id, &bind_addr.to_string(), port)
+                .await
+        };
+        let (listener_id, route_id) = added
             .map_err(|e| conflict(e, "Another listener already uses that address and port."))?;
         let live = self.reload().await?;
         crate::module_sites::refresh(&self.state).await;

@@ -36,6 +36,14 @@ enum Source {
 
 /// Reads tick times while the server runs, into its runtime state.
 pub(crate) async fn poll(orch: Arc<Orchestrator>, id: String) {
+    // Bedrock servers have no RCON to ask.
+    if orch
+        .load(&id)
+        .await
+        .is_ok_and(|server| crate::spec::is_bedrock(&server.loader))
+    {
+        return;
+    }
     let mut source = None;
     let mut misses = 0;
     loop {

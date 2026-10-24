@@ -218,6 +218,7 @@ mod tests {
             id: id.into(),
             bind: "0.0.0.0:25565".parse().unwrap(),
             proxy_protocol: pp,
+            kind: crate::config::ListenerKind::Java,
         }
     }
 
