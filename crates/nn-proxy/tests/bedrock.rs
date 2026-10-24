@@ -126,7 +126,10 @@ async fn a_running_servers_ping_is_answered_by_the_server() {
     let pong = raknet::decode_pong(&receive(&player).await).unwrap();
     assert_eq!(pong.time, 99, "the client's timestamp is echoed");
     let status = Status::parse(&pong.status).unwrap();
-    assert_eq!((status.motd.as_str(), status.online, status.max), ("Real Server", 3, 10));
+    assert_eq!(
+        (status.motd.as_str(), status.online, status.max),
+        ("Real Server", 3, 10)
+    );
 }
 
 #[tokio::test]
@@ -165,7 +168,10 @@ async fn a_running_servers_sessions_are_relayed_both_ways() {
 
     let join = join_packet();
     player.send(&join).await.unwrap();
-    assert_eq!(receive(&player).await, [b"ECHO:".as_slice(), &join].concat());
+    assert_eq!(
+        receive(&player).await,
+        [b"ECHO:".as_slice(), &join].concat()
+    );
     // Later datagrams of the session aren't pings or joins; they still arrive.
     player.send(&[0x84, 1, 2, 3]).await.unwrap();
     assert_eq!(receive(&player).await, b"ECHO:\x84\x01\x02\x03");

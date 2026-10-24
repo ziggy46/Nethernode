@@ -2,3 +2,8 @@
 # script is only an optimization and isn't needed.
 allowBuilds:
   '@bufbuild/buf': false
+
+# undici (a dependency of jsdom, used only by the tests) before 8.12.2 has a
+# denial-of-service advisory.
+overrides:
+  undici: '>=8.12.2'
