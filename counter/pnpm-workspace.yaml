@@ -2,3 +2,7 @@
 allowBuilds:
   esbuild: true
   workerd: true
+
+# miniflare's undici before 7.30.1 has a denial-of-service advisory.
+overrides:
+  undici: '>=7.30.1 <8'
