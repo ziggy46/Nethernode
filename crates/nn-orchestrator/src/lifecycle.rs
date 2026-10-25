@@ -1356,6 +1356,44 @@ impl Orchestrator {
         Ok(String::new())
     }
 
+    /// A new Bedrock server starts with its allowlist on and nobody in it,
+    /// so no one can join. Turns it off in `server.properties` and in the
+    /// running server. Done once, on a server's first start: after that
+    /// the admin's choice stands.
+    pub(crate) async fn bedrock_open_allowlist(&self, server: &Server) {
+        let Ok(dir) = self.server_dir(&server.slug) else {
+            return;
+        };
+        let edited =
+            tokio::task::spawn_blocking(move || -> std::result::Result<(), nn_files::FileError> {
+                let files = nn_files::ServerFiles::open(&dir)?;
+                let path = nn_files::RelPath::parse("server.properties")?;
+                let content = match files.read(&path, nn_files::EDITOR_LIMIT) {
+                    Ok(content) => content,
+                    Err(nn_files::FileError::NotFound(_)) => return Ok(()),
+                    Err(e) => return Err(e),
+                };
+                let mut props =
+                    nn_files::Properties::parse(&String::from_utf8_lossy(&content.data));
+                props.set("allow-list", "false");
+                files.write(&path, props.to_string().as_bytes(), nn_files::Expect::Any)?;
+                Ok(())
+            })
+            .await;
+        match edited {
+            Ok(Ok(())) => {}
+            Ok(Err(error)) => {
+                tracing::warn!(server = %server.id, %error, "couldn't turn the allowlist off")
+            }
+            Err(error) => {
+                tracing::warn!(server = %server.id, %error, "couldn't turn the allowlist off")
+            }
+        }
+        if let Err(error) = self.command(&server.id, "allowlist off").await {
+            tracing::debug!(server = %server.id, %error, "couldn't turn the allowlist off in the running server");
+        }
+    }
+
     /// Pauses a running Bedrock server's world saving and waits until its
     /// files are safe to copy (`save hold`, then `save query` until the
     /// server says so). Call [`Self::bedrock_resume_saves`] afterwards,

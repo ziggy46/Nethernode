@@ -145,6 +145,9 @@ async fn watch_health(orch: Arc<Orchestrator>, id: String, adopted: bool) {
         let _ = orch.store.mark_server_started(&id, now_ms()).await;
     }
     publish_players(&orch, &id, players);
+    if bedrock && server.last_started_at.is_none() {
+        orch.bedrock_open_allowlist(&server).await;
+    }
 
     let mut empty_since = (players.online == 0).then(Instant::now);
     loop {
