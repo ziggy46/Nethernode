@@ -9,7 +9,7 @@ import { type Server, ServerStatus } from "@/gen/nethernode/v1/servers_pb";
 import { useCanManage } from "@/lib/session";
 import { withToast } from "@/lib/toast";
 
-import { isBedrock, useBedrockPort } from "./bedrock";
+import { isBedrock } from "./bedrock";
 import { formatUptime, gb, loaderName, versionLabel } from "./format";
 import { type LiveStats, liveStatsKey } from "./queries";
 import { useServerAction } from "./use-server-actions";
@@ -76,7 +76,6 @@ export function ServerCard({ server, now }: { server: Server; now: number }) {
   );
   const memoryLimit = live?.memoryLimitBytes ?? (server.settings?.memoryMb ?? 0) * 1024 * 1024;
   const address = server.hostnames[0];
-  const bedrockPort = useBedrockPort(server);
 
   return (
     <article className="group min-w-0 overflow-hidden rounded-lg border border-border bg-surface-subtle transition duration-200 hover:-translate-y-0.5 hover:border-primary/40 motion-reduce:hover:translate-y-0">
@@ -131,27 +130,17 @@ export function ServerCard({ server, now }: { server: Server; now: number }) {
 
         <div className="mt-[13px] flex min-h-5 items-center gap-[5px] font-mono text-meta text-text-secondary">
           {isBedrock(server.loader) ? (
-            bedrockPort ? (
-              <>
-                <span className="truncate">UDP port {bedrockPort}</span>
-                <button
-                  type="button"
-                  onClick={() => void copyAddress(String(bedrockPort))}
-                  className="inline-flex rounded-xs p-0.5 text-text-muted hover:text-text-primary"
-                  aria-label={`Copy port ${bedrockPort}`}
-                >
-                  <Copy className="size-3" />
-                </button>
-              </>
-            ) : (
-              <Link
-                to="/servers/$serverId"
-                params={{ serverId: server.id }}
-                className="font-sans text-text-muted underline-offset-2 hover:underline"
+            <>
+              <span className="truncate">port {server.internalPort}</span>
+              <button
+                type="button"
+                onClick={() => void copyAddress(String(server.internalPort))}
+                className="inline-flex rounded-xs p-0.5 text-text-muted hover:text-text-primary"
+                aria-label={`Copy port ${server.internalPort}`}
               >
-                No port yet · open the server
-              </Link>
-            )
+                <Copy className="size-3" />
+              </button>
+            </>
           ) : address ? (
             <>
               <span className="truncate">{address}</span>

@@ -4,8 +4,8 @@
 //! VarInts, bounded frames, the Handshake, Login Start, login Disconnect,
 //! the status (server list ping) exchange, and the legacy pre-1.7 ping.
 //! Nothing here parses traffic after login, which may be encrypted. The
-//! [`bedrock`] module is the exception to "Java": Bedrock's server list ping
-//! over UDP, for the proxy's Bedrock listeners.
+//! [`bedrock`] module is the exception to "Java": the status a Bedrock
+//! server gives over HTTP, for telling that it's up and who's on it.
 //!
 //! Primary reference: <https://minecraft.wiki/w/Java_Edition_protocol>
 

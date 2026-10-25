@@ -730,21 +730,21 @@ pub const BEDROCK_FIELDS: &[Field] = &[
         "Port",
         Network,
         int(1, 65_535),
-        "The port the server listens on inside its container.",
+        "The port players first connect to, inside the server's container.",
     ),
     f(
-        "server-portv6",
-        "IPv6 port",
+        "server-udp-ports",
+        "Game ports",
         Network,
-        int(1, 65_535),
-        "The port for IPv6 players inside the container.",
+        Text,
+        "The UDP ports players' game traffic uses, and the address they're told to send it to.",
     ),
     f(
         "transport",
         "Network transport",
         Network,
         Choice(&["raknet", "nethernet"]),
-        "How players connect. NetherNode relays RakNet, the classic one.",
+        "How players connect.",
     ),
 ];
 
@@ -763,12 +763,12 @@ pub const BEDROCK_MANAGED: &[(&str, &str)] = &[
         "NetherNode connects to the server on this port inside its container.",
     ),
     (
-        "server-portv6",
-        "NetherNode connects to the server on this port inside its container.",
+        "server-udp-ports",
+        "NetherNode publishes these ports and tells players the address to use.",
     ),
     (
         "transport",
-        "NetherNode relays Bedrock players over RakNet (one UDP port); NetherNet needs more than that.",
+        "NetherNode runs Bedrock servers on NetherNet, the transport current clients use.",
     ),
 ];
 

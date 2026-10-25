@@ -172,7 +172,6 @@ async fn start(
         id: "main".into(),
         bind: "127.0.0.1:0".parse().unwrap(),
         proxy_protocol,
-        kind: nn_proxy::ListenerKind::Java,
     };
     let statuses = proxy
         .apply(ProxyConfig {
@@ -757,13 +756,11 @@ async fn listeners_report_bind_failures_independently() {
             id: "ok".into(),
             bind: "127.0.0.1:0".parse().unwrap(),
             proxy_protocol: false,
-            kind: nn_proxy::ListenerKind::Java,
         },
         ListenerSpec {
             id: "clash".into(),
             bind: taken_addr,
             proxy_protocol: false,
-            kind: nn_proxy::ListenerKind::Java,
         },
     ];
     let statuses = proxy
@@ -869,7 +866,6 @@ async fn start_tunneled(far: Option<SocketAddr>) -> (Proxy, SocketAddr, Arc<Tunn
                 id: "main".into(),
                 bind: "127.0.0.1:0".parse().unwrap(),
                 proxy_protocol: false,
-                kind: nn_proxy::ListenerKind::Java,
             }],
             routes: vec![route("far.example.com", Some("far"))],
             backends: vec![far_server],

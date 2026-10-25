@@ -71,14 +71,13 @@ pub(crate) fn spawn(
 }
 
 /// Pings the server, with and without a PROXY header (whichever it expects).
-/// A Bedrock server is pinged over UDP instead.
+/// A Bedrock server is asked for its status over HTTP instead.
 async fn ping(addr: SocketAddr, bedrock: bool) -> Option<Players> {
     if bedrock {
-        let pong = nn_mcproto::bedrock::ping(addr, PING_TIMEOUT).await.ok()?;
-        let status = nn_mcproto::bedrock::Status::parse(&pong.status)?;
+        let status = nn_mcproto::bedrock::probe(addr, PING_TIMEOUT).await.ok()?;
         return Some(Players {
-            online: status.online,
-            max: status.max,
+            online: status.players,
+            max: status.max_players,
         });
     }
     for prelude in [&[][..], &PROXY_V2_LOCAL[..]] {
@@ -114,14 +113,11 @@ async fn watch_health(orch: Arc<Orchestrator>, id: String, adopted: bool) {
         attempts += 1;
         if bedrock && attempts == 10 {
             // Say why, since the console shows a server that's up.
-            let why = match nn_mcproto::bedrock::ping(addr, PING_TIMEOUT).await {
-                Ok(pong) => format!(
-                    "it answered, but not with a status NetherNode reads: {}",
-                    pong.status
-                ),
+            let why = match nn_mcproto::bedrock::probe(addr, PING_TIMEOUT).await {
+                Ok(_) => "it answered just now".to_owned(),
                 Err(error) => error.to_string(),
             };
-            tracing::warn!(server = %id, %addr, %why, "a Bedrock server isn't answering NetherNode's status ping");
+            tracing::warn!(server = %id, %addr, %why, "a Bedrock server isn't answering NetherNode's status request");
         }
         // A Bedrock server that says it started is running, even when the
         // ping can't reach it (players are then unknown).

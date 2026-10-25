@@ -149,6 +149,13 @@ pub struct DockerConfig {
     /// The data folder's path on the Docker host, when NetherNode runs in a
     /// container and can't work it out itself.
     pub host_data_dir: Option<PathBuf>,
+    /// Where Bedrock servers' ports are published. Players connect to them
+    /// directly, so every interface by default.
+    pub bedrock_publish_ip: std::net::IpAddr,
+    /// The address Bedrock servers tell players to send game traffic to: an
+    /// IP address (your LAN address for play at home), or `<public_ip>` to
+    /// have the server image look up this machine's public one.
+    pub bedrock_address: String,
 }
 
 impl Default for DockerConfig {
@@ -163,6 +170,8 @@ impl Default for DockerConfig {
             memory_overhead_min_mb: 1024,
             backend_ip: std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
             host_data_dir: None,
+            bedrock_publish_ip: std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED),
+            bedrock_address: "<public_ip>".into(),
         }
     }
 }

@@ -162,13 +162,6 @@ pub enum Request {
         /// Server ID.
         id: String,
     },
-    /// Open a Bedrock server's game port (UDP): a [`Reply`], then the
-    /// stream carries one player's datagrams, each behind a two-byte
-    /// length ([`nn_proxy::bedrock::write_datagram`]).
-    ConnectUdp {
-        /// Server ID.
-        id: String,
-    },
     /// Something in a server's folder; the reply is a [`FolderReply`]. Some
     /// operations send or receive the file's bytes, raw, right after their
     /// request or reply (see [`FolderOp`]).

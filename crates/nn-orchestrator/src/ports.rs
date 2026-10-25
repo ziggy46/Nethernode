@@ -19,6 +19,14 @@ pub fn allocate(
     (free.len() == count).then_some(free)
 }
 
+/// The signalling port for a new Bedrock server: the lowest from 19132 on that
+/// `used` doesn't have and `is_free` allows. Its UDP range follows from it
+/// ([`crate::spec::bedrock_udp_start`]).
+pub fn allocate_bedrock(used: &[i64], is_free: impl Fn(u16) -> bool) -> Option<u16> {
+    (crate::spec::BEDROCK_PORT..crate::spec::BEDROCK_PORT + crate::spec::BEDROCK_SLOTS)
+        .find(|p| !used.contains(&i64::from(*p)) && is_free(*p))
+}
+
 /// Whether nothing on this host is listening on `127.0.0.1:port`.
 pub fn is_free_on_localhost(port: u16) -> bool {
     is_free(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST), port)
@@ -37,6 +45,15 @@ pub fn is_free(ip: std::net::IpAddr, port: u16) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bedrock_servers_take_the_next_port_from_19132() {
+        assert_eq!(allocate_bedrock(&[], |_| true), Some(19132));
+        assert_eq!(allocate_bedrock(&[19132, 30000], |_| true), Some(19133));
+        assert_eq!(allocate_bedrock(&[], |p| p != 19132), Some(19133));
+        let all: Vec<i64> = (19132..19132 + 64).collect();
+        assert_eq!(allocate_bedrock(&all, |_| true), None);
+    }
 
     #[test]
     fn allocates_lowest_free_ports() {

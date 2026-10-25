@@ -190,15 +190,17 @@ export function ConfigurationTab({ server }: { server: Server }) {
                 />
               </div>
 
-              <ToggleRow
-                id={ids.sleep}
-                checked={form.sleepWhenEmpty}
-                onChange={(v) => set("sleepWhenEmpty", v)}
-                title="Sleep when empty"
-              >
-                Stop after a stretch with no players; start again when someone joins.
-              </ToggleRow>
-              {form.sleepWhenEmpty && (
+              {!bedrock && (
+                <ToggleRow
+                  id={ids.sleep}
+                  checked={form.sleepWhenEmpty}
+                  onChange={(v) => set("sleepWhenEmpty", v)}
+                  title="Sleep when empty"
+                >
+                  Stop after a stretch with no players; start again when someone joins.
+                </ToggleRow>
+              )}
+              {!bedrock && form.sleepWhenEmpty && (
                 <div className="mb-[17px] flex items-center gap-2 pl-0.5 text-label text-text-secondary">
                   <label htmlFor={`${ids.sleep}-minutes`}>Sleep after</label>
                   <Input

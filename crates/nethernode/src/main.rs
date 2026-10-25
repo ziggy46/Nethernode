@@ -360,6 +360,8 @@ async fn start_orchestrator(
     orch_config.memory_overhead_percent = config.docker.memory_overhead_percent;
     orch_config.memory_overhead_min_mb = config.docker.memory_overhead_min_mb;
     orch_config.backend_ip = config.docker.backend_ip;
+    orch_config.bedrock_publish_ip = config.docker.bedrock_publish_ip;
+    orch_config.bedrock_address = config.docker.bedrock_address.clone();
     orch_config.host_servers_dir = config
         .docker
         .host_data_dir
