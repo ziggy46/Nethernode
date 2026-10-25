@@ -38,8 +38,6 @@ import { FilesPanel } from "../files/files-panel";
 import { hasMods, ModsPanel } from "../mods/mods-panel";
 import { ModulesPanel } from "../modules/modules-panel";
 import { PlayersPanel } from "../players/players-panel";
-import { BedrockJoin, BedrockPortChip, isBedrock } from "./bedrock";
-import { BedrockPlayers } from "./bedrock-players";
 import { ConfigurationTab } from "./configuration-tab";
 import { CrashPanel } from "./crash-panel";
 import { useDockerAvailable } from "./docker-notice";
@@ -100,11 +98,7 @@ export function ServerPage({ id }: { id: string }) {
               {versionLabel(s.mcVersion)}
               {s.nodeId !== "local" && ` · on ${s.nodeName}`}
             </span>
-            {isBedrock(s.loader) ? (
-              <BedrockPortChip server={s} />
-            ) : (
-              address && <CopyChip text={address} mono className="text-label" />
-            )}
+            {address && <CopyChip text={address} mono className="text-label" />}
           </p>
         </div>
       </div>
@@ -139,7 +133,7 @@ export function ServerPage({ id }: { id: string }) {
           <ConsoleTab server={s} />
         </Tabs.Content>
         <Tabs.Content value="players">
-          {isBedrock(s.loader) ? <BedrockPlayers server={s} /> : <PlayersPanel server={s} />}
+          <PlayersPanel server={s} />
         </Tabs.Content>
         {hasMods(s) && (
           <Tabs.Content value="mods">
@@ -188,10 +182,9 @@ function ConsoleTab({ server }: { server: Server }) {
         ) : (
           <>
             {/* Mods failing to load can end with a clean exit, so stopped servers are checked too. */}
-            {!isBedrock(server.loader) &&
-              (server.status === ServerStatus.CRASHED || server.status === ServerStatus.STOPPED) && (
-                <CrashPanel server={server} canManage={canManage} />
-              )}
+            {(server.status === ServerStatus.CRASHED || server.status === ServerStatus.STOPPED) && (
+              <CrashPanel server={server} canManage={canManage} />
+            )}
             <ConsolePanel server={server} />
           </>
         )}
@@ -201,7 +194,6 @@ function ConsoleTab({ server }: { server: Server }) {
 
       <aside className="flex flex-col gap-[18px] below-lg:grid below-lg:grid-cols-2 below-lg:gap-[15px] below-sm:grid-cols-1">
         <Controls server={server} />
-        {isBedrock(server.loader) && <BedrockJoin server={server} />}
         <ProtectPanel server={server} />
       </aside>
     </div>

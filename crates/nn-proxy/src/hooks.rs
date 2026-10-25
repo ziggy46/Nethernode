@@ -65,20 +65,6 @@ pub trait ProxyHooks: Send + Sync + 'static {
         })
     }
 
-    /// Opens a tunnel to a Bedrock server on another machine. Each
-    /// datagram crosses it behind a two-byte length ([`crate::bedrock`]).
-    fn dial_udp<'a>(
-        &'a self,
-        _server_id: &'a str,
-    ) -> BoxFuture<'a, std::io::Result<Box<dyn Tunnel>>> {
-        Box::pin(async {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::Unsupported,
-                "no way to reach other machines",
-            ))
-        })
-    }
-
     /// Starts a sleeping server.
     fn wake<'a>(&'a self, server_id: &'a str) -> BoxFuture<'a, WakeOutcome>;
 

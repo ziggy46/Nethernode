@@ -35,20 +35,6 @@ pub const LOADERS: &[&str] = &[
     "vanilla", "paper", "purpur", "fabric", "quilt", "forge", "neoforge",
 ];
 
-/// What a Bedrock server can run. The image takes a release number too, but
-/// Mojang publishes no list to read them from, so a number is typed.
-fn bedrock_versions(previews: bool) -> Vec<McVersion> {
-    [("LATEST", false), ("PREVIOUS", false), ("PREVIEW", true)]
-        .into_iter()
-        .filter(|(_, preview)| previews || !preview)
-        .map(|(id, snapshot)| McVersion {
-            id: id.to_owned(),
-            snapshot,
-            released_ms: 0,
-        })
-        .collect()
-}
-
 impl Catalog {
     /// Minecraft versions `loader` supports, newest first.
     pub async fn mc_versions(
@@ -56,9 +42,6 @@ impl Catalog {
         loader: &str,
         snapshots: bool,
     ) -> Result<Vec<McVersion>, Error> {
-        if loader == "bedrock" {
-            return Ok(bedrock_versions(snapshots));
-        }
         let all = self.mojang().await?;
         let supported: Option<HashSet<String>> = match loader {
             "vanilla" => None,
@@ -93,7 +76,7 @@ impl Catalog {
         mc: &str,
     ) -> Result<Vec<LoaderVersion>, Error> {
         let mut out = match loader {
-            "vanilla" | "bedrock" => Vec::new(),
+            "vanilla" => Vec::new(),
             "fabric" => {
                 let raw = self
                     .cached_text(
@@ -516,18 +499,6 @@ mod tests {
 
     fn fixture(name: &str) -> String {
         std::fs::read_to_string(format!("{}/fixtures/{name}", env!("CARGO_MANIFEST_DIR"))).unwrap()
-    }
-
-    #[test]
-    fn bedrock_offers_latest_and_previous_with_previews_on_request() {
-        let ids = |previews| {
-            bedrock_versions(previews)
-                .into_iter()
-                .map(|v| v.id)
-                .collect::<Vec<_>>()
-        };
-        assert_eq!(ids(false), ["LATEST", "PREVIOUS"]);
-        assert_eq!(ids(true), ["LATEST", "PREVIOUS", "PREVIEW"]);
     }
 
     #[test]

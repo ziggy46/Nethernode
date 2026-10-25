@@ -5,8 +5,8 @@ use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 
 use nn_proxy::{
-    BackendSpec, BoxFuture, ListenerKind, ListenerSpec, ListenerStatus, PlayerJoin, Proxy,
-    ProxyConfig, ProxyHooks, RouteSpec, ServerState, WakeOutcome,
+    BackendSpec, BoxFuture, ListenerSpec, ListenerStatus, PlayerJoin, Proxy, ProxyConfig,
+    ProxyHooks, RouteSpec, ServerState, WakeOutcome,
 };
 use nn_store::{NewPlayerSession, Store};
 use tokio::sync::Mutex;
@@ -60,7 +60,6 @@ impl ProxyRuntime {
 
     async fn load_config(&self) -> nn_store::Result<ProxyConfig> {
         let listeners = if self.enabled {
-            let bedrock = self.store.bedrock_listener_ids().await?;
             self.store
                 .list_listeners()
                 .await?
@@ -69,16 +68,10 @@ impl ProxyRuntime {
                 .filter_map(|l| {
                     let ip: IpAddr = l.bind_addr.parse().ok()?;
                     let port = u16::try_from(l.port).ok()?;
-                    let kind = if bedrock.contains(&l.id) {
-                        ListenerKind::Bedrock
-                    } else {
-                        ListenerKind::Java
-                    };
                     Some(ListenerSpec {
                         id: l.id,
                         bind: SocketAddr::new(ip, port),
-                        proxy_protocol: l.proxy_protocol && kind == ListenerKind::Java,
-                        kind,
+                        proxy_protocol: l.proxy_protocol,
                     })
                 })
                 .collect()
@@ -171,25 +164,6 @@ impl ProxyHooks for StoreProxyHooks {
                 .for_server_id(server_id)
                 .await
                 .connect(server_id)
-                .await
-        })
-    }
-
-    fn dial_udp<'a>(
-        &'a self,
-        server_id: &'a str,
-    ) -> BoxFuture<'a, std::io::Result<Box<dyn nn_proxy::Tunnel>>> {
-        Box::pin(async move {
-            let Some(nodes) = self.nodes.get() else {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::NotConnected,
-                    "no nodes yet",
-                ));
-            };
-            nodes
-                .for_server_id(server_id)
-                .await
-                .connect_udp(server_id)
                 .await
         })
     }

@@ -22,7 +22,6 @@ import { CardTheme, type Server } from "@/gen/nethernode/v1/servers_pb";
 import { errorMessage, serverClient } from "@/lib/api";
 import { useCanManage } from "@/lib/session";
 import { cn } from "@/lib/utils";
-import { isBedrock } from "./bedrock";
 import { CopyServer } from "./copy-server";
 import { DeleteProgressView } from "./delete-progress";
 import { LOADERS, loaderName } from "./format";
@@ -77,7 +76,6 @@ export function ConfigurationTab({ server }: { server: Server }) {
   const canManage = useCanManage();
   const [form, setForm] = useState(() => fromServer(server));
   const isModpack = server.modpack !== undefined;
-  const bedrock = isBedrock(server.loader);
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
   const ids = {
@@ -163,19 +161,15 @@ export function ConfigurationTab({ server }: { server: Server }) {
                 error={errors.name}
               />
               <Field
-                label={bedrock ? "Name in the server list" : "Message of the day"}
+                label="Message of the day"
                 maxLength={120}
-                hint={
-                  bedrock
-                    ? "Shown under the server's name in Minecraft's server list."
-                    : "Shown under the server's name in the server list."
-                }
+                hint="Shown under the server's name in the server list."
                 value={form.motd}
                 onChange={(e) => set("motd", e.target.value)}
               />
               <div className="grid grid-cols-2 gap-[13px] below-sm:grid-cols-1">
                 <Field
-                  label={bedrock ? "Memory limit (GB)" : "Memory allocation (GB)"}
+                  label="Memory allocation (GB)"
                   inputMode="decimal"
                   value={form.memoryGb}
                   onChange={(e) => set("memoryGb", e.target.value)}
@@ -248,7 +242,7 @@ export function ConfigurationTab({ server }: { server: Server }) {
 
               <details className="mb-[17px] rounded-md border border-divider px-3 py-2.5">
                 <summary className="cursor-pointer text-label text-text-secondary">
-                  {bedrock ? "Advanced: version and image" : "Advanced: software, Java, and image"}
+                  Advanced: software, Java, and image
                 </summary>
                 <div className="mt-4">
                   <p className="mb-4 flex gap-2 text-meta text-warning">
@@ -263,10 +257,10 @@ export function ConfigurationTab({ server }: { server: Server }) {
                       <Select
                         id={ids.loader}
                         value={form.loader}
-                        disabled={isModpack || bedrock}
+                        disabled={isModpack}
                         onChange={(e) => set("loader", e.target.value)}
                       >
-                        {(isModpack || bedrock ? [form.loader] : LOADERS).map((l) => (
+                        {(isModpack ? [form.loader] : LOADERS).map((l) => (
                           <option key={l} value={l}>
                             {loaderName(l)}
                           </option>
@@ -274,76 +268,58 @@ export function ConfigurationTab({ server }: { server: Server }) {
                       </Select>
                     </div>
                     <Field
-                      label={bedrock ? "Bedrock version" : "Minecraft version"}
+                      label="Minecraft version"
                       className="[&_input]:font-mono"
                       value={form.mcVersion}
                       disabled={isModpack}
-                      hint={
-                        isModpack
-                          ? "Set by the modpack."
-                          : bedrock
-                            ? "LATEST, PREVIOUS, PREVIEW, or a number like 1.21.50.07. Players' apps must match."
-                            : undefined
-                      }
+                      hint={isModpack ? "Set by the modpack." : undefined}
                       onChange={(e) => set("mcVersion", e.target.value)}
                       error={errors.version}
                     />
                   </div>
-                  {!bedrock && (
-                    <Field
-                      label="Loader or build version"
-                      className="[&_input]:font-mono"
-                      hint={
-                        isModpack ? "Set by the modpack." : "Leave empty for the recommended or latest build."
-                      }
-                      disabled={isModpack}
-                      value={form.loaderVersion}
-                      onChange={(e) => set("loaderVersion", e.target.value)}
-                    />
-                  )}
-                  {!bedrock && (
-                    <div className="mb-[17px]">
-                      <label htmlFor={ids.java} className="mb-[7px] block text-label text-text-secondary">
-                        Java version
-                      </label>
-                      <Select
-                        id={ids.java}
-                        value={form.javaVersion}
-                        onChange={(e) => set("javaVersion", e.target.value)}
-                      >
-                        <option value="">Automatic (matches the Minecraft version)</option>
-                        {[8, 11, 17, 21, 25].map((j) => (
-                          <option key={j} value={j}>
-                            Java {j}
-                          </option>
-                        ))}
-                      </Select>
-                    </div>
-                  )}
+                  <Field
+                    label="Loader or build version"
+                    className="[&_input]:font-mono"
+                    hint={
+                      isModpack ? "Set by the modpack." : "Leave empty for the recommended or latest build."
+                    }
+                    disabled={isModpack}
+                    value={form.loaderVersion}
+                    onChange={(e) => set("loaderVersion", e.target.value)}
+                  />
+                  <div className="mb-[17px]">
+                    <label htmlFor={ids.java} className="mb-[7px] block text-label text-text-secondary">
+                      Java version
+                    </label>
+                    <Select
+                      id={ids.java}
+                      value={form.javaVersion}
+                      onChange={(e) => set("javaVersion", e.target.value)}
+                    >
+                      <option value="">Automatic (matches the Minecraft version)</option>
+                      {[8, 11, 17, 21, 25].map((j) => (
+                        <option key={j} value={j}>
+                          Java {j}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
                   <Field
                     label="Custom image"
                     className="[&_input]:font-mono"
-                    placeholder={
-                      bedrock ? "itzg/minecraft-bedrock-server (default)" : "itzg/minecraft-server (default)"
-                    }
-                    hint={
-                      bedrock
-                        ? "Leave empty to use itzg/minecraft-bedrock-server."
-                        : "Leave empty to use itzg/minecraft-server with the right Java version."
-                    }
+                    placeholder="itzg/minecraft-server (default)"
+                    hint="Leave empty to use itzg/minecraft-server with the right Java version."
                     value={form.image}
                     onChange={(e) => set("image", e.target.value)}
                   />
-                  {!bedrock && (
-                    <ToggleRow
-                      id={ids.aikar}
-                      checked={form.useAikarFlags}
-                      onChange={(v) => set("useAikarFlags", v)}
-                      title="Aikar's JVM flags"
-                    >
-                      Garbage-collection tuning that reduces lag spikes.
-                    </ToggleRow>
-                  )}
+                  <ToggleRow
+                    id={ids.aikar}
+                    checked={form.useAikarFlags}
+                    onChange={(v) => set("useAikarFlags", v)}
+                    title="Aikar's JVM flags"
+                  >
+                    Garbage-collection tuning that reduces lag spikes.
+                  </ToggleRow>
                 </div>
               </details>
 
@@ -363,7 +339,7 @@ export function ConfigurationTab({ server }: { server: Server }) {
         </form>
         {canManage && (
           <div className="flex flex-col gap-[18px] below-xl:order-3">
-            {!bedrock && <WorldPanel server={server} />}
+            <WorldPanel server={server} />
             <MoveServer server={server} />
             <CopyServer server={server} />
             <DangerZone server={server} />

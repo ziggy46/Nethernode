@@ -37,6 +37,6 @@ COPY --from=build /nethernode /nethernode
 ENV NETHERNODE_DATA__DIR=/data \
     NETHERNODE_HTTP__BIND=0.0.0.0:8080
 VOLUME ["/data"]
-EXPOSE 8080 25565 19132/udp
+EXPOSE 8080 25565
 ENTRYPOINT ["/nethernode"]
 CMD ["serve"]

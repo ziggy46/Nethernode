@@ -23,7 +23,6 @@ use nn_store::now_ms;
 
 use crate::lifecycle::Orchestrator;
 use crate::runtime::{Players, Runtime, StatSample};
-use crate::spec;
 
 /// PROXY protocol v2 `LOCAL` header, for servers configured to expect PROXY
 /// headers (health checks use LOCAL). Spec: haproxy proxy-protocol.txt §2.2.
@@ -45,7 +44,6 @@ pub(crate) fn spawn(
     let mut state = rt.state();
     state.stop_tasks();
     state.launching = false;
-    state.started_logged = false;
     state.tick = None;
     state.paused = false;
     state.tasks.push(tokio::spawn(crate::ticks::poll(
@@ -71,16 +69,7 @@ pub(crate) fn spawn(
 }
 
 /// Pings the server, with and without a PROXY header (whichever it expects).
-/// A Bedrock server is pinged over UDP instead.
-async fn ping(addr: SocketAddr, bedrock: bool) -> Option<Players> {
-    if bedrock {
-        let pong = nn_mcproto::bedrock::ping(addr, PING_TIMEOUT).await.ok()?;
-        let status = nn_mcproto::bedrock::Status::parse(&pong.status)?;
-        return Some(Players {
-            online: status.online,
-            max: status.max,
-        });
-    }
+async fn ping(addr: SocketAddr) -> Option<Players> {
     for prelude in [&[][..], &PROXY_V2_LOCAL[..]] {
         if let Ok(status) = nn_mcproto::client::ping(addr, prelude, PING_TIMEOUT).await {
             let players = status.players.map(|p| Players {
@@ -101,33 +90,13 @@ async fn watch_health(orch: Arc<Orchestrator>, id: String, adopted: bool) {
         return;
     };
     let addr = SocketAddr::new(orch.backend_ip(), port);
-    let bedrock = spec::is_bedrock(&server.loader);
 
     // Readiness: first install can take minutes (downloading the server jar,
     // running the Forge installer), so there's no deadline; the container
     // exiting ends this task.
-    let mut attempts = 0u32;
     let mut players = loop {
-        if let Some(players) = ping(addr, bedrock).await {
+        if let Some(players) = ping(addr).await {
             break players;
-        }
-        attempts += 1;
-        if bedrock && attempts == 10 {
-            // Say why, since the console shows a server that's up.
-            let why = match nn_mcproto::bedrock::ping(addr, PING_TIMEOUT).await {
-                Ok(pong) => format!(
-                    "it answered, but not with a status NetherNode reads: {}",
-                    pong.status
-                ),
-                Err(error) => error.to_string(),
-            };
-            tracing::warn!(server = %id, %addr, %why, "a Bedrock server isn't answering NetherNode's status ping");
-        }
-        // A Bedrock server that says it started is running, even when the
-        // ping can't reach it (players are then unknown).
-        if bedrock && attempts >= 5 && orch.runtime(&id).state().started_logged {
-            tracing::warn!(server = %id, "using the server's own \"Server started.\" instead of a status ping");
-            break Players { online: 0, max: 0 };
         }
         if adopted && server.status == "running" {
             // Adopted but not answering: show that it's (re)starting.
@@ -145,14 +114,11 @@ async fn watch_health(orch: Arc<Orchestrator>, id: String, adopted: bool) {
         let _ = orch.store.mark_server_started(&id, now_ms()).await;
     }
     publish_players(&orch, &id, players);
-    if bedrock && server.last_started_at.is_none() {
-        orch.bedrock_open_allowlist(&server).await;
-    }
 
     let mut empty_since = (players.online == 0).then(Instant::now);
     loop {
         tokio::time::sleep(orch.config.player_poll).await;
-        let Some(now) = ping(addr, bedrock).await else {
+        let Some(now) = ping(addr).await else {
             continue;
         };
         if now != players {
@@ -328,9 +294,6 @@ async fn stream_logs(orch: Arc<Orchestrator>, rt: Arc<Runtime>, container: Strin
             let line = visible(&line);
             if let Some(paused) = pause_change(line) {
                 rt.state().paused = paused;
-            }
-            if line.contains("INFO] Server started.") {
-                rt.state().started_logged = true;
             }
             rt.logs.push(line);
         }

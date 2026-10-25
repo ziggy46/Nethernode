@@ -221,21 +221,6 @@ pub(crate) async fn broadcast(state: &AppState, server_id: &str, text: &str) -> 
     if node.unavailable().is_some() {
         return Err("Docker isn't available".into());
     }
-    // Bedrock's tellraw takes another format; `say` works everywhere.
-    let bedrock = state
-        .auth
-        .store()
-        .find_server(server_id)
-        .await
-        .ok()
-        .flatten()
-        .is_some_and(|server| nn_orchestrator::spec::is_bedrock(&server.loader));
-    if bedrock {
-        node.command(server_id, &format!("say {text}"))
-            .await
-            .map_err(|e| e.to_string())?;
-        return Ok(());
-    }
     let component = json!(["", { "text": "[Server] ", "color": "gold" }, { "text": text }]);
     let reply = node
         .command(server_id, &format!("tellraw @a {component}"))

@@ -29,9 +29,8 @@ import {
   projectVersionsQuery,
 } from "../../catalog/queries";
 import { domainError, domainsQuery, useSetDomains } from "../../domains/queries";
-import { listenersQuery, routesQuery } from "../../proxy/queries";
-import { BEDROCK_FIRST_PORT, nextFreePort } from "../bedrock";
-import { formatBytes, loaderName, memoryLimitBytes, versionLabel } from "../format";
+import { routesQuery } from "../../proxy/queries";
+import { formatBytes, loaderName, memoryLimitBytes } from "../format";
 import { THEME_NAMES } from "../world-banner";
 import {
   curseForgeSlug,
@@ -106,12 +105,6 @@ export function SoftwareStep({ draft, update }: { draft: Draft; update: Update }
                   mcVersion: "",
                   loaderVersion: "",
                   pack: undefined,
-                  // Bedrock players connect to a UDP port of its own; the rest use names.
-                  ...(s.id === "bedrock"
-                    ? { network: "port" as const, port: "" }
-                    : draft.software === "bedrock"
-                      ? { network: "domain" as const, port: "" }
-                      : {}),
                 })
               }
               className="sr-only"
@@ -138,7 +131,6 @@ export function SoftwareStep({ draft, update }: { draft: Draft; update: Update }
 export function VersionStep({ draft, update }: { draft: Draft; update: Update }) {
   const ids = { mc: useId(), build: useId(), snapshots: useId() };
   const loader = draft.software;
-  const bedrock = loader === "bedrock";
   const versions = useQuery(mcVersionsQuery(loader, draft.snapshots));
   const builds = useQuery(loaderVersionsQuery(loader, draft.mcVersion));
 
@@ -166,7 +158,7 @@ export function VersionStep({ draft, update }: { draft: Draft; update: Update })
           label="Minecraft version"
           className="[&_input]:font-mono"
           value={draft.mcVersion}
-          placeholder={bedrock ? "LATEST, or 1.21.50.07" : "1.21.11, or LATEST"}
+          placeholder="1.21.11, or LATEST"
           onChange={(e) => update({ mcVersion: e.target.value })}
         />
       </div>
@@ -175,7 +167,7 @@ export function VersionStep({ draft, update }: { draft: Draft; update: Update })
   return (
     <div>
       <div className="mb-[17px]">
-        <Label htmlFor={ids.mc}>{bedrock ? "Bedrock version" : "Minecraft version"}</Label>
+        <Label htmlFor={ids.mc}>Minecraft version</Label>
         <Select
           id={ids.mc}
           value={draft.mcVersion}
@@ -185,8 +177,8 @@ export function VersionStep({ draft, update }: { draft: Draft; update: Update })
           {versions.isPending && <option>Loading…</option>}
           {versions.data?.map((v) => (
             <option key={v.id} value={v.id}>
-              {bedrock ? versionLabel(v.id) : v.id}
-              {v.snapshot ? (bedrock ? " (beta)" : " (snapshot)") : ""}
+              {v.id}
+              {v.snapshot ? " (snapshot)" : ""}
             </option>
           ))}
         </Select>
@@ -197,17 +189,11 @@ export function VersionStep({ draft, update }: { draft: Draft; update: Update })
             onCheckedChange={(v) => update({ snapshots: v === true })}
           />
           <label htmlFor={ids.snapshots} className="text-meta text-text-secondary">
-            {bedrock ? "Show the preview (beta) version" : "Show snapshots and pre-releases"}
+            Show snapshots and pre-releases
           </label>
         </div>
-        {bedrock && (
-          <Hint>
-            Bedrock apps update on their own and must match the server. Latest follows them each time the
-            server restarts.
-          </Hint>
-        )}
       </div>
-      {loader !== "vanilla" && !bedrock && (
+      {loader !== "vanilla" && (
         <div className="mb-[17px]">
           <Label htmlFor={ids.build}>{loaderName(loader)} build</Label>
           {builds.isError ? (
@@ -536,7 +522,6 @@ export function ResourcesStep({
   );
   const gb = (mb: number) => `${(mb / 1024).toFixed(mb % 1024 ? 1 : 0)} GB`;
   const recommended = softwareInfo(draft.software)?.memoryMb ?? 4096;
-  const bedrock = draft.software === "bedrock";
   const limit = memoryLimitBytes(draft.memoryMb, draft.software === "modpack" ? "modrinth" : draft.software);
   return (
     <div>
@@ -554,9 +539,7 @@ export function ResourcesStep({
           <Hint>Players still join through this panel, whichever machine runs the server.</Hint>
         </div>
       )}
-      <Label htmlFor={id}>
-        {bedrock ? "Memory for the server" : "Memory for Minecraft (Java heap)"}: {gb(draft.memoryMb)}
-      </Label>
+      <Label htmlFor={id}>Memory for Minecraft (Java heap): {gb(draft.memoryMb)}</Label>
       <input
         id={id}
         type="range"
@@ -580,15 +563,8 @@ export function ResourcesStep({
           {draft.software === "modpack" ? " to start; big packs want 8 GB or more" : ""}.
         </li>
         <li>
-          {bedrock
-            ? `The server can use up to ${formatBytes(limit)}. Bedrock is light: 2 GB suits a few friends.`
-            : `The container may use up to ${formatBytes(limit)} in all, since Java needs room beyond the heap.`}
+          The container may use up to {formatBytes(limit)} in all, since Java needs room beyond the heap.
         </li>
-        {bedrock && (
-          <li>
-            Mojang builds the Bedrock server for x86-64 only; on an ARM machine it runs under emulation.
-          </li>
-        )}
         {hostMemory ? (
           <li className={cn(limit > hostMemory * 0.8 && "text-warning")}>
             This host has {formatBytes(hostMemory)} of memory, shared with your other servers.
@@ -600,77 +576,7 @@ export function ResourcesStep({
 }
 
 /** Step 4: how players reach it. */
-export function NetworkStep(props: { draft: Draft; update: Update; canManageProxy: boolean }) {
-  return props.draft.software === "bedrock" ? <BedrockNetwork {...props} /> : <JavaNetworkStep {...props} />;
-}
-
-/** Bedrock players connect over UDP to a port of the server's own. */
-function BedrockNetwork({
-  draft,
-  update,
-  canManageProxy,
-}: {
-  draft: Draft;
-  update: Update;
-  canManageProxy: boolean;
-}) {
-  const id = useId();
-  const listeners = useQuery({ ...listenersQuery, enabled: canManageProxy });
-  const used = listeners.data;
-  // The lowest free port to start with, once the listeners are known.
-  useEffect(() => {
-    if (canManageProxy && !draft.port && used) update({ port: String(nextFreePort(used)) });
-    // Only admins can open ports; for others the address comes later.
-    if (!canManageProxy && draft.network !== "later") update({ network: "later" });
-  }, [canManageProxy, draft.port, draft.network, used, update]);
-  const port = Number(draft.port);
-  const clash = used?.some((l) => l.port === port);
-
-  if (!canManageProxy) {
-    return (
-      <p className="text-label text-text-secondary">
-        An admin opens the port players use for this server once it's created.
-      </p>
-    );
-  }
-  return (
-    <div>
-      <Label htmlFor={id}>Port players connect to (UDP)</Label>
-      <Input
-        id={id}
-        inputMode="numeric"
-        placeholder={String(BEDROCK_FIRST_PORT)}
-        className="w-32 font-mono"
-        aria-invalid={clash ? true : undefined}
-        value={draft.port}
-        onChange={(e) => update({ port: e.target.value.replace(/\D/g, "").slice(0, 5) })}
-      />
-      {clash ? (
-        <Hint tone="danger">Another listener already uses port {port}.</Hint>
-      ) : (
-        <Hint>Each Bedrock server has a port of its own; 19132 is the one Minecraft fills in for you.</Hint>
-      )}
-      <ul className="mt-4 flex flex-col gap-1.5 text-meta text-text-secondary">
-        <li>
-          Players add the server in Minecraft: Play → Servers → Add Server, with this machine's address and
-          that port.
-        </li>
-        <li>The port is UDP. Forward it on your router for friends outside your network.</li>
-        <li>
-          A sleeping server wakes when someone tries to join; they'll see "unable to connect" once and can
-          retry in a moment.
-        </li>
-        <li>Xbox, PlayStation and Switch can't add servers by address.</li>
-        <li>
-          Mojang is replacing Bedrock's classic network protocol (RakNet) with a new one. Current servers
-          still accept RakNet, which is what NetherNode relays, but a future version may drop it.
-        </li>
-      </ul>
-    </div>
-  );
-}
-
-function JavaNetworkStep({
+export function NetworkStep({
   draft,
   update,
   canManageProxy,
@@ -937,7 +843,6 @@ export function ReviewStep({
   summary: [string, string][];
 }) {
   const ids = { theme: useId(), sleep: useId(), start: useId(), eula: useId() };
-  const bedrock = draft.software === "bedrock";
   return (
     <div>
       <Field
@@ -978,9 +883,7 @@ export function ReviewStep({
             draft.sleep,
             (v: boolean) => update({ sleep: v }),
             "Sleep when empty",
-            bedrock
-              ? "Stops after 10 minutes without players; starts when someone tries to join (they retry once)."
-              : "Stops after 10 minutes without players; starts again when someone joins.",
+            "Stops after 10 minutes without players; starts again when someone joins.",
           ],
           [
             ids.start,

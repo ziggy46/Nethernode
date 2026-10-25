@@ -81,32 +81,19 @@ impl LocalNode {
             .ok_or("the data folder isn't available, so backups can't be made")?;
         let running = server.status == "running";
         let orchestrator = self.orchestrator.clone().filter(|_| running);
-        let bedrock = nn_orchestrator::spec::is_bedrock(&server.loader);
         if let Some(o) = &orchestrator {
-            if bedrock {
-                if let Err(e) = o.bedrock_hold_saves(&server.id).await {
-                    let _ = o.bedrock_resume_saves(&server.id).await;
-                    return Err(format!("couldn't pause saving: {e}"));
-                }
-            } else {
-                o.command(&server.id, "save-off")
-                    .await
-                    .map_err(|e| format!("couldn't pause saving: {e}"))?;
-                if let Err(e) = o.command(&server.id, "save-all flush").await {
-                    let _ = o.command(&server.id, "save-on").await;
-                    return Err(format!("couldn't save the world first: {e}"));
-                }
+            o.command(&server.id, "save-off")
+                .await
+                .map_err(|e| format!("couldn't pause saving: {e}"))?;
+            if let Err(e) = o.command(&server.id, "save-all flush").await {
+                let _ = o.command(&server.id, "save-on").await;
+                return Err(format!("couldn't save the world first: {e}"));
             }
         }
         let result = self.write_archive(server, &file, job_id, leave_out).await;
         if let Some(o) = &orchestrator {
             // Always turn saving back on, whatever happened.
-            let resumed = if bedrock {
-                o.bedrock_resume_saves(&server.id).await
-            } else {
-                o.command(&server.id, "save-on").await.map(|_| ())
-            };
-            if let Err(e) = resumed {
+            if let Err(e) = o.command(&server.id, "save-on").await {
                 tracing::warn!(server = %server.id, error = %e, "couldn't turn saving back on after a backup");
             }
         }

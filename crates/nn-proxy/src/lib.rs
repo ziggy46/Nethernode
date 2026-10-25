@@ -21,7 +21,6 @@ use tokio::net::{TcpListener, TcpSocket};
 use tokio::sync::{Mutex, Semaphore};
 use tokio::task::{JoinHandle, JoinSet};
 
-pub mod bedrock;
 pub mod config;
 mod conn;
 pub mod hooks;
@@ -33,9 +32,7 @@ pub mod routes;
 mod splice;
 pub mod status_cache;
 
-pub use config::{
-    BackendSpec, Limits, ListenerKind, ListenerSpec, ProxyConfig, RouteSpec, ServerState,
-};
+pub use config::{BackendSpec, Limits, ListenerSpec, ProxyConfig, RouteSpec, ServerState};
 pub use conn::{SLEEPING_SUFFIX, UNKNOWN_HOST_MESSAGE};
 pub use hooks::{Admission, BoxFuture, NoopHooks, PlayerJoin, ProxyHooks, Tunnel, WakeOutcome};
 pub use registry::ConnectionInfo;
@@ -64,7 +61,6 @@ pub(crate) struct Shared {
     status: status_cache::StatusCache,
     connections: registry::ConnectionRegistry,
     buffers: splice::BufferPool,
-    bedrock: bedrock::State,
 }
 
 /// Whether a listener is accepting connections.
@@ -118,7 +114,6 @@ impl Proxy {
             status: status_cache::StatusCache::default(),
             connections: registry::ConnectionRegistry::default(),
             buffers: splice::BufferPool::new(limits.buffer_size),
-            bedrock: bedrock::State::default(),
             limits,
         };
         Self {
@@ -133,7 +128,6 @@ impl Proxy {
     pub async fn apply(&self, config: ProxyConfig) -> Vec<ListenerStatus> {
         let table = RouteTable::build(&config.routes, &config.backends, &config.listeners);
         self.shared.status.retain(|id| table.backend(id).is_some());
-        self.shared.bedrock.set_servers(&config);
         self.shared.routes.store(Arc::new(table));
 
         let mut listeners = self.listeners.lock().await;
@@ -158,7 +152,6 @@ impl Proxy {
         for spec in &config.listeners {
             if let Some(entry) = listeners.get(&spec.id)
                 && entry.spec.load().bind == spec.bind
-                && entry.spec.load().kind == spec.kind
                 && matches!(entry.state, ListenerState::Listening(_))
             {
                 // Same socket; only flags changed. Applies to new connections.
@@ -177,32 +170,6 @@ impl Proxy {
 
     async fn start_listener(&self, spec: ListenerSpec) -> ListenerEntry {
         let shared_spec = Arc::new(ArcSwapAny::new(Arc::new(spec.clone())));
-        if spec.kind == ListenerKind::Bedrock {
-            return match tokio::net::UdpSocket::bind(spec.bind).await {
-                Ok(socket) => {
-                    let addr = socket.local_addr().unwrap_or(spec.bind);
-                    tracing::info!(listener = %spec.id, %addr, "proxy listening for Bedrock players (UDP)");
-                    let task = tokio::spawn(bedrock::serve(
-                        socket,
-                        shared_spec.clone(),
-                        self.shared.clone(),
-                    ));
-                    ListenerEntry {
-                        spec: shared_spec,
-                        state: ListenerState::Listening(addr),
-                        task: Some(task),
-                    }
-                }
-                Err(error) => {
-                    tracing::error!(listener = %spec.id, bind = %spec.bind, %error, "proxy listener failed to bind");
-                    ListenerEntry {
-                        spec: shared_spec,
-                        state: ListenerState::Failed(error.to_string()),
-                        task: None,
-                    }
-                }
-            };
-        }
         match bind(spec.bind) {
             Ok(listener) => {
                 let addr = listener.local_addr().unwrap_or(spec.bind);
@@ -336,13 +303,13 @@ async fn accept_loop(
     }
 }
 
-async fn refresh_status(shared: &Arc<Shared>) {
-    bedrock::refresh(shared).await;
+async fn refresh_status(shared: &Shared) {
     let table = shared.routes.load_full();
     let mut pings = JoinSet::new();
-    for backend in table.backends().filter(|b| {
-        b.spec.state == ServerState::Running && !shared.bedrock.is_bedrock(&b.spec.server_id)
-    }) {
+    for backend in table
+        .backends()
+        .filter(|b| b.spec.state == ServerState::Running)
+    {
         let backend = backend.clone();
         let hooks = shared.hooks.clone();
         pings.spawn(async move {

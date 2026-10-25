@@ -610,196 +610,14 @@ pub const FIELDS: &[Field] = &[
     ),
 ];
 
-/// The keys Bedrock Dedicated Server understands, which differ from Java's.
-/// <https://minecraft.wiki/w/Bedrock_Dedicated_Server#server.properties>
-pub const BEDROCK_FIELDS: &[Field] = &[
-    f(
-        "server-name",
-        "Server name",
-        General,
-        Text,
-        "Shown in the server list.",
-    ),
-    f(
-        "gamemode",
-        "Default game mode",
-        General,
-        Choice(&["survival", "creative", "adventure"]),
-        "Game mode for new players.",
-    ),
-    f(
-        "force-gamemode",
-        "Force game mode",
-        General,
-        Bool,
-        "Put players back in the default game mode every time they join.",
-    ),
-    f(
-        "difficulty",
-        "Difficulty",
-        General,
-        Choice(&["peaceful", "easy", "normal", "hard"]),
-        "How dangerous mobs are and whether hunger can kill.",
-    ),
-    f(
-        "allow-cheats",
-        "Allow cheats",
-        General,
-        Bool,
-        "Let operators use commands like /gamemode and /give.",
-    ),
-    f(
-        "level-name",
-        "World folder",
-        World,
-        Text,
-        "Folder under worlds/ the world is loaded from and saved to.",
-    ),
-    f(
-        "level-seed",
-        "World seed",
-        World,
-        Text,
-        "Seed for a new world. Leave empty for a random one.",
-    ),
-    f(
-        "default-player-permission-level",
-        "New players can",
-        Players,
-        Choice(&["visitor", "member", "operator"]),
-        "What players who join for the first time are allowed to do.",
-    ),
-    f(
-        "max-players",
-        "Player limit",
-        Players,
-        int(1, 10_000),
-        "How many players can be online at once.",
-    ),
-    f(
-        "allow-list",
-        "Allowlist",
-        Players,
-        Bool,
-        "Only players on allowlist.json can join.",
-    ),
-    f(
-        "online-mode",
-        "Require Xbox sign-in",
-        Players,
-        Bool,
-        "Check every player's Xbox Live sign-in. Turn off only on a private network.",
-    ),
-    f(
-        "player-idle-timeout",
-        "Idle kick (minutes)",
-        Players,
-        int(0, 100_000),
-        "Kick players who do nothing for this long. 0 turns it off.",
-    ),
-    f(
-        "view-distance",
-        "View distance",
-        Advanced,
-        int(5, 96),
-        "How many chunks around a player the server sends.",
-    ),
-    f(
-        "tick-distance",
-        "Simulation distance",
-        Advanced,
-        int(4, 12),
-        "How many chunks around a player the server keeps running.",
-    ),
-    f(
-        "texturepack-required",
-        "Require resource packs",
-        Advanced,
-        Bool,
-        "Players must accept the server's resource packs to join.",
-    ),
-    f(
-        "content-log-file-enabled",
-        "Content log file",
-        Advanced,
-        Bool,
-        "Write errors from add-ons to a log file.",
-    ),
-    f(
-        "server-port",
-        "Port",
-        Network,
-        int(1, 65_535),
-        "The port the server listens on inside its container.",
-    ),
-    f(
-        "server-portv6",
-        "IPv6 port",
-        Network,
-        int(1, 65_535),
-        "The port for IPv6 players inside the container.",
-    ),
-    f(
-        "transport",
-        "Network transport",
-        Network,
-        Choice(&["raknet", "nethernet"]),
-        "How players connect. NetherNode relays RakNet, the classic one.",
-    ),
-];
-
-/// `server.properties` keys NetherNode controls on a Bedrock server.
-pub const BEDROCK_MANAGED: &[(&str, &str)] = &[
-    (
-        "server-name",
-        "Set under Server configuration above; NetherNode applies it on every start.",
-    ),
-    (
-        "max-players",
-        "Set under Server configuration above; NetherNode applies it on every start.",
-    ),
-    (
-        "server-port",
-        "NetherNode connects to the server on this port inside its container.",
-    ),
-    (
-        "server-portv6",
-        "NetherNode connects to the server on this port inside its container.",
-    ),
-    (
-        "transport",
-        "NetherNode relays Bedrock players over RakNet (one UDP port); NetherNet needs more than that.",
-    ),
-];
-
-/// The keys the form knows for a Java or Bedrock server.
-pub fn fields(bedrock: bool) -> &'static [Field] {
-    if bedrock { BEDROCK_FIELDS } else { FIELDS }
-}
-
 /// The schema entry for `key`, if known.
 pub fn field(key: &str) -> Option<&'static Field> {
-    field_for(false, key)
-}
-
-/// The schema entry for `key` on a Java or Bedrock server.
-pub fn field_for(bedrock: bool, key: &str) -> Option<&'static Field> {
-    fields(bedrock).iter().find(|f| f.key == key)
+    FIELDS.iter().find(|f| f.key == key)
 }
 
 /// Why `key` can't be edited here, if it can't.
 pub fn managed_reason(key: &str) -> Option<&'static str> {
-    managed_reason_for(false, key)
-}
-
-/// Why `key` can't be edited on a Java or Bedrock server, if it can't.
-pub fn managed_reason_for(bedrock: bool, key: &str) -> Option<&'static str> {
-    let managed = if bedrock {
-        BEDROCK_MANAGED
-    } else {
-        MANAGED_PROPERTIES
-    };
-    managed
+    MANAGED_PROPERTIES
         .iter()
         .find_map(|(k, reason)| (*k == key).then_some(*reason))
 }
@@ -814,18 +632,13 @@ pub fn is_secret(key: &str) -> bool {
 
 /// Checks a new value for `key`. Returns a message for the admin on failure.
 pub fn validate(key: &str, value: &str) -> Result<(), String> {
-    validate_for(false, key, value)
-}
-
-/// Checks a new value for `key` on a Java or Bedrock server.
-pub fn validate_for(bedrock: bool, key: &str, value: &str) -> Result<(), String> {
     if key.is_empty() || key.chars().any(char::is_control) {
         return Err("that isn't a valid property name".into());
     }
-    if let Some(reason) = managed_reason_for(bedrock, key) {
+    if let Some(reason) = managed_reason(key) {
         return Err(format!("{key} is managed by NetherNode. {reason}"));
     }
-    let Some(field) = field_for(bedrock, key) else {
+    let Some(field) = field(key) else {
         return Ok(());
     };
     match field.kind {
@@ -870,36 +683,6 @@ mod tests {
             assert!(field(key).is_some(), "{key} has no schema entry");
             assert!(validate(key, "x").is_err());
         }
-    }
-
-    #[test]
-    fn bedrock_keys_are_unique_and_managed_ones_known() {
-        for (i, a) in BEDROCK_FIELDS.iter().enumerate() {
-            assert!(
-                BEDROCK_FIELDS[i + 1..].iter().all(|b| b.key != a.key),
-                "duplicate {}",
-                a.key
-            );
-        }
-        for (key, _) in BEDROCK_MANAGED {
-            assert!(field_for(true, key).is_some(), "{key} has no schema entry");
-            assert!(validate_for(true, key, "x").is_err());
-        }
-    }
-
-    #[test]
-    fn bedrock_validation_uses_its_own_keys() {
-        assert!(validate_for(true, "gamemode", "creative").is_ok());
-        assert!(validate_for(true, "gamemode", "spectator").is_err());
-        assert!(validate_for(true, "allow-cheats", "true").is_ok());
-        assert!(validate_for(true, "tick-distance", "20").is_err());
-        // Keys of the other edition are plain text.
-        assert!(validate_for(true, "pvp", "whatever").is_ok());
-        assert!(field_for(true, "pvp").is_none());
-        assert!(field_for(false, "allow-cheats").is_none());
-        // Java's management keys mean nothing here.
-        assert!(managed_reason_for(true, "rcon.port").is_none());
-        assert!(managed_reason_for(false, "rcon.port").is_some());
     }
 
     #[test]

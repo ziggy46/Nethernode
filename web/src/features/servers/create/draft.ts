@@ -1,16 +1,7 @@
 import type { Platform } from "@/gen/nethernode/v1/catalog_pb";
 import { CardTheme } from "@/gen/nethernode/v1/servers_pb";
 
-export type Software =
-  | "vanilla"
-  | "paper"
-  | "purpur"
-  | "fabric"
-  | "quilt"
-  | "forge"
-  | "neoforge"
-  | "modpack"
-  | "bedrock";
+export type Software = "vanilla" | "paper" | "purpur" | "fabric" | "quilt" | "forge" | "neoforge" | "modpack";
 
 export interface PackChoice {
   platform: Platform;
@@ -87,12 +78,6 @@ export const SOFTWARE: { id: Software; name: string; blurb: string; memoryMb: nu
   { id: "forge", name: "Forge", blurb: "The classic loader for big mods.", memoryMb: 6144 },
   { id: "neoforge", name: "NeoForge", blurb: "Forge's modern successor.", memoryMb: 6144 },
   { id: "modpack", name: "Modpack", blurb: "A whole pack from Modrinth or CurseForge.", memoryMb: 6144 },
-  {
-    id: "bedrock",
-    name: "Bedrock",
-    blurb: "For Windows, phones and tablets. No Java mods.",
-    memoryMb: 2048,
-  },
 ];
 
 export const MORE_SOFTWARE: { id: Software; name: string; blurb: string; memoryMb: number }[] = [

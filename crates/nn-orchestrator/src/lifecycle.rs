@@ -340,16 +340,9 @@ impl Orchestrator {
         }
         let server = self.load(id).await?;
         let dir = self.server_dir(&server.slug)?;
-        let bedrock = spec::is_bedrock(&server.loader);
-        let usage = tokio::task::spawn_blocking(move || {
-            if bedrock {
-                measure_bedrock_folder(&dir)
-            } else {
-                measure_folder(&dir)
-            }
-        })
-        .await
-        .map_err(std::io::Error::other)?;
+        let usage = tokio::task::spawn_blocking(move || measure_folder(&dir))
+            .await
+            .map_err(std::io::Error::other)?;
         *rt.usage.lock().unwrap_or_else(|e| e.into_inner()) =
             Some((std::time::Instant::now(), usage));
         Ok(usage)
@@ -571,23 +564,12 @@ impl Orchestrator {
             }
             (false, _) => s.modpack_json = None,
         }
-        let bedrock = spec::is_bedrock(&s.loader);
-        if bedrock {
-            if !spec::is_valid_bedrock_version(&s.mc_version) {
-                return Err(OrchestratorError::InvalidInput(
-                    "Enter a Bedrock version like 1.21.50.07, or LATEST, PREVIOUS or PREVIEW."
-                        .into(),
-                ));
-            }
-            s.mc_version = s.mc_version.trim().to_ascii_uppercase();
-            s.loader_version = None;
-            s.java_version = None;
-        } else if !java::is_valid_version(&s.mc_version) {
+        if !java::is_valid_version(&s.mc_version) {
             return Err(OrchestratorError::InvalidInput(
                 "Enter a Minecraft version like 1.21.4, or LATEST.".into(),
             ));
         }
-        if !bedrock && java::is_floating(&s.mc_version) {
+        if java::is_floating(&s.mc_version) {
             s.mc_version = s.mc_version.to_ascii_uppercase();
         }
         if !MEMORY_RANGE.contains(&s.memory_mb) {
@@ -621,14 +603,7 @@ impl Orchestrator {
             ));
         }
         // Custom images are kept; the default image follows the Java version.
-        if bedrock {
-            if s.image.is_empty() || s.image.starts_with(java::DEFAULT_IMAGE) {
-                s.image = format!("{}:latest", spec::BEDROCK_IMAGE);
-            }
-        } else if s.image.is_empty()
-            || s.image.starts_with(java::DEFAULT_IMAGE)
-            || s.image.starts_with(spec::BEDROCK_IMAGE)
-        {
+        if s.image.is_empty() || s.image.starts_with(java::DEFAULT_IMAGE) {
             let java = s.java_version.and_then(|j| u32::try_from(j).ok());
             s.image = java::default_image(&s.mc_version, &runs_on, java);
         }
@@ -702,12 +677,7 @@ impl Orchestrator {
     /// Makes sure the server's container exists and matches its settings,
     /// pulling the image and (re)creating the container as needed.
     pub(crate) async fn ensure_container(&self, server: &Server) -> Result<String> {
-        // Bedrock has no management protocol.
-        let server = &if spec::is_bedrock(&server.loader) {
-            server.clone()
-        } else {
-            self.ensure_management(server).await?
-        };
+        let server = &self.ensure_management(server).await?;
         let spec = self.spec(server)?;
         std::fs::create_dir_all(self.config.servers_dir.join(&server.slug))?;
         if server.loader == "curseforge" {
@@ -923,9 +893,7 @@ impl Orchestrator {
             let container = self.ensure_container(&server).await?;
             let server = self.load(id).await?;
             self.connect_modules(&server, &container).await;
-            if !spec::is_bedrock(&server.loader) {
-                self.write_management_properties(&server).await?;
-            }
+            self.write_management_properties(&server).await?;
             if let Some(hook) = self.before_start.get() {
                 hook.before_start(&server).await;
             }
@@ -985,15 +953,7 @@ impl Orchestrator {
         self.set_status(id, "stopping").await;
         rt.state().expected_exit = Some(target);
 
-        if spec::is_bedrock(&server.loader) {
-            // Docker's stop sends SIGTERM, which the image turns into the
-            // server's own `stop`: it saves the world and says goodbye.
-            let secs = i32::try_from(self.config.stop_timeout.as_secs()).unwrap_or(60);
-            let options = StopContainerOptionsBuilder::default().t(secs).build();
-            if let Err(e) = self.docker.stop_container(&container, Some(options)).await {
-                tracing::warn!(server = %id, error = %e, "docker stop failed");
-            }
-        } else if let Err(error) = self.rcon_stop(&server).await {
+        if let Err(error) = self.rcon_stop(&server).await {
             tracing::info!(server = %id, %error, "RCON stop unavailable; asking Docker to stop");
         }
         if !self
@@ -1290,9 +1250,6 @@ impl Orchestrator {
                 "commands can be sent once the server is running".into(),
             ));
         }
-        if spec::is_bedrock(&server.loader) {
-            return self.bedrock_command(&server, command).await;
-        }
         let rt = self.runtime(id);
         let mut conn = rt.rcon.lock().await;
         // A kept connection may be stale (the server restarted); retry once
@@ -1322,115 +1279,6 @@ impl Orchestrator {
             }
         }
         Err(OrchestratorError::Command("RCON isn't responding".into()))
-    }
-
-    /// Types a command into a Bedrock server's console with the image's
-    /// `send-command`. Bedrock has no RCON, so there is no reply: the
-    /// result shows up in the console's log.
-    async fn bedrock_command(&self, server: &Server, command: &str) -> Result<String> {
-        use bollard::exec::{CreateExecOptions, StartExecOptions};
-        let container = spec::container_name(&server.slug);
-        let exec = self
-            .docker
-            .create_exec(
-                &container,
-                CreateExecOptions {
-                    cmd: Some(vec!["send-command".to_owned(), command.to_owned()]),
-                    attach_stdout: Some(false),
-                    attach_stderr: Some(false),
-                    ..Default::default()
-                },
-            )
-            .await
-            .map_err(|e| OrchestratorError::Command(e.to_string()))?;
-        self.docker
-            .start_exec(
-                &exec.id,
-                Some(StartExecOptions {
-                    detach: true,
-                    ..Default::default()
-                }),
-            )
-            .await
-            .map_err(|e| OrchestratorError::Command(e.to_string()))?;
-        Ok(String::new())
-    }
-
-    /// A new Bedrock server starts with its allowlist on and nobody in it,
-    /// so no one can join. Turns it off in `server.properties` and in the
-    /// running server. Done once, on a server's first start: after that
-    /// the admin's choice stands.
-    pub(crate) async fn bedrock_open_allowlist(&self, server: &Server) {
-        let Ok(dir) = self.server_dir(&server.slug) else {
-            return;
-        };
-        let edited =
-            tokio::task::spawn_blocking(move || -> std::result::Result<(), nn_files::FileError> {
-                let files = nn_files::ServerFiles::open(&dir)?;
-                let path = nn_files::RelPath::parse("server.properties")?;
-                let content = match files.read(&path, nn_files::EDITOR_LIMIT) {
-                    Ok(content) => content,
-                    Err(nn_files::FileError::NotFound(_)) => return Ok(()),
-                    Err(e) => return Err(e),
-                };
-                let mut props =
-                    nn_files::Properties::parse(&String::from_utf8_lossy(&content.data));
-                props.set("allow-list", "false");
-                files.write(&path, props.to_string().as_bytes(), nn_files::Expect::Any)?;
-                Ok(())
-            })
-            .await;
-        match edited {
-            Ok(Ok(())) => {}
-            Ok(Err(error)) => {
-                tracing::warn!(server = %server.id, %error, "couldn't turn the allowlist off")
-            }
-            Err(error) => {
-                tracing::warn!(server = %server.id, %error, "couldn't turn the allowlist off")
-            }
-        }
-        if let Err(error) = self.command(&server.id, "allowlist off").await {
-            tracing::debug!(server = %server.id, %error, "couldn't turn the allowlist off in the running server");
-        }
-    }
-
-    /// Pauses a running Bedrock server's world saving and waits until its
-    /// files are safe to copy (`save hold`, then `save query` until the
-    /// server says so). Call [`Self::bedrock_resume_saves`] afterwards,
-    /// also when this fails.
-    pub async fn bedrock_hold_saves(&self, id: &str) -> Result<()> {
-        const READY: &str = "Files are now ready to be copied";
-        const GIVE_UP: Duration = Duration::from_secs(90);
-        let (_, mut logs) = self.subscribe_logs(id);
-        self.command(id, "save hold").await?;
-        let deadline = tokio::time::Instant::now() + GIVE_UP;
-        loop {
-            self.command(id, "save query").await?;
-            let asked = tokio::time::Instant::now();
-            while let Ok(line) =
-                tokio::time::timeout_at(asked + Duration::from_secs(3), logs.recv()).await
-            {
-                match line {
-                    Ok(line) if line.contains(READY) => return Ok(()),
-                    Ok(_) | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {}
-                    Err(tokio::sync::broadcast::error::RecvError::Closed) => {
-                        return Err(OrchestratorError::Command(
-                            "the server stopped while it was saving".into(),
-                        ));
-                    }
-                }
-            }
-            if tokio::time::Instant::now() >= deadline {
-                return Err(OrchestratorError::Command(
-                    "the server didn't finish saving in time".into(),
-                ));
-            }
-        }
-    }
-
-    /// Lets a Bedrock server save again after [`Self::bedrock_hold_saves`].
-    pub async fn bedrock_resume_saves(&self, id: &str) -> Result<()> {
-        self.command(id, "save resume").await.map(|_| ())
     }
 
     /// Waits until the container isn't running. Returns `false` on timeout.
@@ -1482,14 +1330,6 @@ fn measure_folder(dir: &std::path::Path) -> FolderUsage {
     FolderUsage {
         total_bytes: folder_size(dir),
         world_bytes,
-    }
-}
-
-/// Sizes a Bedrock server folder: everything, and the worlds in `worlds/`.
-fn measure_bedrock_folder(dir: &std::path::Path) -> FolderUsage {
-    FolderUsage {
-        total_bytes: folder_size(dir),
-        world_bytes: folder_size(&dir.join("worlds")),
     }
 }
 

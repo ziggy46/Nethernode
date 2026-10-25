@@ -481,18 +481,6 @@ impl Node {
         }
     }
 
-    /// A connection to a Bedrock server's game port (UDP), for the proxy.
-    /// An error of kind `NotConnected` means the node is offline.
-    pub async fn connect_udp(&self, id: &str) -> std::io::Result<Box<dyn nn_proxy::Tunnel>> {
-        match self {
-            Self::Local(_) => Err(std::io::Error::new(
-                std::io::ErrorKind::Unsupported,
-                "servers on this machine are reached directly",
-            )),
-            Self::Remote(node) => node.connect_udp(id).await,
-        }
-    }
-
     // ----- modules -----
 
     /// A server's modules and what each is doing.

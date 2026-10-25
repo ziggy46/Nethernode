@@ -322,7 +322,6 @@ async fn read_properties(
 
 fn properties_response(
     read: Option<(nn_files::Properties, String)>,
-    bedrock: bool,
 ) -> pb::GetServerPropertiesResponse {
     use nn_orchestrator::properties::{self as schema, Group, Kind};
     let Some((props, version)) = read else {
@@ -332,7 +331,7 @@ fn properties_response(
     let value_of = |key: &str| entries.iter().find(|(k, _)| *k == key).map(|(_, v)| *v);
     let mut out = Vec::new();
     for group in Group::ALL {
-        for field in schema::fields(bedrock).iter().filter(|f| f.group == group) {
+        for field in schema::FIELDS.iter().filter(|f| f.group == group) {
             let Some(value) = value_of(field.key) else {
                 continue;
             };
@@ -367,7 +366,7 @@ fn properties_response(
                 options,
                 min,
                 max,
-                managed_reason: schema::managed_reason_for(bedrock, field.key)
+                managed_reason: schema::managed_reason(field.key)
                     .unwrap_or_default()
                     .to_owned(),
                 secret,
@@ -377,7 +376,7 @@ fn properties_response(
     }
     let mut other: Vec<_> = entries
         .iter()
-        .filter(|(k, _)| schema::field_for(bedrock, k).is_none())
+        .filter(|(k, _)| schema::field(k).is_none())
         .collect();
     other.sort_by_key(|(k, _)| *k);
     for (key, value) in other {
@@ -1491,9 +1490,8 @@ impl pb::ServerService for ServerRpc {
         request: ServiceRequest<'_, pb::GetServerPropertiesRequest>,
     ) -> ServiceResult<pb::GetServerPropertiesResponse> {
         require(&ctx, Permission::ManageServers)?;
-        let (server, files) = open(&self.state, request.id).await?;
-        let bedrock = nn_orchestrator::spec::is_bedrock(&server.loader);
-        Response::ok(properties_response(read_properties(&files).await?, bedrock))
+        let (_, files) = open(&self.state, request.id).await?;
+        Response::ok(properties_response(read_properties(&files).await?))
     }
 
     async fn update_server_properties(
@@ -1502,14 +1500,13 @@ impl pb::ServerService for ServerRpc {
         request: ServiceRequest<'_, pb::UpdateServerPropertiesRequest>,
     ) -> ServiceResult<pb::UpdateServerPropertiesResponse> {
         let user = require(&ctx, Permission::ManageServers)?.clone();
-        let (server, files) = open(&self.state, request.id).await?;
-        let bedrock = nn_orchestrator::spec::is_bedrock(&server.loader);
         let mut changes: Vec<(String, String)> = Vec::new();
         for (key, value) in &request.values {
-            nn_orchestrator::properties::validate_for(bedrock, key, value)
+            nn_orchestrator::properties::validate(key, value)
                 .map_err(ConnectError::invalid_argument)?;
             changes.push(((*key).to_owned(), value.trim().to_owned()));
         }
+        let (server, files) = open(&self.state, request.id).await?;
         let Some((mut props, version)) = read_properties(&files).await? else {
             return Err(ConnectError::failed_precondition(
                 "server.properties doesn't exist yet; start the server once to create it",
@@ -1540,7 +1537,7 @@ impl pb::ServerService for ServerRpc {
         )
         .await;
         Response::ok(pb::UpdateServerPropertiesResponse {
-            properties: properties_response(read_properties(&files).await?, bedrock).into(),
+            properties: properties_response(read_properties(&files).await?).into(),
             ..Default::default()
         })
     }

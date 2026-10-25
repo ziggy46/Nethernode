@@ -36,7 +36,6 @@ async fn main() {
             id: "bench".into(),
             bind: listen,
             proxy_protocol: false,
-            kind: nn_proxy::ListenerKind::Java,
         }],
         routes: vec![RouteSpec {
             id: "all".into(),
