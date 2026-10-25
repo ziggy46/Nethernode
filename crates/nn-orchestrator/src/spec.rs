@@ -912,8 +912,9 @@ mod tests {
         assert!(starts.windows(2).all(|w| w[1] - w[0] == BEDROCK_UDP_PORTS));
         // A server from before they had their own ports still gets a range.
         let legacy = bedrock_udp_start(30005);
-        assert!(legacy > 30005 && legacy + BEDROCK_UDP_PORTS - 1 <= u16::MAX);
-        assert!(bedrock_udp_start(u16::MAX) + BEDROCK_UDP_PORTS - 1 <= u16::MAX);
+        let end = |start: u16| u32::from(start) + u32::from(BEDROCK_UDP_PORTS) - 1;
+        assert!(legacy > 30005 && end(legacy) <= u32::from(u16::MAX));
+        assert!(end(bedrock_udp_start(u16::MAX)) <= u32::from(u16::MAX));
     }
 
     #[test]
