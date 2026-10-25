@@ -158,6 +158,49 @@ impl Store {
         Ok((listener, route))
     }
 
+    /// Like [`Self::add_server_port`], for a Bedrock server: the listener
+    /// is a UDP one. Returns the listener's and route's IDs.
+    pub async fn add_bedrock_port(
+        &self,
+        server_id: &str,
+        bind_addr: &str,
+        port: i64,
+    ) -> Result<(String, String)> {
+        let (listener, route) = (new_id(), new_id());
+        let mut tx = self.pool().begin().await?;
+        sqlx::query(
+            "INSERT INTO proxy_listeners (id, bind_addr, port, enabled, proxy_protocol, made_for_server, protocol)
+             VALUES (?1, ?2, ?3, 1, 0, ?4, 'bedrock')",
+        )
+        .bind(&listener)
+        .bind(bind_addr)
+        .bind(port)
+        .bind(server_id)
+        .execute(&mut *tx)
+        .await?;
+        sqlx::query(
+            "INSERT INTO routes (id, server_id, hostname, listener_id, priority)
+             VALUES (?1, ?2, '*', ?3, 0)",
+        )
+        .bind(&route)
+        .bind(server_id)
+        .bind(&listener)
+        .execute(&mut *tx)
+        .await?;
+        tx.commit().await?;
+        Ok((listener, route))
+    }
+
+    /// IDs of the listeners that carry Bedrock (UDP) traffic.
+    pub async fn bedrock_listener_ids(&self) -> Result<Vec<String>> {
+        let ids = sqlx::query_scalar::<_, String>(
+            "SELECT id FROM proxy_listeners WHERE protocol = 'bedrock'",
+        )
+        .fetch_all(self.pool())
+        .await?;
+        Ok(ids)
+    }
+
     /// Removes listeners made for `server_id` that no route uses any more
     /// (once the server is deleted, its routes are gone). Returns how many.
     pub async fn remove_unused_server_ports(&self, server_id: &str) -> Result<u64> {

@@ -29,7 +29,8 @@ import {
   projectVersionsQuery,
 } from "../../catalog/queries";
 import { domainError, domainsQuery, useSetDomains } from "../../domains/queries";
-import { routesQuery } from "../../proxy/queries";
+import { listenersQuery, routesQuery } from "../../proxy/queries";
+import { BEDROCK_FIRST_PORT, nextFreePort } from "../bedrock";
 import { formatBytes, loaderName, memoryLimitBytes, versionLabel } from "../format";
 import { THEME_NAMES } from "../world-banner";
 import {
@@ -105,11 +106,11 @@ export function SoftwareStep({ draft, update }: { draft: Draft; update: Update }
                   mcVersion: "",
                   loaderVersion: "",
                   pack: undefined,
-                  // Bedrock players connect to its own ports and it can't sleep; the rest use names.
+                  // Bedrock players connect to a UDP port of its own; the rest use names.
                   ...(s.id === "bedrock"
-                    ? { network: "later" as const, sleep: false }
+                    ? { network: "port" as const, port: "" }
                     : draft.software === "bedrock"
-                      ? { network: "domain" as const, sleep: true }
+                      ? { network: "domain" as const, port: "" }
                       : {}),
                 })
               }
@@ -600,26 +601,70 @@ export function ResourcesStep({
 
 /** Step 4: how players reach it. */
 export function NetworkStep(props: { draft: Draft; update: Update; canManageProxy: boolean }) {
-  return props.draft.software === "bedrock" ? <BedrockNetwork /> : <JavaNetworkStep {...props} />;
+  return props.draft.software === "bedrock" ? <BedrockNetwork {...props} /> : <JavaNetworkStep {...props} />;
 }
 
-/** Bedrock players connect to ports of the server's own; nothing is set up here. */
-function BedrockNetwork() {
+/** Bedrock players connect over UDP to a port of the server's own. */
+function BedrockNetwork({
+  draft,
+  update,
+  canManageProxy,
+}: {
+  draft: Draft;
+  update: Update;
+  canManageProxy: boolean;
+}) {
+  const id = useId();
+  const listeners = useQuery({ ...listenersQuery, enabled: canManageProxy });
+  const used = listeners.data;
+  // The lowest free port to start with, once the listeners are known.
+  useEffect(() => {
+    if (canManageProxy && !draft.port && used) update({ port: String(nextFreePort(used)) });
+    // Only admins can open ports; for others the address comes later.
+    if (!canManageProxy && draft.network !== "later") update({ network: "later" });
+  }, [canManageProxy, draft.port, draft.network, used, update]);
+  const port = Number(draft.port);
+  const clash = used?.some((l) => l.port === port);
+
+  if (!canManageProxy) {
+    return (
+      <p className="text-label text-text-secondary">
+        An admin opens the port players use for this server once it's created.
+      </p>
+    );
+  }
   return (
     <div>
-      <p className="text-label text-text-secondary">
-        Bedrock servers have ports of their own: the first is TCP 19132 with UDP 19200–19231, the next one
-        19133 with 19232–19263, and so on. Players add the server in Minecraft (Play → Servers → Add Server)
-        with this machine's address and the TCP port.
-      </p>
+      <Label htmlFor={id}>Port players connect to (UDP)</Label>
+      <Input
+        id={id}
+        inputMode="numeric"
+        placeholder={String(BEDROCK_FIRST_PORT)}
+        className="w-32 font-mono"
+        aria-invalid={clash ? true : undefined}
+        value={draft.port}
+        onChange={(e) => update({ port: e.target.value.replace(/\D/g, "").slice(0, 5) })}
+      />
+      {clash ? (
+        <Hint tone="danger">Another listener already uses port {port}.</Hint>
+      ) : (
+        <Hint>Each Bedrock server has a port of its own; 19132 is the one Minecraft fills in for you.</Hint>
+      )}
       <ul className="mt-4 flex flex-col gap-1.5 text-meta text-text-secondary">
-        <li>The server page shows its ports once it's created.</li>
         <li>
-          For friends outside your network, forward one TCP range and one UDP range on your router to this
-          machine once, for example TCP 19132–19140 and UDP 19200–19455.
+          Players add the server in Minecraft: Play → Servers → Add Server, with this machine's address and
+          that port.
         </li>
-        <li>Bedrock servers don't sleep: nothing is there to wake them, so they run until you stop them.</li>
+        <li>The port is UDP. Forward it on your router for friends outside your network.</li>
+        <li>
+          A sleeping server wakes when someone tries to join; they'll see "unable to connect" once and can
+          retry in a moment.
+        </li>
         <li>Xbox, PlayStation and Switch can't add servers by address.</li>
+        <li>
+          Mojang is replacing Bedrock's classic network protocol (RakNet) with a new one. Current servers
+          still accept RakNet, which is what NetherNode relays, but a future version may drop it.
+        </li>
       </ul>
     </div>
   );
@@ -945,17 +990,15 @@ export function ReviewStep({
             "Start as soon as it's installed.",
           ],
         ] as const
-      )
-        .filter(([id]) => !(bedrock && id === ids.sleep))
-        .map(([id, checked, set, title, body]) => (
-          <div key={id} className="mb-3 flex items-start gap-3">
-            <Checkbox id={id} checked={checked} onCheckedChange={(v) => set(v === true)} className="mt-0.5" />
-            <label htmlFor={id} className="text-label">
-              <span className="block font-[550]">{title}</span>
-              <span className="text-meta text-text-muted">{body}</span>
-            </label>
-          </div>
-        ))}
+      ).map(([id, checked, set, title, body]) => (
+        <div key={id} className="mb-3 flex items-start gap-3">
+          <Checkbox id={id} checked={checked} onCheckedChange={(v) => set(v === true)} className="mt-0.5" />
+          <label htmlFor={id} className="text-label">
+            <span className="block font-[550]">{title}</span>
+            <span className="text-meta text-text-muted">{body}</span>
+          </label>
+        </div>
+      ))}
       <div className="mb-1 flex items-start gap-3">
         <Checkbox
           id={ids.eula}

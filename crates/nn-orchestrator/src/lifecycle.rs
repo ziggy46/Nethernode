@@ -66,13 +66,6 @@ pub struct OrchestratorConfig {
     pub backend_ip: std::net::IpAddr,
     /// Host ports for modules' web pages (published like game ports).
     pub module_port_range: RangeInclusive<u16>,
-    /// Address Bedrock servers' ports are published on. Players connect to
-    /// them directly, so every interface by default.
-    pub bedrock_publish_ip: std::net::IpAddr,
-    /// The address Bedrock servers tell players to send game traffic to: an
-    /// IP address, or `<public_ip>` to have the server image look up this
-    /// machine's public one.
-    pub bedrock_address: String,
 }
 
 impl OrchestratorConfig {
@@ -90,8 +83,6 @@ impl OrchestratorConfig {
             host_servers_dir: None,
             backend_ip: std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
             module_port_range: 8100..=8199,
-            bedrock_publish_ip: std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED),
-            bedrock_address: "<public_ip>".into(),
         }
     }
 }
@@ -500,23 +491,10 @@ impl Orchestrator {
             used.extend(input.avoid_ports.iter().copied());
             let range = self.config.port_range.clone();
             let ip = self.config.backend_ip;
-            let mut ports = ports::allocate(range.clone(), &used, 2, |p| ports::is_free(ip, p))
+            let ports = ports::allocate(range.clone(), &used, 2, |p| ports::is_free(ip, p))
                 .ok_or_else(|| {
                     OrchestratorError::NoPorts(format!("{}–{}", range.start(), range.end()))
                 })?;
-            if spec::is_bedrock(&settings.loader) {
-                // Players connect to a Bedrock server's own ports, which
-                // follow each other from 19132; the second one is unused.
-                let publish = self.config.bedrock_publish_ip;
-                ports[0] = ports::allocate_bedrock(&used, |p| ports::is_free(publish, p))
-                    .ok_or_else(|| {
-                        OrchestratorError::NoPorts(format!(
-                            "{}–{}",
-                            spec::BEDROCK_PORT,
-                            spec::BEDROCK_PORT + spec::BEDROCK_SLOTS - 1
-                        ))
-                    })?;
-            }
             let password = random_password();
             let sealed = self.secrets.seal(&password);
             self.store
@@ -604,9 +582,6 @@ impl Orchestrator {
             s.mc_version = s.mc_version.trim().to_ascii_uppercase();
             s.loader_version = None;
             s.java_version = None;
-            // Players connect to a Bedrock server directly, so nothing is
-            // there to wake it.
-            s.sleep_when_empty = false;
         } else if !java::is_valid_version(&s.mc_version) {
             return Err(OrchestratorError::InvalidInput(
                 "Enter a Minecraft version like 1.21.4, or LATEST.".into(),
@@ -719,8 +694,6 @@ impl Orchestrator {
                 .as_deref()
                 .unwrap_or(&self.config.servers_dir),
             publish_ip: self.config.backend_ip,
-            bedrock_publish_ip: self.config.bedrock_publish_ip,
-            bedrock_address: &self.config.bedrock_address,
             modpack: modpack.as_ref(),
             curseforge_api_key: curseforge_key.as_deref(),
         }))

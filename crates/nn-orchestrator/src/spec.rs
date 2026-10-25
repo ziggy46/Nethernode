@@ -21,32 +21,10 @@ pub const LABEL_SPEC_HASH: &str = "nethernode.spec_hash";
 
 /// Port the game listens on inside the container.
 pub const CONTAINER_GAME_PORT: &str = "25565/tcp";
-/// Port a Bedrock server's signalling (TCP) listens on inside its container,
-/// and the first one handed out on the host.
+/// Port a Bedrock server listens on inside its container (UDP).
+pub const CONTAINER_BEDROCK_PORT: &str = "19132/udp";
+/// [`CONTAINER_BEDROCK_PORT`] as a number, for the `SERVER_PORT` variable.
 pub const BEDROCK_PORT: u16 = 19132;
-/// How many Bedrock servers get their own ports.
-pub const BEDROCK_SLOTS: u16 = 64;
-/// First UDP port of the first Bedrock server's range.
-pub const BEDROCK_UDP_BASE: u16 = 19200;
-/// UDP ports each Bedrock server gets: players' game traffic uses them.
-pub const BEDROCK_UDP_PORTS: u16 = 32;
-
-/// The first UDP port of the range for the Bedrock server whose signalling
-/// port on the host is `tcp_port`. Servers have the ports 19132, 19133, …, and
-/// ranges that follow each other from 19200, so forwarding one TCP range and
-/// one UDP range on a router covers every server.
-pub fn bedrock_udp_start(tcp_port: u16) -> u16 {
-    let slot = tcp_port.wrapping_sub(BEDROCK_PORT);
-    if slot < BEDROCK_SLOTS {
-        BEDROCK_UDP_BASE + slot * BEDROCK_UDP_PORTS
-    } else {
-        // A port outside the Bedrock range (a server from before they had
-        // their own): a range above it that can't run off the end.
-        tcp_port
-            .saturating_add(100)
-            .min(u16::MAX - BEDROCK_UDP_PORTS)
-    }
-}
 /// The loader id of Bedrock Dedicated Server.
 pub const BEDROCK: &str = "bedrock";
 /// The image Bedrock servers run in, without a tag.
@@ -88,8 +66,6 @@ pub const RESERVED_ENV: &[&str] = &[
     "GENERIC_PACK",
     "GENERIC_PACKS",
     "TRANSPORT",
-    "SERVER_UDP_PORTS",
-    "SERVER_IP",
     "FORGE_VERSION",
     "NEOFORGE_VERSION",
     "FABRIC_LOADER_VERSION",
@@ -339,12 +315,6 @@ pub struct SpecInput<'a> {
     pub servers_dir: &'a Path,
     /// Address game, RCON, and management ports are published on.
     pub publish_ip: std::net::IpAddr,
-    /// Address a Bedrock server's ports are published on: players connect to
-    /// them directly, so not just this machine.
-    pub bedrock_publish_ip: std::net::IpAddr,
-    /// The address a Bedrock server tells players to send their game traffic
-    /// to: an IP, or `<public_ip>` for the image to look up this machine's.
-    pub bedrock_address: &'a str,
     /// User and group the server runs as, so its files stay manageable by
     /// NetherNode; `None` keeps the image default.
     pub run_as: Option<(u32, u32)>,
@@ -543,12 +513,6 @@ pub fn build(input: &SpecInput<'_>) -> ContainerSpec {
 /// named like `server.properties` keys, see
 /// <https://github.com/itzg/docker-minecraft-bedrock-server>. There is no
 /// RCON: commands go in through the image's `send-command`.
-///
-/// Bedrock's NetherNet transport has players open a TCP connection to the
-/// server's port, which then tells them which of its UDP ports to send game
-/// traffic to. So nothing sits in front of the server: its TCP port and a
-/// range of UDP ports are published on the host for players to reach, and
-/// the server is told which address to advertise for them.
 fn build_bedrock(input: &SpecInput<'_>) -> ContainerSpec {
     let mut env: BTreeMap<String, String> = BTreeMap::new();
     for (key, value) in input.extra_env {
@@ -561,16 +525,10 @@ fn build_bedrock(input: &SpecInput<'_>) -> ContainerSpec {
     }
     env.insert("VERSION".into(), input.mc_version.trim().to_owned());
     env.insert("SERVER_PORT".into(), BEDROCK_PORT.to_string());
-    env.insert("TRANSPORT".into(), "nethernet".into());
-    let udp_start = bedrock_udp_start(input.game_port);
-    let udp_end = udp_start + BEDROCK_UDP_PORTS - 1;
-    env.insert(
-        "SERVER_UDP_PORTS".into(),
-        format!(
-            "{}:{udp_start}-{udp_end}:{udp_start}-{udp_end}",
-            input.bedrock_address
-        ),
-    );
+    // Bedrock 1.26 defaults to NetherNet (TCP signalling, then UDP ports
+    // chosen per player), which a single relayed port can't carry. RakNet,
+    // the classic transport, is one UDP port.
+    env.insert("TRANSPORT".into(), "raknet".into());
     env.insert("MAX_PLAYERS".into(), input.max_players.to_string());
     if let Some((uid, gid)) = input.run_as {
         env.insert("UID".into(), uid.to_string());
@@ -580,20 +538,13 @@ fn build_bedrock(input: &SpecInput<'_>) -> ContainerSpec {
         env.insert("SERVER_NAME".into(), motd.into());
     }
 
-    let publish = |port: u16| {
+    let port_bindings = HashMap::from([(
+        CONTAINER_BEDROCK_PORT.to_owned(),
         Some(vec![PortBinding {
-            host_ip: Some(input.bedrock_publish_ip.to_string()),
-            host_port: Some(port.to_string()),
-        }])
-    };
-    let tcp_port = format!("{BEDROCK_PORT}/tcp");
-    let mut port_bindings = HashMap::from([(tcp_port.clone(), publish(input.game_port))]);
-    let mut exposed = vec![tcp_port];
-    for port in udp_start..=udp_end {
-        let key = format!("{port}/udp");
-        port_bindings.insert(key.clone(), publish(port));
-        exposed.push(key);
-    }
+            host_ip: Some(input.publish_ip.to_string()),
+            host_port: Some(input.game_port.to_string()),
+        }]),
+    )]);
     let data_dir = input.servers_dir.join(input.slug);
     let host_config = HostConfig {
         binds: Some(vec![format!("{}:/data", data_dir.display())]),
@@ -616,7 +567,7 @@ fn build_bedrock(input: &SpecInput<'_>) -> ContainerSpec {
     let mut body = ContainerCreateBody {
         image: Some(input.image.to_owned()),
         env: Some(env.iter().map(|(k, v)| format!("{k}={v}")).collect()),
-        exposed_ports: Some(exposed),
+        exposed_ports: Some(vec![CONTAINER_BEDROCK_PORT.to_owned()]),
         host_config: Some(host_config),
         // A TTY and open stdin: the image reads its console from them.
         tty: Some(true),
@@ -683,8 +634,6 @@ mod tests {
             extra_env: extra,
             servers_dir: dir,
             publish_ip: std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
-            bedrock_publish_ip: std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED),
-            bedrock_address: "<public_ip>",
             run_as: None,
             modpack: None,
             curseforge_api_key: None,
@@ -853,7 +802,7 @@ mod tests {
     }
 
     #[test]
-    fn bedrock_servers_publish_a_tcp_port_and_a_udp_range_and_no_java() {
+    fn bedrock_servers_get_a_udp_port_and_no_java() {
         let extra = BTreeMap::new();
         let dir = PathBuf::from("/srv/servers");
         let mut i = input(&extra, &dir);
@@ -862,16 +811,13 @@ mod tests {
         i.loader_version = None;
         i.mc_version = "LATEST";
         i.memory_mb = 2048;
-        // The second Bedrock server: signalling on 19133.
-        i.game_port = 19133;
         let spec = build(&i);
         let env = env(&spec);
         for want in [
             "EULA=TRUE",
             "VERSION=LATEST",
             "SERVER_PORT=19132",
-            "TRANSPORT=nethernet",
-            "SERVER_UDP_PORTS=<public_ip>:19232-19263:19232-19263",
+            "TRANSPORT=raknet",
             "MAX_PLAYERS=20",
             "SERVER_NAME=Hello",
         ] {
@@ -885,36 +831,13 @@ mod tests {
         }
         let host = spec.body.host_config.as_ref().unwrap();
         let bindings = host.port_bindings.as_ref().unwrap();
-        // The signalling port, and its 32 game ports, for every interface.
-        assert_eq!(bindings.len(), 1 + 32);
-        let tcp = bindings["19132/tcp"].as_ref().unwrap();
-        assert_eq!(tcp[0].host_port.as_deref(), Some("19133"));
-        assert_eq!(tcp[0].host_ip.as_deref(), Some("0.0.0.0"));
-        for port in [19232, 19263] {
-            let udp = bindings[&format!("{port}/udp")].as_ref().unwrap();
-            assert_eq!(udp[0].host_port, Some(port.to_string()));
-        }
-        assert!(!bindings.contains_key("19231/udp") && !bindings.contains_key("19264/udp"));
-        assert_eq!(spec.body.exposed_ports.as_ref().map(Vec::len), Some(33));
+        assert_eq!(bindings.len(), 1);
+        let binding = bindings["19132/udp"].as_ref().unwrap();
+        assert_eq!(binding[0].host_port.as_deref(), Some("30000"));
+        assert_eq!(binding[0].host_ip.as_deref(), Some("127.0.0.1"));
+        assert_eq!(spec.body.exposed_ports, Some(vec!["19132/udp".to_owned()]));
         // The setting is the whole memory limit.
         assert_eq!(host.memory, Some(2048 * 1024 * 1024));
-    }
-
-    #[test]
-    fn bedrock_servers_get_ranges_that_follow_each_other() {
-        assert_eq!(bedrock_udp_start(19132), 19200);
-        assert_eq!(bedrock_udp_start(19133), 19232);
-        assert_eq!(bedrock_udp_start(19132 + 63), 19200 + 63 * 32);
-        // No two servers' ranges overlap, and none runs off the end.
-        let starts: Vec<u16> = (0..BEDROCK_SLOTS)
-            .map(|n| bedrock_udp_start(19132 + n))
-            .collect();
-        assert!(starts.windows(2).all(|w| w[1] - w[0] == BEDROCK_UDP_PORTS));
-        // A server from before they had their own ports still gets a range.
-        let legacy = bedrock_udp_start(30005);
-        let end = |start: u16| u32::from(start) + u32::from(BEDROCK_UDP_PORTS) - 1;
-        assert!(legacy > 30005 && end(legacy) <= u32::from(u16::MAX));
-        assert!(end(bedrock_udp_start(u16::MAX)) <= u32::from(u16::MAX));
     }
 
     #[test]

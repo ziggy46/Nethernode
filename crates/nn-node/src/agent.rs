@@ -422,6 +422,9 @@ async fn handle(mut stream: LinkStream, node: Node, ctx: Arc<Ctx>, session: Sess
     if let Request::Connect { id } = &request {
         return relay(stream, &node, id).await;
     }
+    if let Request::ConnectUdp { id } = &request {
+        return relay_udp(stream, &node, id).await;
+    }
     if let Request::ModuleConnect { id } = &request {
         return relay_module(stream, &node, id).await;
     }
@@ -559,6 +562,7 @@ async fn answer(node: &Node, request: Request) -> Reply {
         Request::ModuleLogs { id, lines } => reply(node.module_logs(&id, lines).await),
         Request::Logs { .. }
         | Request::Connect { .. }
+        | Request::ConnectUdp { .. }
         | Request::ModuleConnect { .. }
         | Request::Folder { .. }
         | Request::OpenBackup { .. }
@@ -591,6 +595,71 @@ async fn relay(mut stream: LinkStream, node: &Node, id: &str) {
         return;
     };
     splice(stream, addr, ()).await;
+}
+
+/// The largest datagram relayed to a Bedrock server (RakNet's MTU is under 1500).
+const MAX_DATAGRAM: usize = 2048;
+
+/// Connects the stream to a Bedrock server's game port (UDP) on this
+/// machine. Datagrams cross the stream behind a two-byte length.
+async fn relay_udp(mut stream: LinkStream, node: &Node, id: &str) {
+    let target = match node {
+        Node::Local(local) => match local.orchestrator() {
+            Ok(o) => match o.server(id).await {
+                Ok(server) => u16::try_from(server.internal_port)
+                    .ok()
+                    .map(|port| std::net::SocketAddr::new(o.backend_ip(), port)),
+                Err(_) => None,
+            },
+            Err(_) => None,
+        },
+        Node::Remote(_) => None,
+    };
+    let socket = match target {
+        Some(addr) => {
+            let bind: std::net::SocketAddr = if addr.is_ipv4() {
+                ([0, 0, 0, 0], 0).into()
+            } else {
+                ([0u16; 8], 0).into()
+            };
+            match tokio::net::UdpSocket::bind(bind).await {
+                Ok(socket) if socket.connect(addr).await.is_ok() => Some(socket),
+                _ => None,
+            }
+        }
+        None => None,
+    };
+    let Some(socket) = socket else {
+        let missing = crate::NodeError::Orchestrator(nn_orchestrator::OrchestratorError::NotFound);
+        let _ = messages::send(&mut stream, &reply::<()>(Err(missing))).await;
+        return;
+    };
+    if messages::send(&mut stream, &reply(Ok(()))).await.is_err() {
+        return;
+    }
+    let (mut read, mut write) = tokio::io::split(stream);
+    let up = async {
+        while let Ok(datagram) = nn_proxy::bedrock::read_datagram(&mut read).await {
+            if socket.send(&datagram).await.is_err() {
+                break;
+            }
+        }
+    };
+    let down = async {
+        let mut buf = vec![0u8; MAX_DATAGRAM];
+        while let Ok(len) = socket.recv(&mut buf).await {
+            if nn_proxy::bedrock::write_datagram(&mut write, &buf[..len])
+                .await
+                .is_err()
+            {
+                break;
+            }
+        }
+    };
+    tokio::select! {
+        () = up => {},
+        () = down => {},
+    }
 }
 
 /// Connects the stream to a server's management protocol port, after
