@@ -56,7 +56,8 @@ web panel:
 - **Copies and templates.** Copy a server to any machine, with or without its
   world, or save its setup as a template to start new servers from.
 - **Room for friends.** Roles from viewer to owner, one-time passwords,
-  two-factor sign-in, an audit log, and Discord notifications.
+  two-factor sign-in, an audit log, and Discord notifications (including
+  alerts when a machine is low on disk or a server is lagging).
 - **Updates in a click.** The panel tells you when a new version is out and
   updates itself from Settings; the other machines follow on their own.
 - **Light.** A single static binary with the panel built in; it idles at a few
@@ -133,8 +134,8 @@ page.
 
 The full guides (installing, running servers, DNS and ports, the proxy,
 modules, Cloudflare Tunnel, backups, more machines, users, notifications and updates,
-configuration, the API and the security model) live in the
-**NetherNode-docs** repository, with a hosted site coming.
+configuration, the API and the security model) are at
+**[nethernode-docs.pages.dev](https://nethernode-docs.pages.dev/)**.
 
 ## The install count
 
