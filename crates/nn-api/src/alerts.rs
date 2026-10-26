@@ -134,9 +134,12 @@ pub fn spawn(state: AppState) {
     });
 }
 
+/// A machine's ID, its name, and its disk's total and free bytes when known.
+type Machine = (String, String, Option<(u64, u64)>);
+
 /// Looks at every machine's disk.
 async fn check_disks(state: &AppState, watches: &mut HashMap<String, Watch>) {
-    let mut machines: Vec<(String, String, Option<(u64, u64)>)> = vec![(
+    let mut machines: Vec<Machine> = vec![(
         "local".to_owned(),
         "The panel's machine".to_owned(),
         state.nodes.local().disk_space(),
