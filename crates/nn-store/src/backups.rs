@@ -130,6 +130,17 @@ impl Store {
         Ok(())
     }
 
+    /// Notes the Minecraft version a (non-modpack) server was on, so
+    /// restoring the backup can put it back.
+    pub async fn set_backup_mc_version(&self, id: &str, mc_version: &str) -> Result<()> {
+        sqlx::query("UPDATE backups SET mc_version = ?2 WHERE id = ?1")
+            .bind(id)
+            .bind(mc_version)
+            .execute(self.pool())
+            .await?;
+        Ok(())
+    }
+
     /// Records how a backup turned out. A `None` message keeps any label.
     #[allow(clippy::too_many_arguments)]
     pub async fn finish_backup(

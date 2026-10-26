@@ -104,18 +104,72 @@ pub(crate) async fn labelled_backup_and_wait(
     user_id: &str,
     label: &str,
 ) -> Result<String, String> {
+    labelled(state, server, user_id, label, false).await
+}
+
+/// Like [`labelled_backup_and_wait`], for a server about to change its
+/// Minecraft version: the backup remembers the version, and restoring it
+/// puts that version back.
+pub(crate) async fn version_backup_and_wait(
+    state: &AppState,
+    server: &Server,
+    user_id: &str,
+    label: &str,
+) -> Result<String, String> {
+    labelled(state, server, user_id, label, true).await
+}
+
+async fn labelled(
+    state: &AppState,
+    server: &Server,
+    user_id: &str,
+    label: &str,
+    remember_version: bool,
+) -> Result<String, String> {
     let (backup_id, name) = begin(state, server, Kind::Manual, Some(user_id))
         .await
         .map_err(|e| e.message.unwrap_or_default())?;
-    if let Err(e) = state
-        .auth
-        .store()
-        .set_backup_message(&backup_id, label)
-        .await
-    {
+    let store = state.auth.store();
+    if let Err(e) = store.set_backup_message(&backup_id, label).await {
         tracing::warn!(error = %e, "couldn't label a backup");
     }
+    if remember_version
+        && let Err(e) = store
+            .set_backup_mc_version(&backup_id, &server.mc_version)
+            .await
+    {
+        tracing::warn!(error = %e, "couldn't note a backup's Minecraft version");
+    }
     run(state, server, &backup_id, &name, &nn_store::new_id()).await
+}
+
+/// After a backup's files are restored to a server that isn't a modpack:
+/// puts the Minecraft version it was made on back, if it was noted and
+/// differs. Returns a sentence to add to the result.
+async fn restore_version(
+    state: &AppState,
+    server_id: &str,
+    backup: &Backup,
+    docker: bool,
+) -> Option<String> {
+    let wanted = backup.mc_version.as_deref()?;
+    let server = state.auth.store().find_server(server_id).await.ok()??;
+    if server.modpack_json.is_some() || server.mc_version == wanted {
+        return None;
+    }
+    if !docker {
+        return Some(format!(
+            " It was made on Minecraft {wanted}, but the version couldn't be put back because Docker isn't available."
+        ));
+    }
+    let mut settings = server.settings();
+    settings.mc_version = wanted.to_owned();
+    Some(
+        match crate::modpack_updates::apply(state, &server, settings).await {
+            Ok(_) => format!(" The server is back on Minecraft {wanted}."),
+            Err(e) => format!(" The server couldn't be put back on Minecraft {wanted}: {e}"),
+        },
+    )
 }
 
 async fn run(
@@ -289,6 +343,9 @@ pub(crate) async fn start_restore(
             if let Some(note) =
                 crate::modpack_updates::restore_pack(&state2, &server.id, &backup, docker).await
             {
+                message.push_str(&note);
+            }
+            if let Some(note) = restore_version(&state2, &server.id, &backup, docker).await {
                 message.push_str(&note);
             }
             if start_after && let Err(e) = node.start(&server.id).await {

@@ -706,7 +706,22 @@ impl pb::ServerService for ServerRpc {
                 sent.cpu_limit.is_some(),
             );
         }
-        settings.modpack_json = current.modpack_json;
+        settings.modpack_json = current.modpack_json.clone();
+        // A new Minecraft version or software can't be taken back by
+        // changing it again (worlds are upgraded as they load), so a backup
+        // comes first when asked for. If it fails, nothing changes.
+        if request.backup_first && current.modpack_json.is_none() {
+            let before = crate::notify::software_label(&current.loader, &current.mc_version);
+            let after = crate::notify::software_label(&settings.loader, &settings.mc_version);
+            if before != after {
+                let label = format!("Before changing from {before} to {after}");
+                crate::backups::version_backup_and_wait(&self.state, &current, &user.id, &label)
+                    .await
+                    .map_err(|e| {
+                        ConnectError::failed_precondition(format!("{e} Nothing was changed."))
+                    })?;
+            }
+        }
         let (mut server, _) = node
             .update(request.id, settings)
             .await

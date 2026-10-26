@@ -376,6 +376,14 @@ impl pb::ModService for ModRpc {
             }
         }
         let catalog = &self.state.content.catalog;
+        // A Minecraft version to check for instead of the server's own.
+        let target = request.mc_version.trim();
+        let targeted = !target.is_empty() && target != server.mc_version;
+        let checked_for = if targeted {
+            target
+        } else {
+            server.mc_version.as_str()
+        };
         let sha1s: Vec<String> = hashes.iter().map(|(h, _)| h.clone()).collect();
         let known = catalog
             .modrinth_identify(&sha1s)
@@ -385,7 +393,7 @@ impl pb::ModService for ModRpc {
             HashMap::new()
         } else {
             catalog
-                .modrinth_updates(&sha1s, &server.mc_version, &loader)
+                .modrinth_updates(&sha1s, checked_for, &loader)
                 .await
                 .map_err(catalog_error)?
         };
@@ -410,16 +418,22 @@ impl pb::ModService for ModRpc {
             let Some(project) = projects.get(&current.project_id) else {
                 continue;
             };
-            // A stable mod is only offered stable updates.
-            let newer = latest
-                .get(&hash)
-                .filter(|v| v.id != current.id && v.published_ms > current.published_ms)
-                .filter(|v| v.channel == "release" || current.channel != "release")
-                .cloned();
+            let found = latest.get(&hash);
+            // A stable mod is only offered stable updates. For another
+            // Minecraft version, whatever Modrinth has for it is shown.
+            let newer = if targeted {
+                found.cloned()
+            } else {
+                found
+                    .filter(|v| v.id != current.id && v.published_ms > current.published_ms)
+                    .filter(|v| v.channel == "release" || current.channel != "release")
+                    .cloned()
+            };
             mods.push(pb::ModUpdate {
                 filename,
                 project: proto_project(project.clone()).into(),
                 latest: newer.map(proto_version).into(),
+                unsupported: targeted && found.is_none(),
                 ..Default::default()
             });
         }

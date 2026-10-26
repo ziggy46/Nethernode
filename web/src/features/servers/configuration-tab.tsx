@@ -27,6 +27,7 @@ import { DeleteProgressView } from "./delete-progress";
 import { LOADERS, loaderName } from "./format";
 import { MoveServer } from "./move-server";
 import { deleteProgressKey } from "./queries";
+import { ModsReadiness, VersionChangeDialog, VersionHint } from "./version-change";
 import { THEME_NAMES } from "./world-banner";
 import { WorldPanel } from "./world-panel";
 
@@ -100,10 +101,17 @@ export function ConfigurationTab({ server }: { server: Server }) {
   };
   const valid = Object.values(errors).every((e) => !e);
 
+  const software = (loader: string, version: string) => `${loaderName(loader)} ${version}`;
+  const versionChanging =
+    !isModpack && (form.mcVersion.trim() !== server.mcVersion || form.loader !== server.loader);
+  const [confirmVersion, setConfirmVersion] = useState(false);
+  const [backupFirst, setBackupFirst] = useState(true);
+
   const save = useMutation({
-    mutationFn: () =>
+    mutationFn: (backup: boolean) =>
       serverClient.updateServer({
         id: server.id,
+        backupFirst: backup,
         settings: {
           name: form.name.trim(),
           motd: form.motd.trim(),
@@ -123,7 +131,9 @@ export function ConfigurationTab({ server }: { server: Server }) {
         },
       }),
     onSuccess: async ({ server: saved }) => {
+      setConfirmVersion(false);
       await queryClient.invalidateQueries({ queryKey: ["servers"] });
+      void queryClient.invalidateQueries({ queryKey: ["backups"] });
       toast.success(
         saved?.restartRequired
           ? "Configuration saved. Restart the server to apply it."
@@ -134,7 +144,13 @@ export function ConfigurationTab({ server }: { server: Server }) {
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (valid) save.mutate();
+    if (!valid) return;
+    if (versionChanging) {
+      save.reset();
+      setConfirmVersion(true);
+    } else {
+      save.mutate(false);
+    }
   };
 
   // Wide screens get two columns: the server's own settings and what can be
@@ -151,7 +167,7 @@ export function ConfigurationTab({ server }: { server: Server }) {
         <form onSubmit={onSubmit} noValidate className="below-xl:order-1">
           <Panel>
             <PanelHeader title="Server configuration" icon={<Settings />} />
-            {save.isError && <ErrorAlert>{errorMessage(save.error)}</ErrorAlert>}
+            {save.isError && !confirmVersion && <ErrorAlert>{errorMessage(save.error)}</ErrorAlert>}
             <fieldset disabled={!canManage} className="disabled:opacity-60">
               <Field
                 label="Server name"
@@ -277,6 +293,21 @@ export function ConfigurationTab({ server }: { server: Server }) {
                       error={errors.version}
                     />
                   </div>
+                  {!isModpack && (
+                    <>
+                      <VersionHint
+                        loader={form.loader}
+                        saved={server.mcVersion}
+                        onUse={(v) => set("mcVersion", v)}
+                      />
+                      <ModsReadiness
+                        serverId={server.id}
+                        loader={server.loader}
+                        saved={server.mcVersion}
+                        target={form.mcVersion.trim()}
+                      />
+                    </>
+                  )}
                   <Field
                     label="Loader or build version"
                     className="[&_input]:font-mono"
@@ -336,6 +367,18 @@ export function ConfigurationTab({ server }: { server: Server }) {
               )}
             </fieldset>
           </Panel>
+          <VersionChangeDialog
+            open={confirmVersion}
+            onOpenChange={setConfirmVersion}
+            from={software(server.loader, server.mcVersion)}
+            to={software(form.loader, form.mcVersion.trim())}
+            loaderChanged={form.loader !== server.loader}
+            backup={backupFirst}
+            onBackupChange={setBackupFirst}
+            pending={save.isPending}
+            error={save.isError ? errorMessage(save.error) : undefined}
+            onConfirm={() => save.mutate(backupFirst)}
+          />
         </form>
         {canManage && (
           <div className="flex flex-col gap-[18px] below-xl:order-3">

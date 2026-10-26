@@ -88,12 +88,19 @@ message ModUpdate {
   string filename = 1;
   // The Modrinth project the file belongs to.
   Project project = 2;
-  // Set when a newer version exists for this server.
+  // Set when a newer version exists for this server (or, when the request
+  // names a Minecraft version, the newest one for that version).
   optional ProjectVersion latest = 3;
+  // Only when the request names a Minecraft version: Modrinth has no build
+  // of this mod for it.
+  bool unsupported = 4;
 }
 
 message CheckModUpdatesRequest {
   string server_id = 1;
+  // Check against this Minecraft version instead of the server's own, to
+  // see which mods are ready for an upgrade.
+  string mc_version = 2;
 }
 
 message CheckModUpdatesResponse {

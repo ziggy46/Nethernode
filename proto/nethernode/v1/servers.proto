@@ -245,6 +245,9 @@ message CreateServerResponse {
 message UpdateServerRequest {
   string id = 1;
   ServerSettings settings = 2;
+  // When the Minecraft version or software changes, back the server up first
+  // (labelled with the old version) and change nothing if that fails.
+  bool backup_first = 3;
 }
 
 message UpdateServerResponse {
