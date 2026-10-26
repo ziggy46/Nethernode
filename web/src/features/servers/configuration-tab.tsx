@@ -263,9 +263,10 @@ export function ConfigurationTab({ server }: { server: Server }) {
                 <div className="mt-4">
                   <p className="mb-4 flex gap-2 text-meta text-warning">
                     <TriangleAlert className="mt-px size-3.5 shrink-0" aria-hidden />
-                    Changing the software or version on an existing world can break it. Back up first.
+                    Changing the software or version on an existing world can break it. Saving offers a backup
+                    first.
                   </p>
-                  <div className="grid grid-cols-2 gap-[13px] below-sm:grid-cols-1">
+                  <div className="grid grid-cols-2 gap-x-[13px] below-sm:grid-cols-1">
                     <div className="mb-[17px]">
                       <label htmlFor={ids.loader} className="mb-[7px] block text-label text-text-secondary">
                         Server software
@@ -298,6 +299,7 @@ export function ConfigurationTab({ server }: { server: Server }) {
                       <VersionHint
                         loader={form.loader}
                         saved={server.mcVersion}
+                        value={form.mcVersion}
                         onUse={(v) => set("mcVersion", v)}
                       />
                       <ModsReadiness

@@ -23,16 +23,19 @@ import { isReleaseVersion, MOD_LOADERS, newerRelease } from "./versions";
 export function VersionHint({
   loader,
   saved,
+  value,
   onUse,
 }: {
   loader: string;
   /** The version the server is on now. */
   saved: string;
+  /** What's typed in the version box. */
+  value: string;
   onUse: (version: string) => void;
 }) {
   const versions = useQuery(mcVersionsQuery(loader, false));
   const newer = versions.data ? newerRelease(versions.data, saved) : undefined;
-  if (!newer) return null;
+  if (!newer || newer === value.trim()) return null;
   return (
     <p className="-mt-2.5 mb-[17px] flex flex-wrap items-center gap-2 text-meta text-text-muted">
       {loaderName(loader)} {newer} is out.
