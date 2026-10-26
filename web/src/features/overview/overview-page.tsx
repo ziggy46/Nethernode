@@ -31,6 +31,8 @@ import { ago } from "@/lib/time";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { useNow } from "@/lib/use-now";
 
+import { GettingStartedPanel } from "./getting-started-panel";
+
 const ActivityFeed = lazy(() => import("@/features/audit/activity-feed"));
 
 /** The newest finished backup, from any server. */
@@ -128,6 +130,7 @@ export function OverviewPage() {
         }
       />
       <DockerNotice />
+      {canManage && <GettingStartedPanel canCreate={!!docker} onCreateServer={() => setCreating(true)} />}
 
       <div className="mb-[30px] grid grid-cols-4 gap-3.5 below-xl:gap-2.5 below-md:mb-6 below-md:grid-cols-2">
         <MetricCard
