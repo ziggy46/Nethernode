@@ -9,6 +9,11 @@ on:
   schedule:
     - cron: "17 6 * * *"
   workflow_dispatch:
+    inputs:
+      branch:
+        description: "Test just this branch (a pull request's, say) instead of main and edge"
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -23,7 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        branch: [main, edge]
+        branch: ${{ fromJSON(inputs.branch && format('["{0}"]', inputs.branch) || '["main","edge"]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -84,7 +89,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        branch: [main, edge]
+        branch: ${{ fromJSON(inputs.branch && format('["{0}"]', inputs.branch) || '["main","edge"]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
