@@ -247,11 +247,11 @@ pub(crate) async fn list(
     Json(Notices { notices }).into_response()
 }
 
-fn low(total: u64, free: u64) -> bool {
+pub(crate) fn low(total: u64, free: u64) -> bool {
     total > 0 && free < LOW_DISK.min(total / 10).max(total / 20)
 }
 
-fn gb(bytes: u64) -> String {
+pub(crate) fn gb(bytes: u64) -> String {
     format!("{:.1} GB", bytes as f64 / 1024.0 / 1024.0 / 1024.0)
 }
 

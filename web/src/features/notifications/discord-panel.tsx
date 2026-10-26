@@ -32,6 +32,11 @@ const EVENTS: { key: Toggle; title: string; description: string }[] = [
     title: "Modpack updates",
     description: "A newer version of a server's pack, and updates that finish or fail.",
   },
+  {
+    key: "resourceAlerts",
+    title: "Resource alerts",
+    description: "A machine low on disk, a server lagging for minutes, or one with its memory nearly full.",
+  },
 ];
 
 /** Discord webhook settings. Administrators and owners. */
@@ -66,6 +71,7 @@ export default function DiscordPanel() {
     playerJoin: events?.playerJoin ?? false,
     backupFailed: events?.backupFailed ?? false,
     modpackUpdates: events?.modpackUpdates ?? false,
+    resourceAlerts: events?.resourceAlerts ?? false,
   };
 
   return (

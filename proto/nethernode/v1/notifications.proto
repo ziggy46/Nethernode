@@ -44,6 +44,9 @@ message NotificationEvents {
   bool backup_failed = 4;
   // Newer modpack versions, and modpack updates that finish or fail.
   bool modpack_updates = 5;
+  // A machine running low on disk, a server stuck lagging, or one with its
+  // memory nearly full.
+  bool resource_alerts = 6;
 }
 
 message GetNotificationsRequest {}

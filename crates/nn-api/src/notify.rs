@@ -42,6 +42,9 @@ pub struct Toggles {
     pub backup_failed: bool,
     /// Newer modpack versions, and modpack updates finishing or failing.
     pub modpack_updates: bool,
+    /// A machine low on disk, a server stuck lagging, or one with its
+    /// memory nearly full.
+    pub resource_alerts: bool,
 }
 
 impl Default for Toggles {
@@ -52,6 +55,7 @@ impl Default for Toggles {
             player_join: false,
             backup_failed: true,
             modpack_updates: true,
+            resource_alerts: true,
         }
     }
 }
@@ -261,7 +265,13 @@ impl Notifier {
         self.send(out).await
     }
 
-    async fn send(&self, embeds: Vec<serde_json::Value>) -> Result<(), String> {
+    /// Whether resource alerts would be sent: a webhook is set and they're on.
+    pub(crate) fn alerts_on(&self) -> bool {
+        let inner = self.read();
+        inner.webhook.is_some() && inner.toggles.resource_alerts
+    }
+
+    pub(crate) async fn send(&self, embeds: Vec<serde_json::Value>) -> Result<(), String> {
         let Some(url) = self.read().webhook.clone() else {
             return Err("No webhook is set.".to_owned());
         };
@@ -355,9 +365,9 @@ const AVATAR: &str =
 const HEADS: &str = "https://mc-heads.net/avatar";
 
 const COLOR_OK: u32 = 0x2f_b3_6b;
-const COLOR_INFO: u32 = 0x5b_8d_ef;
+pub(crate) const COLOR_INFO: u32 = 0x5b_8d_ef;
 const COLOR_MUTED: u32 = 0x80_80_80;
-const COLOR_BAD: u32 = 0xe0_4b_3c;
+pub(crate) const COLOR_BAD: u32 = 0xe0_4b_3c;
 
 /// Something about a server's modpack.
 #[derive(Debug)]
@@ -647,7 +657,12 @@ fn software(server: &nn_store::Server) -> String {
             None => pack.title,
         };
     }
-    let loader = match server.loader.as_str() {
+    software_label(&server.loader, &server.mc_version)
+}
+
+/// "Paper 1.21.4", from a loader and a Minecraft version.
+pub(crate) fn software_label(loader: &str, mc_version: &str) -> String {
+    let loader = match loader {
         "neoforge" => "NeoForge".to_owned(),
         other => {
             let mut chars = other.chars();
@@ -657,7 +672,7 @@ fn software(server: &nn_store::Server) -> String {
                 .unwrap_or_default()
         }
     };
-    format!("{loader} {}", server.mc_version)
+    format!("{loader} {mc_version}")
 }
 
 /// A console line without its color codes.

@@ -184,6 +184,7 @@ async fn serve(config: Config) -> Result<()> {
     nn_api::backups::tasks::recover(&state).await;
     nn_api::schedules::runner::spawn(state.clone());
     nn_api::notify::spawn(state.clone());
+    nn_api::alerts::spawn(state.clone());
     if config.install_count.enabled {
         state.install_count.adopt_configuration(&store).await;
     }

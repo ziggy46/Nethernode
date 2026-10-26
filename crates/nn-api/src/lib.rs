@@ -38,6 +38,7 @@ pub const VERSION: &str = match option_env!("NETHERNODE_VERSION") {
 };
 
 pub mod agents;
+pub mod alerts;
 pub mod backups;
 pub mod cache;
 pub mod cloudflare;
