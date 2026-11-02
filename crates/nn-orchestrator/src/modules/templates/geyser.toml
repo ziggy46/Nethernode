@@ -1,0 +1,107 @@
+# Geyser: lets players on Minecraft Bedrock (Windows, phones, consoles) join
+# a Java server. https://geysermc.org/
+id = "geyser"
+name = "Geyser"
+description = "Lets Bedrock players (Windows 10/11, phones and tablets, Xbox, PlayStation, Switch) join this Java server."
+version = "2.12.1-b1281"
+# Geyser publishes a jar, not an image. This is a Java runtime that fetches
+# the pinned build below (checked against its SHA-256) the first time it
+# starts and keeps it in the module's cache.
+image = "eclipse-temurin@sha256:0eda5830ed7b669abc246a8dc520ea8a23cab06f9a8d4b6964109e2f2394e46f"
+command = [
+  "sh",
+  "-c",
+  '''
+set -e
+cd /geyser
+JAR=/opt/geyser/Geyser-2.12.1-b1281.jar
+if [ ! -f "$JAR" ]; then
+  rm -f /opt/geyser/*.jar
+  curl -fsSL --retry 3 -o "$JAR.part" "https://download.geysermc.org/v2/projects/geyser/versions/2.12.1/builds/1281/downloads/standalone"
+  echo "42e5ad93177d58e4696b6b86db812bc2b2abd03949f6d72dfaec8848d5ad1dfb  $JAR.part" | sha256sum -c -
+  mv "$JAR.part" "$JAR"
+fi
+exec java -XX:MaxRAMPercentage=75 -jar "$JAR" --nogui
+''',
+]
+# It talks to the server directly, so it needs the server running.
+lifecycle = "with-server"
+memory_mb = 768
+notes = """Bedrock players join with this machine's public address and the port below, over both TCP and UDP, so forward it on your router and open it in the firewall. Consoles can't add servers by address; they can join through a friend's world list or a LAN-listing tool. Geyser connects to the server directly, bypassing the Smart Proxy: its bans and routing don't apply to Bedrock players, but the server's own allowlist and bans do. It stops when the server sleeps, so a sleeping server can't be woken by a Bedrock player. Geyser gets Bedrock's skins, blocks and items from Mojang's game files the first time it starts. Some features (custom items, mod blocks) don't carry over, and an anti-cheat on the server may react to Bedrock movement."""
+
+[[ports]]
+setting = "port"
+tcp = true
+udp = true
+
+[env]
+# Java reads its home from the user; the container's user has none.
+HOME = "/tmp"
+
+[[mounts]]
+source = "module:"
+target = "/geyser"
+
+[[mounts]]
+source = "cache:bin"
+target = "/opt/geyser"
+
+# NetherNode keeps this file in step with the settings.
+[[files]]
+path = "config.yml"
+content = """
+# Written by NetherNode from the module's settings; changes here are replaced.
+bedrock:
+  address: 0.0.0.0
+  port: {{setting.port}}
+  webrtc-port: 0
+  transport: nethernet
+  signaling:
+    mode: builtin
+    advertise-addresses: []
+    stun-discovery: true
+java:
+  address: {{server.host}}
+  port: {{server.game_port}}
+  auth-type: {{setting.auth_type}}
+  forward-hostname: false
+motd:
+  passthrough-motd: true
+  passthrough-player-counts: true
+  ping-passthrough-interval: 3
+gameplay:
+  server-name: Geyser
+  show-coordinates: true
+saved-user-logins: []
+pending-authentication-timeout: 120
+notify-on-new-bedrock-update: false
+advanced:
+  floodgate-key-file: key.pem
+enable-metrics: false
+config-version: 12
+"""
+
+[[settings]]
+key = "accept_download"
+label = "Download Minecraft's game files from Mojang"
+help = "Geyser needs the game's own textures and data, downloaded from Mojang under the Minecraft EULA. It can't run without them."
+kind = "boolean"
+default = false
+required = true
+
+[[settings]]
+key = "port"
+label = "Port"
+help = "What Bedrock players connect to, on both TCP and UDP. 19132 is Bedrock's usual one; give each Geyser module its own."
+kind = "number"
+default = 19132
+min = 1024
+max = 65535
+
+[[settings]]
+key = "auth_type"
+label = "How players sign in"
+help = "online: each Bedrock player signs in with the Java account they play on, shown a code on joining (works on any server, and on the first join each player has to do it). floodgate: Bedrock players sign in with their Xbox account and need no Java account, but the server needs the Floodgate plugin or mod, and its key.pem copied into this module's folder."
+kind = "choice"
+default = "online"
+choices = ["online", "floodgate"]

@@ -96,6 +96,17 @@ function StatusBadge({ module }: { module: Module }) {
 }
 
 /** The Modules section of a server's page. */
+/** The port a Geyser module's Bedrock players connect to. */
+function bedrockPort(m: Module): number {
+  try {
+    const port = (JSON.parse(m.settingsJson) as { port?: unknown }).port;
+    if (typeof port === "number") return port;
+  } catch {
+    // Fall through to Bedrock's usual port.
+  }
+  return 19132;
+}
+
 export default function ModulesTab({ server }: { server: Server }) {
   const queryClient = useQueryClient();
   const list = useQuery({
@@ -172,6 +183,12 @@ export default function ModulesTab({ server }: { server: Server }) {
                       Web page:{" "}
                       <span className="select-all font-mono text-text-secondary">{m.webAddress}</span>, on the
                       machine NetherNode runs on
+                    </p>
+                  )}
+                  {m.template === "geyser" && (
+                    <p className="text-meta text-text-muted">
+                      Bedrock players join with this machine's address on port{" "}
+                      <span className="font-mono text-text-secondary">{bedrockPort(m)}</span>, TCP and UDP
                     </p>
                   )}
                   {(m.webAddress || template?.hasWeb || panel) && (

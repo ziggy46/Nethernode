@@ -71,6 +71,25 @@ pub struct Web {
     pub prefix: Option<String>,
 }
 
+/// A port a module opens to the network, for players or other machines to
+/// reach directly (not through the Smart Proxy).
+///
+/// The number comes from one of the module's number settings, and is the
+/// same inside the container and on the machine, because some software
+/// tells its clients which port to use.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Port {
+    /// The number setting that holds the port.
+    pub setting: String,
+    /// Open it for TCP.
+    #[serde(default)]
+    pub tcp: bool,
+    /// Open it for UDP.
+    #[serde(default)]
+    pub udp: bool,
+}
+
 /// A folder given to the container.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -175,6 +194,9 @@ pub struct Template {
     /// Environment variables.
     #[serde(default)]
     pub env: BTreeMap<String, String>,
+    /// Ports it opens on this machine, on every address.
+    #[serde(default)]
+    pub ports: Vec<Port>,
     /// Folders it's given.
     #[serde(default)]
     pub mounts: Vec<Mount>,
@@ -188,6 +210,7 @@ pub struct Template {
 
 const BUILT_IN: &[&str] = &[
     include_str!("templates/bluemap.toml"),
+    include_str!("templates/geyser.toml"),
     include_str!("templates/status-page.toml"),
 ];
 
@@ -231,6 +254,7 @@ fn check(t: &Template) -> Result<(), String> {
         if !t.image.is_empty()
             || !t.command.is_empty()
             || !t.env.is_empty()
+            || !t.ports.is_empty()
             || !t.mounts.is_empty()
             || !t.files.is_empty()
             || t.web.as_ref().is_some_and(|w| w.port != 0)
@@ -283,6 +307,27 @@ fn check(t: &Template) -> Result<(), String> {
             "{}: web prefix {prefix} isn't a hostname label",
             t.id
         ));
+    }
+    for p in &t.ports {
+        let setting = t.settings.iter().find(|s| s.key == p.setting);
+        match setting {
+            Some(s)
+                if s.kind == SettingKind::Number
+                    && s.min.is_some_and(|min| min >= 1024)
+                    && s.max.is_some_and(|max| max <= i64::from(u16::MAX)) => {}
+            _ => {
+                return Err(format!(
+                    "{}: port setting {} must be a number setting between 1024 and 65535",
+                    t.id, p.setting
+                ));
+            }
+        }
+        if !p.tcp && !p.udp {
+            return Err(format!(
+                "{}: port {} is neither TCP nor UDP",
+                t.id, p.setting
+            ));
+        }
     }
     for f in &t.files {
         nn_files::RelPath::parse(&f.path)
@@ -386,6 +431,17 @@ pub fn settings(t: &Template, given: &Map<String, Value>) -> Result<Map<String, 
         out.insert(s.key.clone(), value(s, v)?);
     }
     Ok(out)
+}
+
+/// The ports a module opens with these settings: number, TCP, UDP.
+pub fn open_ports(t: &Template, settings: &Map<String, Value>) -> Vec<(u16, bool, bool)> {
+    t.ports
+        .iter()
+        .filter_map(|p| {
+            let port = settings.get(&p.setting)?.as_u64()?;
+            Some((u16::try_from(port).ok()?, p.tcp, p.udp))
+        })
+        .collect()
 }
 
 /// Placeholder values for one module.
@@ -606,6 +662,57 @@ mod tests {
         assert!(parse(&unpinned).unwrap_err().contains("pinned"));
         let escaping = raw.replace("module:config", "module:../../etc");
         assert!(parse(&escaping).is_err());
+    }
+
+    #[test]
+    fn geyser_opens_its_port_for_tcp_and_udp() {
+        let geyser = find("geyser").expect("Geyser is built in");
+        let settings = settings(
+            geyser,
+            serde_json::json!({ "accept_download": true, "port": 19140 })
+                .as_object()
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(open_ports(geyser, &settings), vec![(19140, true, true)]);
+        // Its config follows the settings.
+        let mut values = HashMap::from([
+            ("server.host".to_owned(), SERVER_HOST.to_owned()),
+            ("server.game_port".to_owned(), "25565".to_owned()),
+        ]);
+        for (key, v) in &settings {
+            let text = match v {
+                Value::String(s) => s.clone(),
+                other => other.to_string(),
+            };
+            values.insert(format!("setting.{key}"), text);
+        }
+        let config = render(&geyser.files[0].content, &values).unwrap();
+        assert!(config.contains("port: 19140"), "{config}");
+        assert!(config.contains("auth-type: online"), "{config}");
+        assert!(config.contains("address: minecraft"), "{config}");
+        // The pinned download is checked against its hash.
+        let script = geyser.command.last().unwrap();
+        assert!(script.contains("sha256sum -c"), "{script}");
+    }
+
+    #[test]
+    fn a_port_must_come_from_a_number_setting_in_range() {
+        let mut wrong = find("geyser").unwrap().clone();
+        wrong.ports[0].setting = "auth_type".into();
+        assert!(check(&wrong).unwrap_err().contains("number setting"));
+        let mut wrong = find("geyser").unwrap().clone();
+        wrong
+            .settings
+            .iter_mut()
+            .find(|s| s.key == "port")
+            .unwrap()
+            .min = Some(1);
+        assert!(check(&wrong).is_err());
+        let mut wrong = find("geyser").unwrap().clone();
+        wrong.ports[0].tcp = false;
+        wrong.ports[0].udp = false;
+        assert!(check(&wrong).unwrap_err().contains("neither"));
     }
 
     #[test]

@@ -30,6 +30,8 @@ web panel:
 - **Modules.** Add BlueMap's 3D web map or a public status page to a server,
   each on an address of its own (`map-mc1.example.com`). With a Cloudflare
   API token, NetherNode runs the tunnel and keeps the DNS records in step.
+- **Bedrock players on Java servers.** A Geyser module lets players on
+  Windows, phones and consoles join the same world as Java players.
 - **Knows why it crashed.** It reads the crash report, names the mods at
   fault (ones that only run in the game, missing or wrong-version ones), and
   fixes the common causes in a click.

@@ -83,6 +83,8 @@ struct SpecInput<'a> {
     template: &'a Template,
     env: BTreeMap<String, String>,
     binds: Vec<String>,
+    /// Ports opened on every address: number, TCP, UDP.
+    open_ports: Vec<(u16, bool, bool)>,
     publish_ip: std::net::IpAddr,
     run_as: Option<(u32, u32)>,
 }
@@ -101,6 +103,22 @@ fn build(input: &SpecInput<'_>) -> ContainerSpec {
             }]),
         );
         exposed.push(inside);
+    }
+    for &(port, tcp, udp) in &input.open_ports {
+        for (open, protocol) in [(tcp, "tcp"), (udp, "udp")] {
+            if !open {
+                continue;
+            }
+            let inside = format!("{port}/{protocol}");
+            port_bindings.insert(
+                inside.clone(),
+                Some(vec![PortBinding {
+                    host_ip: Some("0.0.0.0".to_owned()),
+                    host_port: Some(port.to_string()),
+                }]),
+            );
+            exposed.push(inside);
+        }
     }
     let host_config = HostConfig {
         binds: Some(input.binds.clone()),
@@ -235,6 +253,39 @@ impl Orchestrator {
             .join(&server.slug)
     }
 
+    /// Refuses ports another module on this machine already opens. `except`
+    /// is the module being changed.
+    async fn check_open_ports(
+        &self,
+        template: &Template,
+        settings: &Map<String, Value>,
+        except: Option<&str>,
+    ) -> Result<()> {
+        let wanted = template::open_ports(template, settings);
+        if wanted.is_empty() {
+            return Ok(());
+        }
+        for other in self.store.list_modules(None).await? {
+            if Some(other.id.as_str()) == except {
+                continue;
+            }
+            let Some(other_template) = template::find(&other.template) else {
+                continue;
+            };
+            let other_settings: Map<String, Value> =
+                serde_json::from_str(&other.settings_json).unwrap_or_default();
+            for (port, ..) in template::open_ports(other_template, &other_settings) {
+                if wanted.iter().any(|(p, ..)| *p == port) {
+                    return Err(OrchestratorError::InvalidInput(format!(
+                        "Port {port} is already used by the {} module. Pick another port.",
+                        other.name
+                    )));
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Adds a module to a server. It isn't started here.
     pub async fn add_module(
         &self,
@@ -267,6 +318,7 @@ impl Orchestrator {
         }
         let settings =
             template::settings(template, settings).map_err(OrchestratorError::InvalidInput)?;
+        self.check_open_ports(template, &settings, None).await?;
         let memory_mb = memory_mb.unwrap_or(template.memory_mb);
         if !MEMORY_RANGE.contains(&memory_mb) {
             return Err(OrchestratorError::InvalidInput(
@@ -332,6 +384,7 @@ impl Orchestrator {
         let (module, server, template) = self.load_module(id).await?;
         let settings =
             template::settings(template, settings).map_err(OrchestratorError::InvalidInput)?;
+        self.check_open_ports(template, &settings, Some(id)).await?;
         if !MEMORY_RANGE.contains(&memory_mb) {
             return Err(OrchestratorError::InvalidInput(
                 "A module's memory must be between 128 MB and 16 GB.".into(),
@@ -474,6 +527,7 @@ impl Orchestrator {
             template,
             env,
             binds,
+            open_ports: template::open_ports(template, &settings),
             publish_ip: self.config.backend_ip,
             run_as: self.config.run_as,
         });
@@ -862,6 +916,7 @@ mod tests {
             template,
             env: BTreeMap::from([("A".into(), "b".into())]),
             binds: vec!["/srv/servers/smp/world:/app/world:ro".into()],
+            open_ports: Vec::new(),
             publish_ip: std::net::IpAddr::from([127, 0, 0, 1]),
             run_as: Some((1000, 1000)),
         });
@@ -900,10 +955,40 @@ mod tests {
             template,
             env: BTreeMap::new(),
             binds: Vec::new(),
+            open_ports: Vec::new(),
             publish_ip: std::net::IpAddr::from([127, 0, 0, 1]),
             run_as: None,
         });
         assert_ne!(spec.hash, other.hash);
+    }
+
+    #[test]
+    fn open_ports_are_published_on_every_address() {
+        let mut geyser = module();
+        geyser.template = "geyser".into();
+        geyser.name = "geyser".into();
+        geyser.web_port = None;
+        let spec = build(&SpecInput {
+            module: &geyser,
+            slug: "smp",
+            template: template::find("geyser").unwrap(),
+            env: BTreeMap::new(),
+            binds: Vec::new(),
+            open_ports: vec![(19140, true, true)],
+            publish_ip: std::net::IpAddr::from([127, 0, 0, 1]),
+            run_as: None,
+        });
+        let host = spec.body.host_config.as_ref().unwrap();
+        let bindings = host.port_bindings.as_ref().unwrap();
+        for protocol in ["19140/tcp", "19140/udp"] {
+            let bound = &bindings[protocol].as_ref().unwrap()[0];
+            assert_eq!(
+                (bound.host_ip.as_deref(), bound.host_port.as_deref()),
+                (Some("0.0.0.0"), Some("19140")),
+                "{protocol}"
+            );
+        }
+        assert_eq!(bindings.len(), 2);
     }
 
     #[test]
